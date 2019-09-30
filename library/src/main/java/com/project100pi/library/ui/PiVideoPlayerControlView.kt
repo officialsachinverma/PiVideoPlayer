@@ -75,12 +75,7 @@ class PiVideoPlayerControlView: FrameLayout {
     private var timeBarMinUpdateIntervalMs = 0
     @RepeatModeUtil.RepeatToggleModes
     private var repeatToggleModes: Int = 0
-    private var showShuffleButton: Boolean = false
     private var hideAtMs: Long = 0
-    private var adGroupTimesMs = LongArray(0)
-    private var playedAdGroups = BooleanArray(0)
-    private var extraAdGroupTimesMs = LongArray(0)
-    private var extraPlayedAdGroups = BooleanArray(0)
     private var currentWindowOffset: Long = 0
 
     private var componentListener: ComponentListener
@@ -91,8 +86,6 @@ class PiVideoPlayerControlView: FrameLayout {
     private var fastForwardButton: View
     private var rewindButton: View
     private var repeatToggleButton: ImageView
-    private var shuffleButton: View
-    private var vrButton: View
     private var durationView: TextView
     private var positionView: TextView
     private var timeBar: TimeBar?
@@ -147,10 +140,7 @@ class PiVideoPlayerControlView: FrameLayout {
                     controllerLayoutId
                 )
                 repeatToggleModes = getRepeatToggleModes(a, repeatToggleModes)
-                showShuffleButton = a.getBoolean(
-                    R.styleable.PlayerControlView_show_shuffle_button,
-                    showShuffleButton
-                )
+
                 setTimeBarMinUpdateInterval(
                     a.getInt(
                         R.styleable.PlayerControlView_time_bar_min_update_interval,
@@ -167,10 +157,6 @@ class PiVideoPlayerControlView: FrameLayout {
         window.isSeekable = true
         formatBuilder = StringBuilder()
         formatter = Formatter(formatBuilder, Locale.getDefault())
-        adGroupTimesMs = LongArray(0)
-        playedAdGroups = BooleanArray(0)
-        extraAdGroupTimesMs = LongArray(0)
-        extraPlayedAdGroups = BooleanArray(0)
         componentListener = ComponentListener()
         controlDispatcher = DefaultControlDispatcher()
         updateProgressAction = Runnable { this.updateProgress() }
@@ -233,14 +219,6 @@ class PiVideoPlayerControlView: FrameLayout {
         repeatToggleButton = findViewById(R.id.pi_repeat_toggle)
         repeatToggleButton.setOnClickListener(componentListener)
 
-        // Shuffle
-        shuffleButton = findViewById(R.id.pi_shuffle)
-        shuffleButton.setOnClickListener(componentListener)
-
-        // Virtual Reality
-        vrButton = findViewById(R.id.pi_vr)
-        setShowVrButton(false)
-
         val resources = context.resources
         repeatOffButtonDrawable = ResourcesCompat.getDrawable(getResources(), R.drawable.exo_controls_repeat_off, null)
         repeatOneButtonDrawable = ResourcesCompat.getDrawable(getResources(), R.drawable.exo_controls_repeat_one, null)
@@ -258,14 +236,6 @@ class PiVideoPlayerControlView: FrameLayout {
         a: TypedArray, @RepeatModeUtil.RepeatToggleModes repeatToggleModes: Int
     ): Int {
         return a.getInt(R.styleable.PlayerControlView_repeat_toggle_modes, repeatToggleModes)
-    }
-
-    /**
-     * Returns the [Player] currently being controlled by this view, or null if no player is
-     * set.
-     */
-    fun getPiPlayer(): Player? {
-        return player
     }
 
     /**
@@ -288,199 +258,6 @@ class PiVideoPlayerControlView: FrameLayout {
         this.player = player
         player?.addListener(componentListener)
         updateAll()
-    }
-
-    /**
-     * Sets whether the time bar should show all windows, as opposed to just the current one. If the
-     * timeline has a period with unknown duration or more than [ ][.MAX_WINDOWS_FOR_MULTI_WINDOW_TIME_BAR] windows the time bar will fall back to showing a single
-     * window.
-     *
-     * @param showMultiWindowTimeBar Whether the time bar should show all windows.
-     */
-    fun setShowMultiWindowTimeBar(showMultiWindowTimeBar: Boolean) {
-        this.showMultiWindowTimeBar = showMultiWindowTimeBar
-        updateTimeline()
-    }
-
-    /**
-     * Sets the millisecond positions of extra ad markers relative to the start of the window (or
-     * timeline, if in multi-window mode) and whether each extra ad has been played or not. The
-     * markers are shown in addition to any ad markers for ads in the player's timeline.
-     *
-     * @param extraAdGroupTimesMs The millisecond timestamps of the extra ad markers to show, or
-     * `null` to show no extra ad markers.
-     * @param extraPlayedAdGroups Whether each ad has been played. Must be the same length as `extraAdGroupTimesMs`, or `null` if `extraAdGroupTimesMs` is `null`.
-     */
-    fun setExtraAdGroupMarkers(
-        extraAdGroupTimesMs: LongArray?, extraPlayedAdGroups: BooleanArray?
-    ) {
-        var extraPlayedAdGroups = extraPlayedAdGroups
-        if (extraAdGroupTimesMs == null) {
-            this.extraAdGroupTimesMs = LongArray(0)
-            this.extraPlayedAdGroups = BooleanArray(0)
-        } else {
-            extraPlayedAdGroups = Assertions.checkNotNull(extraPlayedAdGroups)
-            Assertions.checkArgument(extraAdGroupTimesMs.size == extraPlayedAdGroups!!.size)
-            this.extraAdGroupTimesMs = extraAdGroupTimesMs
-            this.extraPlayedAdGroups = extraPlayedAdGroups
-        }
-        updateTimeline()
-    }
-
-    /**
-     * Sets the [VisibilityListener].
-     *
-     * @param listener The listener to be notified about visibility changes.
-     */
-    fun setVisibilityListener(listener: VisibilityListener) {
-        this.visibilityListener = listener
-    }
-
-    /**
-     * Sets the [ProgressUpdateListener].
-     *
-     * @param listener The listener to be notified about when progress is updated.
-     */
-    fun setProgressUpdateListener(listener: ProgressUpdateListener?) {
-        this.progressUpdateListener = listener
-    }
-
-    /**
-     * Sets the [PlaybackPreparer].
-     *
-     * @param playbackPreparer The [PlaybackPreparer].
-     */
-    fun setPlaybackPreparer(playbackPreparer: PlaybackPreparer?) {
-        this.playbackPreparer = playbackPreparer
-    }
-
-    /**
-     * Sets the [com.google.android.exoplayer2.ControlDispatcher].
-     *
-     * @param controlDispatcher The [com.google.android.exoplayer2.ControlDispatcher], or null
-     * to use [com.google.android.exoplayer2.DefaultControlDispatcher].
-     */
-    fun setControlDispatcher(
-        controlDispatcher: ControlDispatcher?
-    ) {
-        this.controlDispatcher =
-            controlDispatcher ?: DefaultControlDispatcher()
-    }
-
-    /**
-     * Sets the rewind increment in milliseconds.
-     *
-     * @param rewindMs The rewind increment in milliseconds. A non-positive value will cause the
-     * rewind button to be disabled.
-     */
-    fun setRewindIncrementMs(rewindMs: Int) {
-        this.rewindMs = rewindMs
-        updateNavigation()
-    }
-
-    /**
-     * Sets the fast forward increment in milliseconds.
-     *
-     * @param fastForwardMs The fast forward increment in milliseconds. A non-positive value will
-     * cause the fast forward button to be disabled.
-     */
-    fun setFastForwardIncrementMs(fastForwardMs: Int) {
-        this.fastForwardMs = fastForwardMs
-        updateNavigation()
-    }
-
-    /**
-     * Returns the playback controls timeout. The playback controls are automatically hidden after
-     * this duration of time has elapsed without user input.
-     *
-     * @return The duration in milliseconds. A non-positive value indicates that the controls will
-     * remain visible indefinitely.
-     */
-    fun getShowTimeoutMs(): Int {
-        return showTimeoutMillis
-    }
-
-    /**
-     * Sets the playback controls timeout. The playback controls are automatically hidden after this
-     * duration of time has elapsed without user input.
-     *
-     * @param showTimeoutMs The duration in milliseconds. A non-positive value will cause the controls
-     * to remain visible indefinitely.
-     */
-    fun setShowTimeoutMs(showTimeoutMs: Int) {
-        this.showTimeoutMillis = showTimeoutMs
-        if (isVisible()) {
-            // Reset the timeout.
-            hideAfterTimeout()
-        }
-    }
-
-    /**
-     * Returns which repeat toggle modes are enabled.
-     *
-     * @return The currently enabled [RepeatModeUtil.RepeatToggleModes].
-     */
-    @RepeatModeUtil.RepeatToggleModes
-    fun getRepeatToggleModes(): Int {
-        return repeatToggleModes
-    }
-
-    /**
-     * Sets which repeat toggle modes are enabled.
-     *
-     * @param repeatToggleModes A set of [RepeatModeUtil.RepeatToggleModes].
-     */
-    fun setRepeatToggleModes(@RepeatModeUtil.RepeatToggleModes repeatToggleModes: Int) {
-        this.repeatToggleModes = repeatToggleModes
-        if (player != null) {
-            @Player.RepeatMode val currentMode = player!!.repeatMode
-            if (repeatToggleModes == RepeatModeUtil.REPEAT_TOGGLE_MODE_NONE && currentMode != Player.REPEAT_MODE_OFF) {
-                controlDispatcher.dispatchSetRepeatMode(player, Player.REPEAT_MODE_OFF)
-            } else if (repeatToggleModes == RepeatModeUtil.REPEAT_TOGGLE_MODE_ONE && currentMode == Player.REPEAT_MODE_ALL) {
-                controlDispatcher.dispatchSetRepeatMode(player, Player.REPEAT_MODE_ONE)
-            } else if (repeatToggleModes == RepeatModeUtil.REPEAT_TOGGLE_MODE_ALL && currentMode == Player.REPEAT_MODE_ONE) {
-                controlDispatcher.dispatchSetRepeatMode(player, Player.REPEAT_MODE_ALL)
-            }
-        }
-        updateRepeatModeButton()
-    }
-
-    /** Returns whether the shuffle button is shown.  */
-    fun getShowShuffleButton(): Boolean {
-        return showShuffleButton
-    }
-
-    /**
-     * Sets whether the shuffle button is shown.
-     *
-     * @param showShuffleButton Whether the shuffle button is shown.
-     */
-    fun setShowShuffleButton(showShuffleButton: Boolean) {
-        this.showShuffleButton = showShuffleButton
-        updateShuffleButton()
-    }
-
-    /** Returns whether the VR button is shown.  */
-    fun getShowVrButton(): Boolean {
-        return vrButton.visibility == View.VISIBLE
-    }
-
-    /**
-     * Sets whether the VR button is shown.
-     *
-     * @param showVrButton Whether the VR button is shown.
-     */
-    fun setShowVrButton(showVrButton: Boolean) {
-        vrButton.visibility = if (showVrButton) View.VISIBLE else View.GONE
-    }
-
-    /**
-     * Sets listener for the VR button.
-     *
-     * @param onClickListener Listener for the VR button, or null to clear the listener.
-     */
-    fun setVrButtonListener(onClickListener: OnClickListener?) {
-        vrButton.setOnClickListener(onClickListener)
     }
 
     /**
@@ -551,7 +328,6 @@ class PiVideoPlayerControlView: FrameLayout {
         updatePlayPauseButton()
         updateNavigation()
         updateRepeatModeButton()
-        updateShuffleButton()
         updateTimeline()
     }
 
@@ -634,21 +410,6 @@ class PiVideoPlayerControlView: FrameLayout {
         repeatToggleButton.visibility = View.VISIBLE
     }
 
-    private fun updateShuffleButton() {
-        if (!isVisible() || !isPiAttachedToWindow) {
-            return
-        }
-        if (!showShuffleButton) {
-            shuffleButton.visibility = View.GONE
-        } else if (player == null) {
-            setButtonEnabled(false, shuffleButton)
-        } else {
-            shuffleButton.alpha = if (player!!.shuffleModeEnabled) 1f else 0.3f
-            shuffleButton.isEnabled = true
-            shuffleButton.visibility = View.VISIBLE
-        }
-    }
-
     private fun updateTimeline() {
         if (player == null) {
             return
@@ -657,7 +418,6 @@ class PiVideoPlayerControlView: FrameLayout {
             showMultiWindowTimeBar && canShowMultiWindowTimeBar(player!!.currentTimeline, window)
         currentWindowOffset = 0
         var durationUs: Long = 0
-        var adGroupCount = 0
         val timeline = player!!.currentTimeline
         if (!timeline.isEmpty) {
             val currentWindowIndex = player!!.currentWindowIndex
@@ -675,31 +435,6 @@ class PiVideoPlayerControlView: FrameLayout {
                 }
                 for (j in window.firstPeriodIndex..window.lastPeriodIndex) {
                     timeline.getPeriod(j, period)
-                    val periodAdGroupCount = period.adGroupCount
-                    for (adGroupIndex in 0 until periodAdGroupCount) {
-                        var adGroupTimeInPeriodUs = period.getAdGroupTimeUs(adGroupIndex)
-                        if (adGroupTimeInPeriodUs == C.TIME_END_OF_SOURCE) {
-                            if (period.durationUs == C.TIME_UNSET) {
-                                // Don't show ad markers for postrolls in periods with unknown duration.
-                                continue
-                            }
-                            adGroupTimeInPeriodUs = period.durationUs
-                        }
-                        val adGroupTimeInWindowUs =
-                            adGroupTimeInPeriodUs + period.positionInWindowUs
-                        if (adGroupTimeInWindowUs >= 0 && adGroupTimeInWindowUs <= window.durationUs) {
-                            if (adGroupCount == adGroupTimesMs.size) {
-                                val newLength =
-                                    if (adGroupTimesMs.isEmpty()) 1 else adGroupTimesMs.size * 2
-                                adGroupTimesMs = adGroupTimesMs.copyOf(newLength)
-                                playedAdGroups = playedAdGroups.copyOf(newLength)
-                            }
-                            adGroupTimesMs[adGroupCount] =
-                                C.usToMs(durationUs + adGroupTimeInWindowUs)
-                            playedAdGroups[adGroupCount] = period.hasPlayedAdGroup(adGroupIndex)
-                            adGroupCount++
-                        }
-                    }
                 }
                 durationUs += window.durationUs
             }
@@ -710,27 +445,6 @@ class PiVideoPlayerControlView: FrameLayout {
 
         if (timeBar != null) {
             timeBar?.setDuration(durationMs)
-            val extraAdGroupCount = extraAdGroupTimesMs.size
-            val totalAdGroupCount = adGroupCount + extraAdGroupCount
-            if (totalAdGroupCount > adGroupTimesMs.size) {
-                adGroupTimesMs = Arrays.copyOf(adGroupTimesMs, totalAdGroupCount)
-                playedAdGroups = Arrays.copyOf(playedAdGroups, totalAdGroupCount)
-            }
-            System.arraycopy(
-                extraAdGroupTimesMs,
-                0,
-                adGroupTimesMs,
-                adGroupCount,
-                extraAdGroupCount
-            )
-            System.arraycopy(
-                extraPlayedAdGroups,
-                0,
-                playedAdGroups,
-                adGroupCount,
-                extraAdGroupCount
-            )
-            timeBar?.setAdGroupTimesMs(adGroupTimesMs, playedAdGroups, totalAdGroupCount)
         }
         updateProgress()
     }
@@ -1028,7 +742,6 @@ class PiVideoPlayerControlView: FrameLayout {
         }
 
         override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
-            updateShuffleButton()
             updateNavigation()
         }
 
@@ -1073,10 +786,6 @@ class PiVideoPlayerControlView: FrameLayout {
                 repeatToggleButton === view -> controlDispatcher.dispatchSetRepeatMode(
                     player,
                     RepeatModeUtil.getNextRepeatMode(player.repeatMode, repeatToggleModes)
-                )
-                shuffleButton === view -> controlDispatcher.dispatchSetShuffleModeEnabled(
-                    player,
-                    !player.shuffleModeEnabled
                 )
             }
         }

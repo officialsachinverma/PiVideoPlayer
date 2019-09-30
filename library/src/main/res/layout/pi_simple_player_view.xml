@@ -18,7 +18,8 @@
             android:layout_height="match_parent"
             android:scaleType="fitXY"/>
 
-        <com.google.android.exoplayer2.ui.SubtitleView android:id="@id/pi_subtitles"
+        <com.google.android.exoplayer2.ui.SubtitleView
+            android:id="@id/pi_subtitles"
             android:layout_width="match_parent"
             android:layout_height="match_parent"/>
 

@@ -37,7 +37,7 @@ class Player : AppCompatActivity() {
     public override fun onStart() {
         super.onStart()
         if (Util.SDK_INT > 23) {
-            playerView.onResume()
+            //playerView.onResume()
         }
     }
 
@@ -45,14 +45,14 @@ class Player : AppCompatActivity() {
         super.onResume()
         if (Util.SDK_INT <= 23 || null == videoPlayer) {
             initializePlayer()
-            playerView.onResume()
+            //playerView.onResume()
         }
     }
 
     public override fun onPause() {
         super.onPause()
         if (Util.SDK_INT <= 23) {
-            playerView.onPause()
+            //playerView.onPause()
             releasePlayer()
         }
     }
@@ -60,7 +60,7 @@ class Player : AppCompatActivity() {
     public override fun onStop() {
         super.onStop()
         if (Util.SDK_INT > 23) {
-            playerView.onPause()
+            //playerView.onPause()
             releasePlayer()
         }
     }
