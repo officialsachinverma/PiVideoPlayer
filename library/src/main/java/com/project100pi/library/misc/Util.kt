@@ -37,4 +37,7 @@ object Util {
     /** An empty byte array.  */
     val EMPTY_BYTE_ARRAY = ByteArray(0)
 
+    /** User Agent.  */
+    val userAgent = "in.co.sachinverma.musicplayer"
+
 }

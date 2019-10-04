@@ -2,31 +2,34 @@ package com.project100pi.pivideoplayer.activity
 
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
+import butterknife.BindView
+import butterknife.ButterKnife
 import com.project100pi.library.factory.PiPlayerFactory
 import com.project100pi.library.misc.Util
 import com.project100pi.library.player.PiVideoPlayer
 import com.project100pi.library.ui.PiVideoPlayerView
 import com.project100pi.pivideoplayer.R
+import com.project100pi.pivideoplayer.model.FolderInfo
 import com.project100pi.pivideoplayer.utils.Constants
 
 class Player : AppCompatActivity() {
 
-    private var path: String = ""
+    private var path: String? = null
+    private var videoList: ArrayList<String?>? = null
 
-    private lateinit var playerView: PiVideoPlayerView
+    @BindView(R.id.pv_player) lateinit var playerView: PiVideoPlayerView
     private var videoPlayer: PiVideoPlayer? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_player)
+        ButterKnife.bind(this)
 
-        this.path = if (this.intent != null) {
-            intent.getStringExtra(Constants.FILE_PATH)
-        } else {
-            ""
+        if (this.intent != null) {
+            this.path = this.intent.getStringExtra(Constants.FILE_PATH)
+            this.videoList = this.intent.getStringArrayListExtra(Constants.QUEUE)
         }
 
-        playerView = findViewById(R.id.pv_player)
 //        playerView.setErrorMessageProvider(PlayerErrorMessageProvider())
         playerView.requestFocus()
         playerView.showController(true)
@@ -74,7 +77,8 @@ class Player : AppCompatActivity() {
             videoPlayer = PiPlayerFactory.newPiPlayer(this)
             playerView?.setPlayer(videoPlayer)
         }
-        videoPlayer?.prepare(path)
+//        videoPlayer?.prepare(path!!)
+        videoPlayer?.prepare(videoList!!)
         videoPlayer?.play()
     }
 

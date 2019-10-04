@@ -6,6 +6,7 @@ import android.os.Looper
 import android.util.Log
 import com.google.android.exoplayer2.*
 import com.google.android.exoplayer2.audio.AudioAttributes
+import com.google.android.exoplayer2.source.ConcatenatingMediaSource
 import com.google.android.exoplayer2.source.ExtractorMediaSource
 import com.google.android.exoplayer2.source.MediaSource
 import com.google.android.exoplayer2.source.TrackGroupArray
@@ -17,6 +18,7 @@ import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory
 import com.google.android.exoplayer2.upstream.DefaultHttpDataSourceFactory
 import com.google.android.exoplayer2.util.Util
 import com.google.android.exoplayer2.video.VideoListener
+import com.project100pi.library.misc.Util.userAgent
 
 class PiVideoPlayer {
 
@@ -56,28 +58,10 @@ class PiVideoPlayer {
 
     private fun buildMediaSource(uri: Uri): MediaSource {
 
-        val userAgent = "in.co.sachinverma.musicplayer"
+        val dataSourceFactory = DefaultDataSourceFactory(
+            context, Util.getUserAgent(context, userAgent))
 
-        when {
-            uri.lastPathSegment?.contains("mp3")!! -> return ExtractorMediaSource.Factory(
-                DefaultHttpDataSourceFactory(userAgent)
-            )
-                .createMediaSource(uri)
-            uri.lastPathSegment?.contains("m3u8")!! -> return HlsMediaSource.Factory(
-                DefaultHttpDataSourceFactory(userAgent)
-            )
-                .createMediaSource(uri)
-            else -> {
-                //val bandwidthMeter = DefaultBandwidthMeter()
-                //val videoTrackSelectionFactory = AdaptiveTrackSelection.Factory(bandwidthMeter)
-                //val trackSelector = DefaultTrackSelector(videoTrackSelectionFactory)
-
-                val defaultBandwidthMeter = DefaultBandwidthMeter()
-                val dataSourceFactory = DefaultDataSourceFactory(
-                    context, Util.getUserAgent(context, userAgent), defaultBandwidthMeter)
-                return  ExtractorMediaSource.Factory(dataSourceFactory).createMediaSource(Uri.parse(path))
-            }
-        }
+        return ExtractorMediaSource.Factory(dataSourceFactory).createMediaSource(uri)
     }
 
     // Public APIs starts
@@ -86,6 +70,17 @@ class PiVideoPlayer {
         this.path = path
         val mediaSource = buildMediaSource(Uri.parse(path))
         player?.prepare(mediaSource, true, false)
+    }
+
+    fun prepare(paths: ArrayList<String?>?) {
+
+        val concatenatingMediaSource = ConcatenatingMediaSource()
+        for (path in paths!!) {
+            val mediaSource = buildMediaSource(Uri.parse(path))
+            concatenatingMediaSource.addMediaSource(mediaSource)
+        }
+
+        player?.prepare(concatenatingMediaSource, true, false)
     }
 
     fun release(){

@@ -210,10 +210,12 @@ class PiVideoPlayerControlView: FrameLayout {
         // Rewind
         rewindButton = findViewById(R.id.pi_rew)
         rewindButton.setOnClickListener(componentListener)
+        rewindButton.visibility = View.GONE
 
         // Fast Forward
         fastForwardButton = findViewById(R.id.pi_ffwd)
         fastForwardButton.setOnClickListener(componentListener)
+        fastForwardButton.visibility = View.GONE
 
         // Repeat
         repeatToggleButton = findViewById(R.id.pi_repeat_toggle)
@@ -365,15 +367,15 @@ class PiVideoPlayerControlView: FrameLayout {
                 val isSeekable = window.isSeekable
                 enableSeeking = isSeekable
                 enablePrevious = isSeekable || !window.isDynamic || player!!.hasPrevious()
-                enableRewind = isSeekable && rewindMs > 0
-                enableFastForward = isSeekable && fastForwardMs > 0
+                //enableRewind = isSeekable && rewindMs > 0 // Commented because we dont want rewind as user can seek
+                //enableFastForward = isSeekable && fastForwardMs > 0 // Commented because we don't want ''orward as user can seek
                 enableNext = window.isDynamic || player!!.hasNext()
             }
         }
 
         setButtonEnabled(enablePrevious, previousButton)
-        setButtonEnabled(enableRewind, rewindButton)
-        setButtonEnabled(enableFastForward, fastForwardButton)
+        //setButtonEnabled(enableRewind, rewindButton)
+        //setButtonEnabled(enableFastForward, fastForwardButton)
         setButtonEnabled(enableNext, nextButton)
         if (timeBar != null) {
             timeBar?.setEnabled(enableSeeking)

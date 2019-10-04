@@ -47,7 +47,7 @@ class MainActivity : AppCompatActivity(), OnTrackSelected {
 
         this.mFolderViewContainer.setOnClickListener{
             model.MODE = Constants.FOLDER_VIEW
-            setAdapter(model.foldersListExposed.value!!)
+            setAdapter()
             folderUpText.text = "..."
             model.onBackFolderPressed()
             mFolderViewContainer.visibility = View.GONE
@@ -87,11 +87,11 @@ class MainActivity : AppCompatActivity(), OnTrackSelected {
 
     private fun observeForObservers() {
         model.foldersListExposed.observe(this, Observer {
-            setAdapter(it)
+            setAdapter()
         })
     }
 
-    private fun setAdapter(tracks:ArrayList<FolderInfo>){
+    private fun setAdapter(){
 
         if (adapter == null) {
 
@@ -126,7 +126,7 @@ class MainActivity : AppCompatActivity(), OnTrackSelected {
             folderUpText.text = model.foldersListExposed.value!![position].path
             mFolderViewContainer.visibility = View.VISIBLE
             model.onItemClicked(position)
-            setAdapter(model.foldersListExposed.value!![position].songsList)
+            setAdapter()
         } else {
 
             //Play the video
@@ -134,6 +134,13 @@ class MainActivity : AppCompatActivity(), OnTrackSelected {
 
             val playerIntent = Intent(this, Player::class.java)
             playerIntent.putExtra(Constants.FILE_PATH, currentVideo.path)
+            val pathsList = ArrayList<String?>()
+            for ((tempPos, folder) in model.foldersListExposed.value!![model.CURRENT_SONG_FOLDER_INDEX].songsList.withIndex()) {
+                if (tempPos >= position) {
+                    pathsList.add(folder.path)
+                }
+            }
+            playerIntent.putExtra(Constants.QUEUE, pathsList)
             startActivity(playerIntent)
         }
     }
@@ -149,5 +156,15 @@ class MainActivity : AppCompatActivity(), OnTrackSelected {
             arrayOf(WRITE_EXTERNAL_STORAGE),
             PERMISSION_REQUEST_CODE
         )
+    }
+
+    override fun onBackPressed() {
+        if (model.MODE == Constants.SONG_VIEW) {
+            model.MODE = Constants.FOLDER_VIEW
+            setAdapter()
+            folderUpText.text = "..."
+            model.onBackFolderPressed()
+            mFolderViewContainer.visibility = View.GONE
+        }
     }
 }

@@ -18,10 +18,10 @@
         android:orientation="horizontal">
 
         <ImageButton android:id="@id/pi_prev"
-            android:visibility="gone"
             style="@style/ExoMediaButton.Previous"/>
 
         <ImageButton android:id="@id/pi_rew"
+            android:visibility="gone"
             style="@style/ExoMediaButton.Rewind"/>
 
         <ImageButton android:id="@id/pi_shuffle"
@@ -40,10 +40,10 @@
             style="@style/ExoMediaButton.Pause"/>
 
         <ImageButton android:id="@id/pi_ffwd"
+            android:visibility="gone"
             style="@style/ExoMediaButton.FastForward"/>
 
         <ImageButton android:id="@id/pi_next"
-            android:visibility="gone"
             style="@style/ExoMediaButton.Next"/>
 
         <ImageButton android:id="@id/pi_vr"
