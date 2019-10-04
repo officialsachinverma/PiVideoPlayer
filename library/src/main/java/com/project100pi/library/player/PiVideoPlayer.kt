@@ -72,7 +72,7 @@ class PiVideoPlayer {
         player?.prepare(mediaSource, true, false)
     }
 
-    fun prepare(paths: ArrayList<String?>?) {
+    fun prepare(paths: ArrayList<String?>?, resetPosition: Boolean, resetState: Boolean) {
 
         val concatenatingMediaSource = ConcatenatingMediaSource()
         for (path in paths!!) {
@@ -80,7 +80,7 @@ class PiVideoPlayer {
             concatenatingMediaSource.addMediaSource(mediaSource)
         }
 
-        player?.prepare(concatenatingMediaSource, true, false)
+        player?.prepare(concatenatingMediaSource, resetPosition, resetState)
     }
 
     fun release(){
@@ -96,8 +96,12 @@ class PiVideoPlayer {
         player?.playWhenReady = false
     }
 
-    fun seekTo(position: Long){
-        player?.seekTo(position)
+    fun seekTo(positionMs: Long){
+        player?.seekTo(positionMs)
+    }
+
+    fun seekTo(windowIndex: Int, positionMs: Long){
+        player?.seekTo(windowIndex, positionMs)
     }
 
     fun rewind(){
@@ -113,21 +117,19 @@ class PiVideoPlayer {
         player?.seekTo(seekPos)
     }
 
-    fun getPlaybackState(): Int {
-        return player!!.playbackState
-    }
+    fun getCurrentPosition() = player!!.currentPosition
 
-    fun getPlaybackError(): ExoPlaybackException {
-        return player!!.playbackError!!
-    }
+    fun getCurrentWindowIndex() = player!!.currentWindowIndex
+
+    fun getPlaybackState() = player!!.playbackState
+
+    fun getPlaybackError() = player!!.playbackError!!
 
    /* fun getPlayWhenReady(): Boolean {
         return playWhenReady
     }*/
 
-    fun getApplicationLooper(): Looper {
-        return player!!.applicationLooper
-    }
+    fun getApplicationLooper(): Looper = player!!.applicationLooper
 
     fun addListener(listener: VideoListener) {
         player?.addVideoListener(listener)
@@ -137,42 +139,9 @@ class PiVideoPlayer {
         player?.removeVideoListener(listener)
     }
 
-    fun isPlayingAd(): Boolean {
-        return player!!.isPlayingAd
-    }
+    fun getCurrentTrackGroups(): TrackGroupArray = player!!.currentTrackGroups
 
-    fun getRendererType(index: Int): Int {
-        return player!!.getRendererType(index)
-    }
-
-    fun getCurrentTrackGroups(): TrackGroupArray {
-        return player!!.currentTrackGroups
-    }
-
-    fun getCurrentTrackSelections(): TrackSelectionArray {
-        return player!!.currentTrackSelections
-    }
-
-    fun getVideoComponent(): Player.VideoComponent {
-        return player!!.videoComponent!!
-    }
-
-    fun getTextComponent(): Player.TextComponent {
-        return player!!.textComponent!!
-    }
-
-    fun getContentPosition(): Long {
-        return player!!.contentPosition
-    }
-
-    fun getContentBufferedPosition(): Long {
-        return player!!.contentBufferedPosition
-    }
-
-
-    fun getPlaybackParameters(): PlaybackParameters {
-        return player!!.playbackParameters
-    }
+    fun getVideoComponent() = player!!.videoComponent!!
 
     // Public APIs ends
 

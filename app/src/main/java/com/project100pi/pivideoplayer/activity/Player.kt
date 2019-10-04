@@ -1,6 +1,7 @@
 package com.project100pi.pivideoplayer.activity
 
 import android.os.Bundle
+import android.os.PersistableBundle
 import androidx.appcompat.app.AppCompatActivity
 import butterknife.BindView
 import butterknife.ButterKnife
@@ -19,6 +20,9 @@ class Player : AppCompatActivity() {
 
     @BindView(R.id.pv_player) lateinit var playerView: PiVideoPlayerView
     private var videoPlayer: PiVideoPlayer? = null
+
+    private var currentWindow = 0
+    private var playbackPosition: Long = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -73,13 +77,17 @@ class Player : AppCompatActivity() {
     }
 
     private fun initializePlayer() {
+
         if (videoPlayer == null) {
             videoPlayer = PiPlayerFactory.newPiPlayer(this)
-            playerView?.setPlayer(videoPlayer)
+            playerView.setPlayer(videoPlayer)
+            videoPlayer?.seekTo(currentWindow, playbackPosition)
         }
 //        videoPlayer?.prepare(path!!)
-        videoPlayer?.prepare(videoList!!)
+        videoPlayer?.prepare(videoList!!, resetPosition = true, resetState = false)
         videoPlayer?.play()
+        currentWindow = 0
+        playbackPosition = 0
     }
 
     private fun releasePlayer() {
@@ -87,6 +95,25 @@ class Player : AppCompatActivity() {
             videoPlayer?.release()
             videoPlayer = null
         }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+
+        if (videoPlayer != null) {
+            playbackPosition = videoPlayer!!.getCurrentPosition()
+            currentWindow = videoPlayer!!.getCurrentWindowIndex()
+        }
+
+        outState.putLong("playbackPosition", playbackPosition)
+        outState.putInt("currentWindow", currentWindow)
+    }
+
+    override fun onRestoreInstanceState(savedInstanceState: Bundle) {
+        super.onRestoreInstanceState(savedInstanceState)
+
+        playbackPosition = savedInstanceState.getLong("playbackPosition")
+        currentWindow = savedInstanceState.getInt("currentWindow")
     }
 
 }
