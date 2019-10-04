@@ -8,6 +8,10 @@
         <item name="colorAccent">@color/colorAccent</item>
     </style>
 
+    <style name="FolderNameTextView">
+        <item name="android:textSize">13sp</item>
+    </style>
+
     <style name="TrackNameTextView">
         <item name="android:textSize">20sp</item>
         <item name="android:textStyle">bold</item>

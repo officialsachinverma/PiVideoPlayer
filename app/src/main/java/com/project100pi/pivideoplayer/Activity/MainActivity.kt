@@ -10,37 +10,68 @@ import androidx.lifecycle.ViewModelProviders
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.project100pi.pivideoplayer.AdapterAndListeners.Listeners.OnTrackSelected
-import com.project100pi.pivideoplayer.AdapterAndListeners.PlayerAdapter
 import com.project100pi.pivideoplayer.Model.Track
 import com.project100pi.pivideoplayer.R
 import com.project100pi.pivideoplayer.Utils.Constants
 import android.content.pm.PackageManager
 import androidx.core.content.ContextCompat
 import android.Manifest.permission.WRITE_EXTERNAL_STORAGE
+import android.graphics.PorterDuff
+import android.opengl.Visibility
+import android.os.Environment
+import android.widget.ImageView
+import android.widget.TextView
 import androidx.core.app.ActivityCompat
+import androidx.core.graphics.ColorUtils
+import butterknife.BindView
+import butterknife.ButterKnife
+import com.project100pi.pivideoplayer.AdapterAndListeners.StorageFileAdapter
+import com.project100pi.pivideoplayer.Model.FolderInfo
 import com.project100pi.pivideoplayer.Utils.Constants.PERMISSION_REQUEST_CODE
+import com.project100pi.pivideoplayer.factory.MainViewModelFactory
+import java.io.File
+import java.util.*
+import kotlin.collections.ArrayList
 
 
 class MainActivity : AppCompatActivity(), OnTrackSelected {
 
-    private lateinit var recyclerView: RecyclerView
+    @BindView(R.id.rv_video_file_list) lateinit var  recyclerView: RecyclerView
+    @BindView(R.id.folder_view_container) lateinit var mFolderViewContainer: View
+    @BindView(R.id.folder_up_text) lateinit var folderUpText: TextView
+    @BindView(R.id.folder_up_image) lateinit var folderUpIconImage: ImageView
+
     private lateinit var model: MainViewModel
-    private lateinit var progressBar: ProgressBar
-    private var adapter: PlayerAdapter? = null
+    private var adapter: StorageFileAdapter? = null
+
+    private fun init() {
+        val application = requireNotNull(this).application
+        val viewModelFactory = MainViewModelFactory(this , application)
+        model = ViewModelProviders.of(this, viewModelFactory).get(MainViewModel::class.java)
+
+        val folderUpIcon = ContextCompat.getDrawable(this, R.drawable.folder_up)
+        this.folderUpIconImage.setImageDrawable(folderUpIcon)
+
+        this.mFolderViewContainer.setOnClickListener{
+            model.MODE = Constants.FOLDER_VIEW
+            setAdapter(model.foldersListExposed.value!!)
+            folderUpText.text = "..."
+            model.onBackFolderPressed()
+            mFolderViewContainer.visibility = View.GONE
+        }
+
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        ButterKnife.bind(this)
 
-        model = ViewModelProviders.of(this).get(MainViewModel::class.java)
-
-        recyclerView = findViewById(R.id.rv_video_file_list)
-        progressBar = findViewById(R.id.pb_video)
+        init()
 
         if (!checkPermission()) {
             requestPermission()
         } else {
-            refreshList()
             observeForObservers()
         }
     }
@@ -55,7 +86,6 @@ class MainActivity : AppCompatActivity(), OnTrackSelected {
         when(requestCode) {
             PERMISSION_REQUEST_CODE -> {
                 if (grantResults[0] == PackageManager.PERMISSION_GRANTED){
-                    refreshList()
                     observeForObservers()
                 }
             }
@@ -63,45 +93,70 @@ class MainActivity : AppCompatActivity(), OnTrackSelected {
     }
 
     private fun observeForObservers() {
-        model.videoListExposed.observe(this, Observer {
+        model.foldersListExposed.observe(this, Observer {
             setAdapter(it)
         })
     }
 
-    private fun setAdapter(tracks:MutableList<Track>){
+    private fun setAdapter(tracks:ArrayList<FolderInfo>){
+
         if (adapter == null) {
-            adapter = PlayerAdapter(this, R.layout.row_item, this, tracks)
+
+            adapter = StorageFileAdapter(this, R.layout.row_folder_item, this)
             val linearLayout = LinearLayoutManager(this)
             linearLayout.orientation = LinearLayoutManager.VERTICAL
             recyclerView.layoutManager = linearLayout
             recyclerView.adapter = adapter
-        }
-        adapter?.submitList(tracks)
 
-        progressBar.visibility = View.GONE
+        }
+
+        if (model.MODE == Constants.FOLDER_VIEW) {
+            setFoldersList()
+        } else if (model.MODE == Constants.SONG_VIEW) {
+            folderUpText.text = model.foldersListExposed.value!![model.CURRENT_SONG_FOLDER_INDEX].path
+            mFolderViewContainer.visibility = View.VISIBLE
+            setSongsList()
+        }
+    }
+
+    private fun setFoldersList() {
+        adapter?.submitList(model.foldersListExposed.value)
+    }
+
+    private fun setSongsList() {
+        adapter?.submitList(model.foldersListExposed.value?.get(model.CURRENT_SONG_FOLDER_INDEX)?.songsList as List<FolderInfo>)
     }
 
     override fun onClick(track: Track) {
-        super.onClick(track)
-
         val playerIntent = Intent(this, Player::class.java)
         playerIntent.putExtra(Constants.FILE_PATH, track.filePath)
         startActivity(playerIntent)
     }
 
-    private fun refreshList() {
-        progressBar.visibility = View.VISIBLE
-        model.loadVideoFiles(this)
+    override fun onDirectorySelected(position: Int) {
+        if (model.MODE != Constants.SONG_VIEW) {
+            model.MODE = Constants.SONG_VIEW
+            folderUpText.text = model.foldersListExposed.value!![position].path
+            mFolderViewContainer.visibility = View.VISIBLE
+            model.onItemClicked(position)
+            setAdapter(model.foldersListExposed.value!![position].songsList)
+        } else {
+
+            //Play the video
+            var currentVideo = model.foldersListExposed.value!![model.CURRENT_SONG_FOLDER_INDEX].songsList[position]
+
+            val playerIntent = Intent(this, Player::class.java)
+            playerIntent.putExtra(Constants.FILE_PATH, currentVideo.path)
+            startActivity(playerIntent)
+        }
     }
 
     private fun checkPermission(): Boolean {
         val result = ContextCompat.checkSelfPermission(applicationContext, WRITE_EXTERNAL_STORAGE)
-
         return result == PackageManager.PERMISSION_GRANTED
     }
 
     private fun requestPermission() {
-
         ActivityCompat.requestPermissions(
             this,
             arrayOf(WRITE_EXTERNAL_STORAGE),
