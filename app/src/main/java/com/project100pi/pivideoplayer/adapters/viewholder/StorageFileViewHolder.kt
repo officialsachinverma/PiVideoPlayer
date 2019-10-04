@@ -1,4 +1,4 @@
-package com.project100pi.pivideoplayer.AdapterAndListeners.ViewHolder
+package com.project100pi.pivideoplayer.adapters.viewholder
 
 import android.content.Context
 import android.view.View
@@ -7,7 +7,7 @@ import android.widget.TextView
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
-import com.project100pi.pivideoplayer.Model.FolderInfo
+import com.project100pi.pivideoplayer.model.FolderInfo
 import com.project100pi.pivideoplayer.R
 
 class StorageFileViewHolder(val context: Context, itemView: View): RecyclerView.ViewHolder(itemView) {

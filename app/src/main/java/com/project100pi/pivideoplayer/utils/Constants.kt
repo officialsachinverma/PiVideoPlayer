@@ -1,4 +1,4 @@
-package com.project100pi.pivideoplayer.Utils
+package com.project100pi.pivideoplayer.utils
 
 object Constants {
 

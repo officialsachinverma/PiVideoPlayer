@@ -1,14 +1,13 @@
-package com.project100pi.pivideoplayer.AdapterAndListeners
+package com.project100pi.pivideoplayer.adapters
 
 import android.content.Context
-import android.graphics.Color
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
-import com.project100pi.pivideoplayer.AdapterAndListeners.Listeners.OnTrackSelected
-import com.project100pi.pivideoplayer.AdapterAndListeners.ViewHolder.StorageFileViewHolder
-import com.project100pi.pivideoplayer.Model.FolderInfo
+import com.project100pi.pivideoplayer.adapters.listeners.OnTrackSelected
+import com.project100pi.pivideoplayer.adapters.viewholder.StorageFileViewHolder
+import com.project100pi.pivideoplayer.model.FolderInfo
 
 class StorageFileAdapter(val context: Context,
                          var view: Int,

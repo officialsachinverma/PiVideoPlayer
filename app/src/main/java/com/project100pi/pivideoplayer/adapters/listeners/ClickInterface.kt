@@ -1,4 +1,4 @@
-package com.project100pi.pivideoplayer.AdapterAndListeners.Listeners
+package com.project100pi.pivideoplayer.adapters.listeners
 
 interface ClickInterface {
     fun onItemClicked(position: Int)

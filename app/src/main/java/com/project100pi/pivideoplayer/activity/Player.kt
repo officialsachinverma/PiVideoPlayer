@@ -1,6 +1,5 @@
-package com.project100pi.pivideoplayer.Activity
+package com.project100pi.pivideoplayer.activity
 
-import android.net.Uri
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import com.project100pi.library.factory.PiPlayerFactory
@@ -8,7 +7,7 @@ import com.project100pi.library.misc.Util
 import com.project100pi.library.player.PiVideoPlayer
 import com.project100pi.library.ui.PiVideoPlayerView
 import com.project100pi.pivideoplayer.R
-import com.project100pi.pivideoplayer.Utils.Constants
+import com.project100pi.pivideoplayer.utils.Constants
 
 class Player : AppCompatActivity() {
 

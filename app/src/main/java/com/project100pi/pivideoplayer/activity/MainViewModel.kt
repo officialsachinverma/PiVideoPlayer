@@ -1,4 +1,4 @@
-package com.project100pi.pivideoplayer.Activity
+package com.project100pi.pivideoplayer.activity
 
 import android.app.Application
 import android.content.Context
@@ -7,9 +7,9 @@ import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import com.project100pi.pivideoplayer.AdapterAndListeners.Listeners.ClickInterface
-import com.project100pi.pivideoplayer.Model.FolderInfo
-import com.project100pi.pivideoplayer.Utils.Constants
+import com.project100pi.pivideoplayer.adapters.listeners.ClickInterface
+import com.project100pi.pivideoplayer.model.FolderInfo
+import com.project100pi.pivideoplayer.utils.Constants
 import com.project100pi.pivideoplayer.database.CursorFactory
 import kotlinx.coroutines.*
 import java.util.*

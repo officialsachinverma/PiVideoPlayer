@@ -1,4 +1,4 @@
-package com.project100pi.pivideoplayer.Model
+package com.project100pi.pivideoplayer.model
 
 data class FolderInfo(var songName: String = "", var folderId: String = "", var path: String = "", var isSong: Boolean = false) {
 

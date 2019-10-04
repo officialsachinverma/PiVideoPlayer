@@ -1,4 +1,4 @@
-package com.project100pi.pivideoplayer.Model
+package com.project100pi.pivideoplayer.model
 
 import android.graphics.Bitmap
 

@@ -1,36 +1,29 @@
-package com.project100pi.pivideoplayer.Activity
+package com.project100pi.pivideoplayer.activity
 
 import android.content.Intent
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.view.View
-import android.widget.ProgressBar
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProviders
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.project100pi.pivideoplayer.AdapterAndListeners.Listeners.OnTrackSelected
-import com.project100pi.pivideoplayer.Model.Track
+import com.project100pi.pivideoplayer.adapters.listeners.OnTrackSelected
+import com.project100pi.pivideoplayer.model.Track
 import com.project100pi.pivideoplayer.R
-import com.project100pi.pivideoplayer.Utils.Constants
+import com.project100pi.pivideoplayer.utils.Constants
 import android.content.pm.PackageManager
 import androidx.core.content.ContextCompat
 import android.Manifest.permission.WRITE_EXTERNAL_STORAGE
-import android.graphics.PorterDuff
-import android.opengl.Visibility
-import android.os.Environment
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.core.app.ActivityCompat
-import androidx.core.graphics.ColorUtils
 import butterknife.BindView
 import butterknife.ButterKnife
-import com.project100pi.pivideoplayer.AdapterAndListeners.StorageFileAdapter
-import com.project100pi.pivideoplayer.Model.FolderInfo
-import com.project100pi.pivideoplayer.Utils.Constants.PERMISSION_REQUEST_CODE
+import com.project100pi.pivideoplayer.adapters.StorageFileAdapter
+import com.project100pi.pivideoplayer.model.FolderInfo
+import com.project100pi.pivideoplayer.utils.Constants.PERMISSION_REQUEST_CODE
 import com.project100pi.pivideoplayer.factory.MainViewModelFactory
-import java.io.File
-import java.util.*
 import kotlin.collections.ArrayList
 
 
@@ -125,12 +118,6 @@ class MainActivity : AppCompatActivity(), OnTrackSelected {
 
     private fun setSongsList() {
         adapter?.submitList(model.foldersListExposed.value?.get(model.CURRENT_SONG_FOLDER_INDEX)?.songsList as List<FolderInfo>)
-    }
-
-    override fun onClick(track: Track) {
-        val playerIntent = Intent(this, Player::class.java)
-        playerIntent.putExtra(Constants.FILE_PATH, track.filePath)
-        startActivity(playerIntent)
     }
 
     override fun onDirectorySelected(position: Int) {

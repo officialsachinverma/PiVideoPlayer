@@ -4,7 +4,7 @@ import android.app.Application
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import com.project100pi.pivideoplayer.Activity.MainViewModel
+import com.project100pi.pivideoplayer.activity.MainViewModel
 
 class MainViewModelFactory(private val context: Context?,
                             private val application: Application
