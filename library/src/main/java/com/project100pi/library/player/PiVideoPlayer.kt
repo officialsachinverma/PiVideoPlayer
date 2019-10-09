@@ -1,6 +1,10 @@
 package com.project100pi.library.player
 
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.media.AudioManager
 import android.net.Uri
 import android.os.Looper
 import android.util.Log
@@ -34,11 +38,15 @@ class PiVideoPlayer {
     private var currentWindow = 0
     private var playbackPosition: Long = 0
 
-
     private var audioAttributes = AudioAttributes.Builder()
         .setUsage(C.USAGE_MEDIA)
         .setContentType(C.CONTENT_TYPE_MUSIC)
         .build()
+
+    private val intentFilter = IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY)
+    private val myNoisyAudioStreamReceiver = BecomingNoisyReceiver()
+
+    private val becomingNoisyReceiver = BecomingNoisyReceiver()
 
     constructor(context: Context) {
         this.context = context
@@ -70,6 +78,7 @@ class PiVideoPlayer {
         this.path = path
         val mediaSource = buildMediaSource(Uri.parse(path))
         player?.prepare(mediaSource, true, false)
+        context.registerReceiver(becomingNoisyReceiver, intentFilter)
     }
 
     fun prepare(paths: ArrayList<String?>?, resetPosition: Boolean, resetState: Boolean) {
@@ -81,11 +90,13 @@ class PiVideoPlayer {
         }
 
         player?.prepare(concatenatingMediaSource, resetPosition, resetState)
+        context.registerReceiver(becomingNoisyReceiver, intentFilter)
     }
 
     fun release(){
         player?.release()
         player = null
+        context.unregisterReceiver(becomingNoisyReceiver)
     }
 
     fun play(){
@@ -129,8 +140,6 @@ class PiVideoPlayer {
         return playWhenReady
     }*/
 
-    fun getApplicationLooper(): Looper = player!!.applicationLooper
-
     fun addListener(listener: VideoListener) {
         player?.addVideoListener(listener)
     }
@@ -141,8 +150,6 @@ class PiVideoPlayer {
 
     fun getCurrentTrackGroups(): TrackGroupArray = player!!.currentTrackGroups
 
-    fun getVideoComponent() = player!!.videoComponent!!
-
     // Public APIs ends
 
     // Module APIs starts
@@ -150,6 +157,10 @@ class PiVideoPlayer {
     internal fun getPlayer(): SimpleExoPlayer? {
         return player
     }
+
+    internal fun getApplicationLooper(): Looper = player!!.applicationLooper
+
+    internal fun getVideoComponent() = player!!.videoComponent!!
 
     // Module APIs ends
 
@@ -167,7 +178,6 @@ class PiVideoPlayer {
 
         override fun onSeekProcessed() {
             Log.i(TAG, "onSeekProcessed")
-
         }
 
         override fun onLoadingChanged(isLoading: Boolean) {
@@ -180,6 +190,7 @@ class PiVideoPlayer {
 
         override fun onPlayerError(error: ExoPlaybackException?) {
             Log.i(TAG,"onPlayerError")
+            context.unregisterReceiver(becomingNoisyReceiver)
         }
 
         override fun onPositionDiscontinuity(reason: Int) {
@@ -206,5 +217,14 @@ class PiVideoPlayer {
         }
     }
 
+    inner class BecomingNoisyReceiver: BroadcastReceiver() {
+
+        override fun onReceive(context: Context, intent: Intent) {
+            if (intent.action == AudioManager.ACTION_AUDIO_BECOMING_NOISY) {
+                // Pause the playback
+                player!!.playWhenReady = false
+            }
+        }
+    }
 
 }

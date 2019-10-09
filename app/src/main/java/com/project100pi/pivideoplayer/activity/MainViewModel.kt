@@ -31,14 +31,6 @@ class MainViewModel(private val context: Context?, application: Application): An
     var MODE = Constants.FOLDER_VIEW
 
     var CURRENT_SONG_FOLDER_INDEX = -1
-    /***
-    Get folder index if song mode is activated .
-    The position gives the position of folder in list whose tracks are to be shown
-     */
-    init {
-        foldersList.value = arrayListOf()
-        loadFolders()
-    }
 
     override fun onItemClicked(position: Int) {
         CURRENT_SONG_FOLDER_INDEX = position
@@ -54,28 +46,14 @@ class MainViewModel(private val context: Context?, application: Application): An
         return false
     }
 
-    private fun loadFolders() {
-        viewModelScope.launch {
-            loadAllFolderData()
-            Log.d(TAG, "Size is " + foldersWithPathMap.values.size)
-            //To set value of an observable data we must use main thread
-            withContext(Dispatchers.Main)
-            {
-                //Converting hash map to arraylist which will be submitted to adapter
-                foldersList.value = ArrayList(foldersWithPathMap.values)
-            }
-        }
-    }
-
-
-    private fun loadAllFolderData() {
+    fun loadAllFolderData() {
 
         viewModelScope.launch {
             val cursor = CursorFactory.getAllVideoCursor(context!!)
 
-            if (cursor != null) {
+            if (cursor != null && cursor.moveToFirst()) {
                 // We populate something, only if the cursor is available
-                while (cursor.moveToNext()) {
+                do {
                     try {
                         //To get path of song
                         val path = cursor.getString(cursor.getColumnIndex(MediaStore.Video.Media.DATA))
@@ -112,13 +90,21 @@ class MainViewModel(private val context: Context?, application: Application): An
 
                             var videoName = pathsList[pathsList.size - 1]
                             //If folder is not already present in the hashmap
-                            if (!foldersWithPathMap.containsKey(key))
+                            if (!foldersWithPathMap.containsKey(key)) {
 
-                                foldersWithPathMap[key] = FolderInfo(folderName, path.substring(0,path.length- pathsList[pathsList.size - 1].length), subFolderName, videoName, songId)
-                            else {
-                                //If folder is already present in hashMap(i.e. foldersWithPathMap) just add a song to it
-                                foldersWithPathMap[key]?.addSong(videoName, songId)
+                                foldersWithPathMap[key] = FolderInfo(
+                                    folderName,
+                                    path.substring(
+                                        0,
+                                        path.length - pathsList[pathsList.size - 1].length
+                                    ),
+                                    subFolderName,
+                                    videoName,
+                                    songId
+                                )
                             }
+
+                            foldersWithPathMap[key]?.addSong(videoName, songId)
 
                         } else
                             continue
@@ -126,8 +112,13 @@ class MainViewModel(private val context: Context?, application: Application): An
                     } catch (e: Exception) {
                         e.printStackTrace()
                     }
-                }
+                } while (cursor.moveToNext())
                 cursor.close()
+                withContext(Dispatchers.Main)
+                {
+                    //Converting hash map to arraylist which will be submitted to adapter
+                    foldersList.value = ArrayList(foldersWithPathMap.values)
+                }
             }
         }
     }

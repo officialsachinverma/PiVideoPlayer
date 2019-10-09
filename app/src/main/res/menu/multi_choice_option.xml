@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <item
+        android:id="@+id/itemSelectAll"
+        android:icon="@drawable/select_all"
+        android:orderInCategory="100"
+        android:title="Select All"
+        app:showAsAction="ifRoom"></item>
+    <item
+        android:id="@+id/itemPlay"
+        android:title="@string/context_menu_play"
+        app:showAsAction="never"></item>
+    <item
+        android:id="@+id/itemToPlaylist"
+        android:title="@string/context_menu_addToPlaylist"
+        app:showAsAction="never"></item>
+    <item
+        android:id="@+id/itemShare"
+        android:title="@string/context_menu_share"
+        app:showAsAction="never"></item>
+
+</menu>

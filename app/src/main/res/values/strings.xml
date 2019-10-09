@@ -1,3 +1,19 @@
 <resources>
     <string name="app_name">PiVideoPlayer</string>
+    <string name="n_items_selected_toast"> item(s) selected</string>
+    <string name="launcher_not_supporting_homescreen_shortcut">Sorry. Your launcher does not support home screen shortcuts!</string>
+
+<!--Context Menu Strings-->
+
+    <string name="context_menu_play">Play</string>
+    <string name="context_menu_addToPlaylist">Add to Playlist</string>
+    <string name="context_menu_edit">Edit Track Info</string>
+    <string name="context_menu_share">Share</string>
+    <string name="context_menu_delete">Delete</string>
+    <string name="context_menu_play_next">Play Next</string>
+    <string name="context_menu_add_queue">Add to Queue</string>
+    <string name="context_menu_set_ringtone">Set As Ringtone</string>
+    <string name="context_menu_backup_playlists">Backup Selected Playlists</string>
+    <string name="action_add_to">Add To</string>
+
 </resources>

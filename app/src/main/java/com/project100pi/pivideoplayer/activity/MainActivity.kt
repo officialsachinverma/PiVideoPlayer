@@ -8,16 +8,25 @@ import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProviders
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.project100pi.pivideoplayer.adapters.listeners.OnTrackSelected
-import com.project100pi.pivideoplayer.model.Track
+import com.project100pi.pivideoplayer.adapters.listeners.OnClickListener
 import com.project100pi.pivideoplayer.R
 import com.project100pi.pivideoplayer.utils.Constants
 import android.content.pm.PackageManager
 import androidx.core.content.ContextCompat
 import android.Manifest.permission.WRITE_EXTERNAL_STORAGE
+import android.app.Activity
+import android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP
+import android.view.Menu
+import android.view.MenuItem
 import android.widget.ImageView
 import android.widget.TextView
+import android.widget.Toast
+import androidx.appcompat.view.ActionMode
+import androidx.appcompat.widget.Toolbar
 import androidx.core.app.ActivityCompat
+import androidx.core.content.pm.ShortcutInfoCompat
+import androidx.core.content.pm.ShortcutManagerCompat
+import androidx.core.graphics.drawable.IconCompat
 import butterknife.BindView
 import butterknife.ButterKnife
 import com.project100pi.pivideoplayer.adapters.StorageFileAdapter
@@ -26,18 +35,22 @@ import com.project100pi.pivideoplayer.utils.Constants.PERMISSION_REQUEST_CODE
 import com.project100pi.pivideoplayer.factory.MainViewModelFactory
 import kotlin.collections.ArrayList
 
-
-class MainActivity : AppCompatActivity(), OnTrackSelected {
+class MainActivity : AppCompatActivity(), OnClickListener {
 
     @BindView(R.id.rv_video_file_list) lateinit var  recyclerView: RecyclerView
     @BindView(R.id.folder_view_container) lateinit var mFolderViewContainer: View
     @BindView(R.id.folder_up_text) lateinit var folderUpText: TextView
     @BindView(R.id.folder_up_image) lateinit var folderUpIconImage: ImageView
+    @BindView(R.id.anim_toolbar) lateinit var mToolbar: Toolbar
 
     private lateinit var model: MainViewModel
     private var adapter: StorageFileAdapter? = null
+    private var actionModeCallback = ActionModeCallback()
+    private var actionMode: ActionMode? = null
 
     private fun init() {
+        setSupportActionBar(mToolbar)
+
         val application = requireNotNull(this).application
         val viewModelFactory = MainViewModelFactory(this , application)
         model = ViewModelProviders.of(this, viewModelFactory).get(MainViewModel::class.java)
@@ -53,6 +66,11 @@ class MainActivity : AppCompatActivity(), OnTrackSelected {
             mFolderViewContainer.visibility = View.GONE
         }
 
+        if (getSharedPreferences(Constants.APP_PREFERENCE, Activity.MODE_PRIVATE).getInt(Constants.APP_PREF_SHORTCUT_KEY, 0) <= 0) {
+            addShortcut()
+            getSharedPreferences(Constants.APP_PREFERENCE, Activity.MODE_PRIVATE).edit().putInt(Constants.APP_PREF_SHORTCUT_KEY, 1)
+        }
+
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -65,8 +83,10 @@ class MainActivity : AppCompatActivity(), OnTrackSelected {
         if (!checkPermission()) {
             requestPermission()
         } else {
-            observeForObservers()
+            model.loadAllFolderData()
         }
+
+        observeForObservers()
     }
 
     override fun onRequestPermissionsResult(
@@ -79,7 +99,7 @@ class MainActivity : AppCompatActivity(), OnTrackSelected {
         when(requestCode) {
             PERMISSION_REQUEST_CODE -> {
                 if (grantResults[0] == PackageManager.PERMISSION_GRANTED){
-                    observeForObservers()
+                    model.loadAllFolderData()
                 }
             }
         }
@@ -118,6 +138,31 @@ class MainActivity : AppCompatActivity(), OnTrackSelected {
 
     private fun setSongsList() {
         adapter?.submitList(model.foldersListExposed.value?.get(model.CURRENT_SONG_FOLDER_INDEX)?.songsList as List<FolderInfo>)
+    }
+
+    private fun toggleSelection(position: Int) {
+        adapter!!.toggleSelection(position)
+        val count = adapter!!.getSelectedItemCount()
+
+        if (count == 0) {
+            actionMode!!.finish()
+        } else {
+            val title = StringBuilder(count.toString())
+            title.append(" ")
+            title.append(getString(R.string.n_items_selected_toast))
+            actionMode!!.title = title.toString()
+            actionMode!!.invalidate()
+        }
+    }
+
+    override fun onItemLongClicked(position: Int): Boolean {
+        if (actionMode == null) {
+            actionMode = startSupportActionMode(actionModeCallback)
+        }
+
+        toggleSelection(position)
+
+        return true
     }
 
     override fun onDirectorySelected(position: Int) {
@@ -166,5 +211,61 @@ class MainActivity : AppCompatActivity(), OnTrackSelected {
             model.onBackFolderPressed()
             mFolderViewContainer.visibility = View.GONE
         }
+    }
+
+    private fun addShortcut() {
+
+        if (ShortcutManagerCompat.isRequestPinShortcutSupported(applicationContext)) {
+
+            val shortCurIntent = Intent()
+
+            shortCurIntent.putExtra("duplicate", false)  //may it's already there so don't duplicate
+
+            shortCurIntent.flags = FLAG_ACTIVITY_CLEAR_TOP
+            shortCurIntent.action = "com.project100pi.pivideoplayer.activity.MainActivity"
+
+            val shortcut = ShortcutInfoCompat.Builder(applicationContext, "PiVideoPlayer")
+                .setIntent(intent)
+                .setShortLabel("PiVideoPlayer")
+                .setLongLabel("PiVideoPlayer")
+                .setIcon(
+                    IconCompat.createWithResource(
+                        applicationContext,
+                        R.mipmap.ic_launcher
+                    )
+                )
+                .build()
+            ShortcutManagerCompat.requestPinShortcut(applicationContext, shortcut, null)
+
+        } else {
+            Toast.makeText(this, R.string.launcher_not_supporting_homescreen_shortcut, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    inner class ActionModeCallback: ActionMode.Callback {
+
+        override fun onCreateActionMode(mode: ActionMode?, menu: Menu?): Boolean {
+            mToolbar.visibility = View.GONE
+            mode!!.menuInflater.inflate(R.menu.multi_choice_option, menu)
+            return true
+        }
+
+        override fun onPrepareActionMode(mode: ActionMode?, menu: Menu?) = true
+
+        override fun onActionItemClicked(mode: ActionMode?, item: MenuItem?): Boolean {
+            when (item!!.itemId) {
+
+            }
+            // We have to end the multi select, if the user clicks on an option other than select all
+            if (item.itemId != R.id.itemSelectAll)
+                actionMode!!.finish()
+            return true
+        }
+
+        override fun onDestroyActionMode(mode: ActionMode?) {
+            actionMode = null
+            mToolbar.visibility = View.VISIBLE
+        }
+
     }
 }

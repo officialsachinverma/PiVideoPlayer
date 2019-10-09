@@ -1,7 +1,7 @@
 package com.project100pi.pivideoplayer.activity
 
 import android.os.Bundle
-import android.os.PersistableBundle
+import android.view.WindowManager
 import androidx.appcompat.app.AppCompatActivity
 import butterknife.BindView
 import butterknife.ButterKnife
@@ -10,7 +10,6 @@ import com.project100pi.library.misc.Util
 import com.project100pi.library.player.PiVideoPlayer
 import com.project100pi.library.ui.PiVideoPlayerView
 import com.project100pi.pivideoplayer.R
-import com.project100pi.pivideoplayer.model.FolderInfo
 import com.project100pi.pivideoplayer.utils.Constants
 
 class Player : AppCompatActivity() {
@@ -26,18 +25,24 @@ class Player : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        this.window.setFlags(
+            WindowManager.LayoutParams.FLAG_FULLSCREEN,
+            WindowManager.LayoutParams.FLAG_FULLSCREEN)
         setContentView(R.layout.activity_player)
         ButterKnife.bind(this)
 
         if (this.intent != null) {
-            this.path = this.intent.getStringExtra(Constants.FILE_PATH)
-            this.videoList = this.intent.getStringArrayListExtra(Constants.QUEUE)
+//            if (this.intent.hasExtra(Constants.FILE_PATH))
+//                this.path = this.intent.getStringExtra(Constants.FILE_PATH)
+            if (this.intent.hasExtra(Constants.QUEUE))
+                this.videoList = this.intent.getStringArrayListExtra(Constants.QUEUE)
+            if (this.intent.extras != null && this.intent.hasExtra(Constants.FILE_PATH))
+                this.path = this.intent.extras!!.getString(Constants.FILE_PATH)
         }
 
-//        playerView.setErrorMessageProvider(PlayerErrorMessageProvider())
         playerView.requestFocus()
-        playerView.showController(true)
-
+        playerView.hideController()
+        playerView.setShutterBackgroundColor(android.R.color.transparent)
     }
 
     public override fun onStart() {
@@ -83,8 +88,10 @@ class Player : AppCompatActivity() {
             playerView.setPlayer(videoPlayer)
             videoPlayer?.seekTo(currentWindow, playbackPosition)
         }
-//        videoPlayer?.prepare(path!!)
-        videoPlayer?.prepare(videoList!!, resetPosition = true, resetState = false)
+        if (videoList != null)
+            videoPlayer?.prepare(videoList!!, resetPosition = true, resetState = false)
+        else
+            videoPlayer?.prepare(path!!)
         videoPlayer?.play()
         currentWindow = 0
         playbackPosition = 0

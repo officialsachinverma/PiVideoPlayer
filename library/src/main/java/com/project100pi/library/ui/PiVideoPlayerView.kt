@@ -282,6 +282,17 @@ class PiVideoPlayerView: FrameLayout {
     }
 
     /**
+     * Sets the background color of the `exo_shutter` view.
+     *
+     * @param color The background color.
+     */
+    fun setShutterBackgroundColor(color: Int) {
+        if (shutterView != null) {
+            shutterView.setBackgroundColor(color)
+        }
+    }
+
+    /**
      * Called when there's a change in the aspect ratio of the content being displayed. The default
      * implementation sets the aspect ratio of the content frame to that of the content, unless the
      * content view is a [SphericalSurfaceView] in which case the frame's aspect ratio is
@@ -400,7 +411,7 @@ class PiVideoPlayerView: FrameLayout {
         }
 
         override fun onPositionDiscontinuity(@Player.DiscontinuityReason reason: Int) {
-
+            hideController()
         }
 
         // OnLayoutChangeListener implementation
