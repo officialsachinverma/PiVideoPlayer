@@ -13,48 +13,6 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:gravity="center"
-        android:paddingTop="4dp"
-        android:orientation="horizontal">
-
-        <ImageButton android:id="@id/pi_prev"
-            style="@style/ExoMediaButton.Previous"/>
-
-        <ImageButton android:id="@id/pi_rew"
-            android:visibility="gone"
-            style="@style/ExoMediaButton.Rewind"/>
-
-        <ImageButton android:id="@id/pi_shuffle"
-            android:visibility="gone"
-            style="@style/ExoMediaButton.Shuffle"/>
-
-        <ImageButton android:id="@id/pi_repeat_toggle"
-            android:visibility="gone"
-            style="@style/ExoMediaButton"/>
-
-        <ImageButton android:id="@id/pi_play"
-            android:visibility="gone"
-            style="@style/ExoMediaButton.Play"/>
-
-        <ImageButton android:id="@id/pi_pause"
-            style="@style/ExoMediaButton.Pause"/>
-
-        <ImageButton android:id="@id/pi_ffwd"
-            android:visibility="gone"
-            style="@style/ExoMediaButton.FastForward"/>
-
-        <ImageButton android:id="@id/pi_next"
-            style="@style/ExoMediaButton.Next"/>
-
-        <ImageButton android:id="@id/pi_vr"
-            android:visibility="gone"
-            style="@style/ExoMediaButton.VR"/>
-
-    </LinearLayout>
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
         android:layout_marginTop="4dp"
         android:gravity="center_vertical"
         android:orientation="horizontal">
@@ -83,6 +41,57 @@
             android:paddingRight="4dp"
             android:includeFontPadding="false"
             android:textColor="#FFBEBEBE"/>
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:paddingTop="4dp"
+        android:orientation="horizontal">
+
+        <ImageButton android:id="@id/pi_prev"
+            android:layout_weight="1"
+            style="@style/ExoMediaButton.Previous"/>
+
+        <ImageButton android:id="@id/pi_rew"
+            android:layout_weight="1"
+            android:visibility="gone"
+            style="@style/ExoMediaButton.Rewind"/>
+
+        <ImageButton android:id="@id/pi_shuffle"
+            android:layout_weight="1"
+            android:visibility="gone"
+            style="@style/ExoMediaButton.Shuffle"/>
+
+        <ImageButton android:id="@id/pi_repeat_toggle"
+            android:layout_weight="1"
+            android:visibility="gone"
+            style="@style/ExoMediaButton"/>
+
+        <ImageButton android:id="@id/pi_play"
+            android:layout_weight="1"
+            android:visibility="gone"
+            style="@style/ExoMediaButton.Play"/>
+
+        <ImageButton android:id="@id/pi_pause"
+            android:layout_weight="1"
+            style="@style/ExoMediaButton.Pause"/>
+
+        <ImageButton android:id="@id/pi_ffwd"
+            android:layout_weight="1"
+            android:visibility="gone"
+            style="@style/ExoMediaButton.FastForward"/>
+
+        <ImageButton android:id="@id/pi_next"
+            android:layout_weight="1"
+            style="@style/ExoMediaButton.Next"/>
+
+        <ImageButton android:id="@id/pi_vr"
+            android:layout_weight="1"
+            android:visibility="gone"
+            style="@style/ExoMediaButton.VR"/>
 
     </LinearLayout>
 

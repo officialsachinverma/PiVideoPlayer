@@ -24,9 +24,6 @@ import android.widget.Toast
 import androidx.appcompat.view.ActionMode
 import androidx.appcompat.widget.Toolbar
 import androidx.core.app.ActivityCompat
-import androidx.core.content.pm.ShortcutInfoCompat
-import androidx.core.content.pm.ShortcutManagerCompat
-import androidx.core.graphics.drawable.IconCompat
 import butterknife.BindView
 import butterknife.ButterKnife
 import com.project100pi.pivideoplayer.adapters.StorageFileAdapter
@@ -64,11 +61,6 @@ class MainActivity : AppCompatActivity(), OnClickListener {
             folderUpText.text = "..."
             model.onBackFolderPressed()
             mFolderViewContainer.visibility = View.GONE
-        }
-
-        if (getSharedPreferences(Constants.APP_PREFERENCE, Activity.MODE_PRIVATE).getInt(Constants.APP_PREF_SHORTCUT_KEY, 0) <= 0) {
-            addShortcut()
-            getSharedPreferences(Constants.APP_PREFERENCE, Activity.MODE_PRIVATE).edit().putInt(Constants.APP_PREF_SHORTCUT_KEY, 1)
         }
 
     }
@@ -210,35 +202,6 @@ class MainActivity : AppCompatActivity(), OnClickListener {
             folderUpText.text = "..."
             model.onBackFolderPressed()
             mFolderViewContainer.visibility = View.GONE
-        }
-    }
-
-    private fun addShortcut() {
-
-        if (ShortcutManagerCompat.isRequestPinShortcutSupported(applicationContext)) {
-
-            val shortCurIntent = Intent()
-
-            shortCurIntent.putExtra("duplicate", false)  //may it's already there so don't duplicate
-
-            shortCurIntent.flags = FLAG_ACTIVITY_CLEAR_TOP
-            shortCurIntent.action = "com.project100pi.pivideoplayer.activity.MainActivity"
-
-            val shortcut = ShortcutInfoCompat.Builder(applicationContext, "PiVideoPlayer")
-                .setIntent(intent)
-                .setShortLabel("PiVideoPlayer")
-                .setLongLabel("PiVideoPlayer")
-                .setIcon(
-                    IconCompat.createWithResource(
-                        applicationContext,
-                        R.mipmap.ic_launcher
-                    )
-                )
-                .build()
-            ShortcutManagerCompat.requestPinShortcut(applicationContext, shortcut, null)
-
-        } else {
-            Toast.makeText(this, R.string.launcher_not_supporting_homescreen_shortcut, Toast.LENGTH_SHORT).show()
         }
     }
 

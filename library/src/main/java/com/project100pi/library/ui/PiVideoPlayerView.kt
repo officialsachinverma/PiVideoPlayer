@@ -281,6 +281,9 @@ class PiVideoPlayerView: FrameLayout {
         controller?.hide()
     }
 
+    /** Returns whether the controller is currently visible.  */
+    fun isControllerVisible() = controller != null && controller!!.isVisible()
+
     /**
      * Sets the background color of the `exo_shutter` view.
      *
