@@ -10,16 +10,17 @@ import android.os.Looper
 import android.util.Log
 import com.google.android.exoplayer2.*
 import com.google.android.exoplayer2.audio.AudioAttributes
-import com.google.android.exoplayer2.source.ConcatenatingMediaSource
-import com.google.android.exoplayer2.source.ExtractorMediaSource
-import com.google.android.exoplayer2.source.MediaSource
-import com.google.android.exoplayer2.source.TrackGroupArray
+import com.google.android.exoplayer2.source.*
 import com.google.android.exoplayer2.trackselection.DefaultTrackSelector
 import com.google.android.exoplayer2.trackselection.TrackSelectionArray
 import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory
 import com.google.android.exoplayer2.util.Util
 import com.google.android.exoplayer2.video.VideoListener
 import com.project100pi.library.misc.Util.userAgent
+import com.google.android.exoplayer2.Format.NO_VALUE
+import com.google.android.exoplayer2.util.MimeTypes
+
+
 
 class PiVideoPlayer {
 
@@ -65,7 +66,7 @@ class PiVideoPlayer {
         val dataSourceFactory = DefaultDataSourceFactory(
             context, Util.getUserAgent(context, userAgent))
 
-        return ExtractorMediaSource.Factory(dataSourceFactory).createMediaSource(uri)
+        return ProgressiveMediaSource.Factory(dataSourceFactory).createMediaSource(uri)
     }
 
     // Public APIs starts
@@ -74,6 +75,20 @@ class PiVideoPlayer {
         this.path = path
         val mediaSource = buildMediaSource(Uri.parse(path))
         player?.prepare(mediaSource, true, false)
+        context.registerReceiver(becomingNoisyReceiver, intentFilter)
+    }
+
+    fun prepare(mediaPath: String, subtitlePath: String) {
+        this.path = mediaPath
+        val dataSourceFactory = DefaultDataSourceFactory(
+            context, Util.getUserAgent(context, userAgent))
+        val mediaSource = buildMediaSource(Uri.parse(path))
+        val textFormat = Format.createTextSampleFormat(
+            null, MimeTypes.TEXT_VTT,
+            NO_VALUE, "hi"
+        )
+        val subtitleSource = SingleSampleMediaSource.Factory(dataSourceFactory).createMediaSource(Uri.parse(subtitlePath), textFormat, C.TIME_UNSET)
+        player?.prepare(MergingMediaSource(mediaSource, subtitleSource), true, false)
         context.registerReceiver(becomingNoisyReceiver, intentFilter)
     }
 
@@ -156,7 +171,9 @@ class PiVideoPlayer {
 
     internal fun getApplicationLooper(): Looper = player!!.applicationLooper
 
-    internal fun getVideoComponent() = player!!.videoComponent!!
+    internal fun getVideoComponent() = player!!.videoComponent
+
+    internal fun getTextComponent() = player!!.textComponent
 
     // Module APIs ends
 

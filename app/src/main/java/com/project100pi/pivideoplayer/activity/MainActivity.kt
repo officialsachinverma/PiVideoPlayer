@@ -14,13 +14,10 @@ import com.project100pi.pivideoplayer.utils.Constants
 import android.content.pm.PackageManager
 import androidx.core.content.ContextCompat
 import android.Manifest.permission.WRITE_EXTERNAL_STORAGE
-import android.app.Activity
-import android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP
 import android.view.Menu
 import android.view.MenuItem
 import android.widget.ImageView
 import android.widget.TextView
-import android.widget.Toast
 import androidx.appcompat.view.ActionMode
 import androidx.appcompat.widget.Toolbar
 import androidx.core.app.ActivityCompat
@@ -44,6 +41,7 @@ class MainActivity : AppCompatActivity(), OnClickListener {
     private var adapter: StorageFileAdapter? = null
     private var actionModeCallback = ActionModeCallback()
     private var actionMode: ActionMode? = null
+    private var mIsMultiSelectMode: Boolean = false
 
     private fun init() {
         setSupportActionBar(mToolbar)
@@ -147,6 +145,12 @@ class MainActivity : AppCompatActivity(), OnClickListener {
         }
     }
 
+    override fun onOverflowItemClick(position: Int, viewId: Int) {
+        if (!mIsMultiSelectMode) {
+            doActionOnOverflowItemClick(position, viewId)
+        }
+    }
+
     override fun onItemLongClicked(position: Int): Boolean {
         if (actionMode == null) {
             actionMode = startSupportActionMode(actionModeCallback)
@@ -182,6 +186,15 @@ class MainActivity : AppCompatActivity(), OnClickListener {
         }
     }
 
+
+    private fun doActionOnOverflowItemClick(position: Int, viewId: Int) {
+        val data = model.foldersListExposed.value!![position]
+
+        when (viewId) {
+
+        }
+    }
+
     private fun checkPermission(): Boolean {
         val result = ContextCompat.checkSelfPermission(applicationContext, WRITE_EXTERNAL_STORAGE)
         return result == PackageManager.PERMISSION_GRANTED
@@ -208,6 +221,7 @@ class MainActivity : AppCompatActivity(), OnClickListener {
     inner class ActionModeCallback: ActionMode.Callback {
 
         override fun onCreateActionMode(mode: ActionMode?, menu: Menu?): Boolean {
+            mIsMultiSelectMode = true
             mToolbar.visibility = View.GONE
             mode!!.menuInflater.inflate(R.menu.multi_choice_option, menu)
             return true
@@ -226,6 +240,7 @@ class MainActivity : AppCompatActivity(), OnClickListener {
         }
 
         override fun onDestroyActionMode(mode: ActionMode?) {
+            mIsMultiSelectMode = false
             actionMode = null
             mToolbar.visibility = View.VISIBLE
         }

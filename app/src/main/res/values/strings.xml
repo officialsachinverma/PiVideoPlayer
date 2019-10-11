@@ -5,6 +5,7 @@
 
 <!--Context Menu Strings-->
 
+    <string name="context_menu_subtitle">Subtitle</string>
     <string name="context_menu_play">Play</string>
     <string name="context_menu_addToPlaylist">Add to Playlist</string>
     <string name="context_menu_edit">Edit Track Info</string>

@@ -6,12 +6,9 @@ import android.provider.MediaStore
 
 object CursorFactory {
 
-
-    private val TAG = "CursorFactory"
-
      fun getAllVideoCursor(mContext: Context): Cursor? {
 
-         val sortOrder = MediaStore.Video.Media.DATE_MODIFIED + " DESC"
+         val sortOrder = MediaStore.Video.Media.TITLE + " ASC"
 
          return mContext.contentResolver.query(
             MediaStore.Video.Media.EXTERNAL_CONTENT_URI,

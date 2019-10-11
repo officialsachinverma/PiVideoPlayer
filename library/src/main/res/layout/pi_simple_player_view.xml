@@ -39,6 +39,10 @@
 
     </com.google.android.exoplayer2.ui.AspectRatioFrameLayout>
 
+    <FrameLayout android:id="@id/pi_overlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"/>
+
     <View android:id="@id/pi_controller_placeholder"
         android:layout_width="match_parent"
         android:layout_height="match_parent"/>

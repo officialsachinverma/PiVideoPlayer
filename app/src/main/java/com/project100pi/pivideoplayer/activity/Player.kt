@@ -4,7 +4,6 @@ import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
-import android.view.WindowManager
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
 import butterknife.BindView
@@ -14,11 +13,16 @@ import com.project100pi.library.misc.Util
 import com.project100pi.library.player.PiVideoPlayer
 import com.project100pi.library.ui.PiVideoPlayerView
 import com.project100pi.pivideoplayer.R
+import com.project100pi.pivideoplayer.dialogs.SRTFilePicker
+import com.project100pi.pivideoplayer.dialogs.listeners.SRTFilePickerClickListener
 import com.project100pi.pivideoplayer.utils.Constants
 
-class Player : AppCompatActivity() {
 
-    private var path: String? = null
+
+class Player : AppCompatActivity(), SRTFilePickerClickListener {
+
+    private var mediaPath: String? = null
+    private var srtPath: String? = null
     private var videoList: ArrayList<String?>? = null
 
     @BindView(R.id.anim_toolbar) lateinit var mToolbar: Toolbar
@@ -44,7 +48,7 @@ class Player : AppCompatActivity() {
             if (this.intent.hasExtra(Constants.QUEUE))
                 this.videoList = this.intent.getStringArrayListExtra(Constants.QUEUE)
             if (this.intent.extras != null && this.intent.hasExtra(Constants.FILE_PATH))
-                this.path = this.intent.extras!!.getString(Constants.FILE_PATH)
+                this.mediaPath = this.intent.extras!!.getString(Constants.FILE_PATH)
         }
 
         hideSystemUI()
@@ -72,6 +76,13 @@ class Player : AppCompatActivity() {
                 onBackPressed()
                 return true
             }
+            R.id.item_subtitle -> {
+                // SRTSelector(this).show(this@Player.supportFragmentManager, "Subtitle Selector")
+
+                SRTFilePicker(this, this).show(this@Player.supportFragmentManager, "Subtitle Selector")
+
+                return true
+            }
             else -> super.onOptionsItemSelected(item)
         }
     }
@@ -80,34 +91,10 @@ class Player : AppCompatActivity() {
         finish()
     }
 
-    public override fun onStart() {
-        super.onStart()
-        if (Util.SDK_INT > 23) {
-            //playerView.onResume()
-        }
-    }
-
     public override fun onResume() {
         super.onResume()
         if (Util.SDK_INT <= 23 || null == videoPlayer) {
             initializePlayer()
-            //playerView.onResume()
-        }
-    }
-
-    public override fun onPause() {
-        super.onPause()
-        if (Util.SDK_INT <= 23) {
-            //playerView.onPause()
-            releasePlayer()
-        }
-    }
-
-    public override fun onStop() {
-        super.onStop()
-        if (Util.SDK_INT > 23) {
-            //playerView.onPause()
-            releasePlayer()
         }
     }
 
@@ -123,11 +110,11 @@ class Player : AppCompatActivity() {
             playerView.setPlayer(videoPlayer)
             videoPlayer?.seekTo(currentWindow, playbackPosition)
         }
-        if (videoList != null)
-            videoPlayer?.prepare(videoList!!, resetPosition = true, resetState = false)
-        else
-            videoPlayer?.prepare(path!!)
-        videoPlayer?.play()
+        when {
+            videoList != null && null == srtPath -> videoPlayer?.prepare(videoList!!, resetPosition = true, resetState = false)
+            null != srtPath -> videoPlayer?.prepare(mediaPath!!, srtPath!!)
+            else -> videoPlayer?.prepare(mediaPath!!)
+        }
         currentWindow = 0
         playbackPosition = 0
         if (playerView.isControllerVisible())
@@ -152,6 +139,7 @@ class Player : AppCompatActivity() {
 
         outState.putLong("playbackPosition", playbackPosition)
         outState.putInt("currentWindow", currentWindow)
+        outState.putString("mediaPath", mediaPath)
     }
 
     override fun onRestoreInstanceState(savedInstanceState: Bundle) {
@@ -159,6 +147,7 @@ class Player : AppCompatActivity() {
 
         playbackPosition = savedInstanceState.getLong("playbackPosition")
         currentWindow = savedInstanceState.getInt("currentWindow")
+        mediaPath = savedInstanceState.getString("mediaPath")
     }
 
     private fun hideSystemUI() {
@@ -187,8 +176,18 @@ class Player : AppCompatActivity() {
     }
 
     private fun setToolbarTitle(): String {
-        val segments = path!!.split("/")
+        val segments = mediaPath!!.split("/")
         return segments[segments.size - 1]
+    }
+
+    override fun filePickerSuccessClickListener(absolutePath: String) {
+        this.srtPath = absolutePath
+        if (videoPlayer != null) {
+            playbackPosition = videoPlayer!!.getCurrentPosition()
+            currentWindow = videoPlayer!!.getCurrentWindowIndex()
+        }
+        releasePlayer()
+        initializePlayer()
     }
 
 }

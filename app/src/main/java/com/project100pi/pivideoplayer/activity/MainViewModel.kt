@@ -2,6 +2,7 @@ package com.project100pi.pivideoplayer.activity
 
 import android.app.Application
 import android.content.Context
+import android.os.Environment
 import android.provider.MediaStore
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
@@ -12,6 +13,7 @@ import com.project100pi.pivideoplayer.model.FolderInfo
 import com.project100pi.pivideoplayer.utils.Constants
 import com.project100pi.pivideoplayer.database.CursorFactory
 import kotlinx.coroutines.*
+import java.io.File
 import java.util.*
 import kotlin.collections.ArrayList
 
@@ -42,7 +44,6 @@ class MainViewModel(private val context: Context?, application: Application): An
         MODE = Constants.FOLDER_VIEW
     }
     override fun onItemLongClicked(position: Int): Boolean {
-        //To change body of created functions use File | Settings | File Templates.
         return false
     }
 
@@ -91,7 +92,6 @@ class MainViewModel(private val context: Context?, application: Application): An
                             var videoName = pathsList[pathsList.size - 1]
                             //If folder is not already present in the hashmap
                             if (!foldersWithPathMap.containsKey(key)) {
-
                                 foldersWithPathMap[key] = FolderInfo(
                                     folderName,
                                     path.substring(

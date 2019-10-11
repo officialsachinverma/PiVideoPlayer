@@ -51,6 +51,7 @@ class PiVideoPlayerView: FrameLayout {
     private var contentFrame: AspectRatioFrameLayout
     private var shutterView: View
     private var surfaceView: View? = null
+    private var subtitleView: SubtitleView
     private var bufferingView: View
     private var errorMessageView: TextView
     private var controller: PiVideoPlayerControlView? = null
@@ -64,8 +65,9 @@ class PiVideoPlayerView: FrameLayout {
     private var errorMessageProvider: ErrorMessageProvider<in ExoPlaybackException>? = null
     private var customErrorMessage: CharSequence? = null
     private var controllerShowTimeoutMs: Int = 0
-    private var controllerAutoShow: Boolean = false
-    private var controllerHideOnTouch: Boolean = false
+    private var controllerAutoShow: Boolean = true
+    private var controllerHideOnTouch: Boolean = true
+    private var textureViewRotation: Int = 0
 
     constructor(context: Context): this(context, null)
 
@@ -147,6 +149,11 @@ class PiVideoPlayerView: FrameLayout {
         bufferingView.visibility = View.GONE
         this.showBuffering = showBuffering
 
+        // Subtitle view.
+        subtitleView = findViewById(R.id.pi_subtitles)
+        subtitleView.setUserDefaultStyle()
+        subtitleView.setUserDefaultTextSize()
+        subtitleView.setCues(null)
         // Error message view.
         errorMessageView = findViewById(R.id.pi_error_message)
         errorMessageView.visibility = View.GONE
@@ -199,7 +206,7 @@ class PiVideoPlayerView: FrameLayout {
         }
         if (this.player != null) {
             this.player?.removeListener(componentListener)
-            val oldVideoComponent = this.player?.getVideoComponent()
+            val oldVideoComponent = videoPlayer?.getVideoComponent()
             if (oldVideoComponent != null) {
                 oldVideoComponent.removeVideoListener(componentListener)
                 when (surfaceView) {
@@ -207,10 +214,15 @@ class PiVideoPlayerView: FrameLayout {
                     is SurfaceView -> oldVideoComponent.clearVideoSurfaceView(surfaceView as SurfaceView)
                 }
             }
+            val oldTextComponent = videoPlayer!!.getTextComponent()
+            oldTextComponent?.removeTextOutput(componentListener)
         }
         this.player = videoPlayer
         if (useController) {
             controller!!.setPiPlayer(videoPlayer!!.getPlayer())
+        }
+        if (subtitleView != null) {
+            subtitleView!!.setCues(null)
         }
         updateBuffering()
         updateErrorMessage()
@@ -224,7 +236,11 @@ class PiVideoPlayerView: FrameLayout {
                 }
                 newVideoComponent.addVideoListener(componentListener)
             }
-            videoPlayer.addListener(componentListener)
+            val newTextComponent = videoPlayer!!.getTextComponent()
+            if (newTextComponent != null) {
+                newTextComponent!!.addTextOutput(componentListener)
+            }
+            player!!.addListener(componentListener)
             maybeShowController(false)
         } else {
             hideController()
@@ -374,24 +390,69 @@ class PiVideoPlayerView: FrameLayout {
         return true
     }
 
-    private inner class ComponentListener : Player.EventListener, VideoListener,
+    /** Applies a texture rotation to a [TextureView].  */
+    private fun applyTextureViewRotation(textureView: TextureView, textureViewRotation: Int) {
+        val textureViewWidth = textureView.width.toFloat()
+        val textureViewHeight = textureView.height.toFloat()
+        if (textureViewWidth == 0f || textureViewHeight == 0f || textureViewRotation == 0) {
+            textureView.setTransform(null)
+        } else {
+            val transformMatrix = Matrix()
+            val pivotX = textureViewWidth / 2
+            val pivotY = textureViewHeight / 2
+            transformMatrix.postRotate(textureViewRotation.toFloat(), pivotX, pivotY)
+
+            // After rotation, scale the rotated texture to fit the TextureView size.
+            val originalTextureRect = RectF(0f, 0f, textureViewWidth, textureViewHeight)
+            val rotatedTextureRect = RectF()
+            transformMatrix.mapRect(rotatedTextureRect, originalTextureRect)
+            transformMatrix.postScale(
+                textureViewWidth / rotatedTextureRect.width(),
+                textureViewHeight / rotatedTextureRect.height(),
+                pivotX,
+                pivotY
+            )
+            textureView.setTransform(transformMatrix)
+        }
+    }
+
+    private inner class ComponentListener : Player.EventListener,
+        TextOutput,
+        VideoListener,
         OnLayoutChangeListener,
         SingleTapListener {
+
+        // TextOutput implementation
+
+        override fun onCues(cues: List<Cue>) {
+            subtitleView.onCues(cues)
+        }
 
         // VideoListener implementation
 
         override fun onVideoSizeChanged(
             width: Int, height: Int, unappliedRotationDegrees: Int, pixelWidthHeightRatio: Float
         ) {
-            var videoAspectRatio: Float = if (height == 0 || width == 0) 1F else width * pixelWidthHeightRatio / height
+            var videoAspectRatio: Float =
+                if (height == 0 || width == 0) 1F else width * pixelWidthHeightRatio / height
 
             if (surfaceView is TextureView) {
                 // Try to apply rotation transformation when our surface is a TextureView.
                 if (unappliedRotationDegrees == 90 || unappliedRotationDegrees == 270) {
                     // We will apply a rotation 90/270 degree to the output texture of the TextureView.
                     // In this case, the output video's width and height will be swapped.
-                    videoAspectRatio = 1 / videoAspectRatio
+                    videoAspectRatio = 1.div(videoAspectRatio)
                 }
+                if (textureViewRotation != 0) {
+                    surfaceView!!.removeOnLayoutChangeListener(this)
+                }
+                textureViewRotation = unappliedRotationDegrees
+                if (textureViewRotation != 0) {
+                    // The texture view's dimensions might be changed after layout step.
+                    // So add an OnLayoutChangeListener to apply rotation after layout step.
+                    surfaceView!!.addOnLayoutChangeListener(this)
+                }
+                applyTextureViewRotation((surfaceView as TextureView?)!!, textureViewRotation)
             }
 
             onContentAspectRatioChanged(videoAspectRatio, contentFrame, surfaceView)
@@ -430,7 +491,7 @@ class PiVideoPlayerView: FrameLayout {
             oldRight: Int,
             oldBottom: Int
         ) {
-
+            applyTextureViewRotation(view as TextureView, textureViewRotation)
         }
 
         // SingleTapListener implementation
