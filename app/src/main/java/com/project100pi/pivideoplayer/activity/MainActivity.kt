@@ -8,7 +8,7 @@ import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProviders
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.project100pi.pivideoplayer.adapters.listeners.OnClickListener
+import com.project100pi.pivideoplayer.listeners.OnClickListener
 import com.project100pi.pivideoplayer.R
 import com.project100pi.pivideoplayer.utils.Constants
 import android.content.pm.PackageManager
@@ -18,18 +18,20 @@ import android.view.Menu
 import android.view.MenuItem
 import android.widget.ImageView
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.view.ActionMode
 import androidx.appcompat.widget.Toolbar
 import androidx.core.app.ActivityCompat
 import butterknife.BindView
 import butterknife.ButterKnife
 import com.project100pi.pivideoplayer.adapters.StorageFileAdapter
-import com.project100pi.pivideoplayer.model.FolderInfo
 import com.project100pi.pivideoplayer.utils.Constants.PERMISSION_REQUEST_CODE
 import com.project100pi.pivideoplayer.factory.MainViewModelFactory
+import com.project100pi.pivideoplayer.listeners.ItemDeleteListener
 import kotlin.collections.ArrayList
 
-class MainActivity : AppCompatActivity(), OnClickListener {
+
+class MainActivity : AppCompatActivity(), OnClickListener, ItemDeleteListener {
 
     @BindView(R.id.rv_video_file_list) lateinit var  recyclerView: RecyclerView
     @BindView(R.id.folder_view_container) lateinit var mFolderViewContainer: View
@@ -41,7 +43,10 @@ class MainActivity : AppCompatActivity(), OnClickListener {
     private var adapter: StorageFileAdapter? = null
     private var actionModeCallback = ActionModeCallback()
     private var actionMode: ActionMode? = null
-    private var mIsMultiSelectMode: Boolean = false
+    private val mContext = this
+    companion object {
+        var mIsMultiSelectMode: Boolean = false
+    }
 
     private fun init() {
         setSupportActionBar(mToolbar)
@@ -79,6 +84,20 @@ class MainActivity : AppCompatActivity(), OnClickListener {
         observeForObservers()
     }
 
+    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
+        menuInflater.inflate(R.menu.main_menu, menu)
+        return true
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        return when (item.itemId) {
+            R.id.itemSettings -> {
+                return true
+            }
+            else -> super.onOptionsItemSelected(item)
+        }
+    }
+
     override fun onRequestPermissionsResult(
         requestCode: Int,
         permissions: Array<out String>,
@@ -97,7 +116,8 @@ class MainActivity : AppCompatActivity(), OnClickListener {
 
     private fun observeForObservers() {
         model.foldersListExposed.observe(this, Observer {
-            setAdapter()
+            if (it != null)
+                setAdapter()
         })
     }
 
@@ -127,7 +147,7 @@ class MainActivity : AppCompatActivity(), OnClickListener {
     }
 
     private fun setSongsList() {
-        adapter?.submitList(model.foldersListExposed.value?.get(model.CURRENT_SONG_FOLDER_INDEX)?.songsList as List<FolderInfo>)
+        adapter?.submitList(model.foldersListExposed.value?.get(model.CURRENT_SONG_FOLDER_INDEX)?.songsList)
     }
 
     private fun toggleSelection(position: Int) {
@@ -162,36 +182,56 @@ class MainActivity : AppCompatActivity(), OnClickListener {
     }
 
     override fun onDirectorySelected(position: Int) {
-        if (model.MODE != Constants.SONG_VIEW) {
-            model.MODE = Constants.SONG_VIEW
-            folderUpText.text = model.foldersListExposed.value!![position].path
-            mFolderViewContainer.visibility = View.VISIBLE
-            model.onItemClicked(position)
-            setAdapter()
-        } else {
+        if (!mIsMultiSelectMode) {
+            if (model.MODE != Constants.SONG_VIEW) {
+                model.MODE = Constants.SONG_VIEW
+                folderUpText.text = model.foldersListExposed.value!![position].path
+                mFolderViewContainer.visibility = View.VISIBLE
+                model.onItemClicked(position)
+                setAdapter()
+            } else {
 
-            //Play the video
-            var currentVideo = model.foldersListExposed.value!![model.CURRENT_SONG_FOLDER_INDEX].songsList[position]
+                //Play the video
+                var currentVideo = model.foldersListExposed.value!![model.CURRENT_SONG_FOLDER_INDEX].songsList[position]
 
-            val playerIntent = Intent(this, Player::class.java)
-            playerIntent.putExtra(Constants.FILE_PATH, currentVideo.path)
-            val pathsList = ArrayList<String?>()
-            for ((tempPos, folder) in model.foldersListExposed.value!![model.CURRENT_SONG_FOLDER_INDEX].songsList.withIndex()) {
-                if (tempPos >= position) {
-                    pathsList.add(folder.path)
+                val playerIntent = Intent(this, Player::class.java)
+                playerIntent.putExtra(Constants.FILE_PATH, currentVideo.path)
+                val pathsList = ArrayList<String?>()
+                for ((tempPos, folder) in model.foldersListExposed.value!![model.CURRENT_SONG_FOLDER_INDEX].songsList.withIndex()) {
+                    if (tempPos >= position) {
+                        pathsList.add(folder.path)
+                    }
                 }
+                playerIntent.putExtra(Constants.QUEUE, pathsList)
+                startActivity(playerIntent)
             }
-            playerIntent.putExtra(Constants.QUEUE, pathsList)
-            startActivity(playerIntent)
+        } else {
+            toggleSelection(position)
         }
+
     }
 
 
     private fun doActionOnOverflowItemClick(position: Int, viewId: Int) {
-        val data = model.foldersListExposed.value!![position]
+        val data = model.foldersListExposed.value!![model.CURRENT_SONG_FOLDER_INDEX].songsList[position]
 
         when (viewId) {
-
+            R.id.itemPlay -> {
+                val playerIntent = Intent(this, Player::class.java)
+                playerIntent.putExtra(Constants.FILE_PATH, data.path)
+                val pathsList = ArrayList<String?>()
+                for ((tempPos, folder) in model.foldersListExposed.value!![model.CURRENT_SONG_FOLDER_INDEX].songsList.withIndex()) {
+                    if (tempPos >= position) {
+                        pathsList.add(folder.path)
+                    }
+                }
+                playerIntent.putExtra(Constants.QUEUE, pathsList)
+                startActivity(playerIntent)
+            }
+            R.id.itemShare -> {}
+            R.id.itemDelete -> {
+                model.delete(listOf(position), false, this)
+            }
         }
     }
 
@@ -218,6 +258,17 @@ class MainActivity : AppCompatActivity(), OnClickListener {
         }
     }
 
+    override fun onDeleteSuccess(listOfIndexes: List<Int>) {
+        for(position in listOfIndexes) {
+            model.removeElementAt(position)
+            adapter!!.notifyItemRemoved(position)
+        }
+    }
+
+    override fun onDeleteError() {
+        Toast.makeText(mContext, "", Toast.LENGTH_SHORT).show()
+    }
+
     inner class ActionModeCallback: ActionMode.Callback {
 
         override fun onCreateActionMode(mode: ActionMode?, menu: Menu?): Boolean {
@@ -231,7 +282,17 @@ class MainActivity : AppCompatActivity(), OnClickListener {
 
         override fun onActionItemClicked(mode: ActionMode?, item: MenuItem?): Boolean {
             when (item!!.itemId) {
-
+                R.id.itemSelectAll -> {
+                    adapter!!.selectAllItems()
+                }
+                R.id.itemPlay -> {}
+                R.id.itemShare -> {}
+                R.id.itemDelete -> {
+                    if (model.MODE == Constants.SONG_VIEW)
+                        model.delete(adapter!!.getSelectedItems(), false, mContext)
+                    else
+                        model.delete(adapter!!.getSelectedItems(), true, mContext)
+                }
             }
             // We have to end the multi select, if the user clicks on an option other than select all
             if (item.itemId != R.id.itemSelectAll)
@@ -243,6 +304,7 @@ class MainActivity : AppCompatActivity(), OnClickListener {
             mIsMultiSelectMode = false
             actionMode = null
             mToolbar.visibility = View.VISIBLE
+            adapter!!.clearSelection()
         }
 
     }

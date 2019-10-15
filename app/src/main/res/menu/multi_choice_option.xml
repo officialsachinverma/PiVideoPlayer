@@ -14,11 +14,10 @@
         app:showAsAction="never"></item>
     <item
         android:id="@+id/itemToPlaylist"
-        android:title="@string/context_menu_addToPlaylist"
-        app:showAsAction="never"></item>
-    <item
-        android:id="@+id/itemShare"
         android:title="@string/context_menu_share"
         app:showAsAction="never"></item>
-
+    <item
+        android:id="@+id/itemDelete"
+        android:title="@string/context_menu_delete"
+        app:showAsAction="never"></item>
 </menu>

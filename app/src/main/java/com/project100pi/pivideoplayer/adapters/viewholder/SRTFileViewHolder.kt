@@ -3,13 +3,12 @@ package com.project100pi.pivideoplayer.adapters.viewholder
 import android.content.Context
 import android.view.View
 import android.widget.ImageView
-import android.widget.PopupMenu
 import android.widget.TextView
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 import com.project100pi.pivideoplayer.R
-import com.project100pi.pivideoplayer.adapters.listeners.OnClickListener
+import com.project100pi.pivideoplayer.listeners.OnClickListener
 import com.project100pi.pivideoplayer.model.FolderInfo
 
 class SRTFileViewHolder(private val context: Context, itemView: View, var listener: OnClickListener):

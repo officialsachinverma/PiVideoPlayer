@@ -1,4 +1,4 @@
-package com.project100pi.pivideoplayer.adapters.listeners
+package com.project100pi.pivideoplayer.listeners
 
 interface OnClickListener {
     fun onItemLongClicked(position: Int): Boolean

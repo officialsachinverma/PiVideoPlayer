@@ -1,12 +1,11 @@
 package com.project100pi.pivideoplayer.adapters
 
 import android.content.Context
-import android.util.SparseBooleanArray
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
-import com.project100pi.pivideoplayer.adapters.listeners.OnClickListener
+import com.project100pi.pivideoplayer.listeners.OnClickListener
 import com.project100pi.pivideoplayer.adapters.viewholder.SRTFileViewHolder
 import com.project100pi.pivideoplayer.model.FolderInfo
 
@@ -29,7 +28,7 @@ class SRTFileAdapter(private val context: Context,
         }
 
         override fun areContentsTheSame(oldItem: FolderInfo, newItem: FolderInfo): Boolean {
-            return oldItem.equals(newItem)
+            return oldItem == newItem
         }
 
     }

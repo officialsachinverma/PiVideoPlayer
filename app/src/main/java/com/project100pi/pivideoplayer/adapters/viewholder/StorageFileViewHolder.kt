@@ -1,7 +1,6 @@
 package com.project100pi.pivideoplayer.adapters.viewholder
 
 import android.content.Context
-import android.view.MenuItem
 import android.view.View
 import android.widget.ImageView
 import android.widget.PopupMenu
@@ -11,9 +10,11 @@ import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 import com.project100pi.pivideoplayer.model.FolderInfo
 import com.project100pi.pivideoplayer.R
-import com.project100pi.pivideoplayer.adapters.listeners.OnClickListener
+import com.project100pi.pivideoplayer.activity.MainActivity
+import com.project100pi.pivideoplayer.adapters.StorageFileAdapter
+import com.project100pi.pivideoplayer.listeners.OnClickListener
 
-class StorageFileViewHolder(private val context: Context, itemView: View, var listener: OnClickListener):
+class StorageFileViewHolder(private val context: Context, itemView: View, var listener: OnClickListener, private val adapter: StorageFileAdapter):
     RecyclerView.ViewHolder(itemView),
     View.OnClickListener,
     View.OnLongClickListener {
@@ -23,9 +24,13 @@ class StorageFileViewHolder(private val context: Context, itemView: View, var li
     private var ivThumbnail: ImageView = itemView.findViewById(R.id.iv_directory)
     private var ivOverFlow: ImageView = itemView.findViewById(R.id.iv_overflow_menu)
 
-    private var mIsLongClickOn: Boolean = false
-
-    fun bind(file: FolderInfo) {
+    fun bind(file: FolderInfo, position: Int) {
+        if(adapter.isSelected(position)){
+            clItemRow.setBackgroundColor(context.resources.getColor(android.R.color.holo_green_dark))
+        }
+        else{
+            clItemRow.setBackgroundColor(context.resources.getColor(android.R.color.white))
+        }
         if (file.isSong) {
             ivThumbnail.background = ContextCompat.getDrawable(context, R.drawable.music_icon)
             ivOverFlow.visibility = View.VISIBLE
@@ -42,23 +47,22 @@ class StorageFileViewHolder(private val context: Context, itemView: View, var li
     }
 
     override fun onClick(view: View?) {
-        when (view!!.id) {
-            R.id.cl_item_row -> listener.onDirectorySelected(adapterPosition)
-            R.id.iv_overflow_menu -> overflowItemClicked(view, adapterPosition)
-        }
+            when (view!!.id) {
+                R.id.cl_item_row -> listener.onDirectorySelected(adapterPosition)
+                R.id.iv_overflow_menu -> if (!MainActivity.mIsMultiSelectMode) overflowItemClicked(view, adapterPosition)
+            }
     }
 
     override fun onLongClick(p0: View?): Boolean {
-        mIsLongClickOn = true
         return if (listener != null) {
             listener.onItemLongClicked(adapterPosition)
         } else false
     }
 
     private fun overflowItemClicked(view: View, position: Int) {
-        if (!mIsLongClickOn) {
+        if (!MainActivity.mIsMultiSelectMode) {
             val popupMenu = PopupMenu(context, view)
-            popupMenu.inflate(R.menu.multi_choice_option)
+            popupMenu.inflate(R.menu.item_overflow_menu)
 
             //handleContextMenuOptions(popupMenu, position)
 

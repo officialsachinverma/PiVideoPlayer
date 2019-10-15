@@ -6,7 +6,8 @@ import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
-import com.project100pi.pivideoplayer.adapters.listeners.OnClickListener
+import com.project100pi.pivideoplayer.activity.MainActivity
+import com.project100pi.pivideoplayer.listeners.OnClickListener
 import com.project100pi.pivideoplayer.adapters.viewholder.StorageFileViewHolder
 import com.project100pi.pivideoplayer.model.FolderInfo
 
@@ -20,10 +21,10 @@ class StorageFileAdapter(
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int)
             = StorageFileViewHolder(context,
         LayoutInflater.from(parent.context)
-            .inflate(view, parent, false), listener)
+            .inflate(view, parent, false), listener, this)
 
     override fun onBindViewHolder(holder: StorageFileViewHolder, position: Int) {
-        holder.bind(getItem(position))
+        holder.bind(getItem(position), position)
         holder.clItemRow.setOnClickListener {
             listener.onDirectorySelected(position)
         }
@@ -35,7 +36,7 @@ class StorageFileAdapter(
         }
 
         override fun areContentsTheSame(oldItem: FolderInfo, newItem: FolderInfo): Boolean {
-            return oldItem.equals(newItem)
+            return oldItem == newItem
         }
 
     }
@@ -58,7 +59,7 @@ class StorageFileAdapter(
         val selection = getSelectedItems()
         selectedItems.clear()
         for (i in selection) {
-            notifyItemChanged(i!!)
+            notifyItemChanged(i)
         }
     }
 
@@ -72,6 +73,20 @@ class StorageFileAdapter(
             items.add(selectedItems.keyAt(i))
         }
         return items
+    }
+
+    fun selectAllItems() {
+        if (MainActivity.mIsMultiSelectMode) {
+            this.clearSelection()
+            var i = 0
+            var size = 0
+            size = itemCount
+            i = 0
+            while (i < size) {
+                listener.onDirectorySelected(i)
+                i++
+            }
+        }
     }
 
 }
