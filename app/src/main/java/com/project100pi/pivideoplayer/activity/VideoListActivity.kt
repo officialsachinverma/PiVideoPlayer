@@ -8,6 +8,7 @@ import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.provider.Settings
+import android.util.Log
 import android.view.View
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProviders
@@ -26,6 +27,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.view.ActionMode
 import androidx.appcompat.widget.Toolbar
 import androidx.core.app.ActivityCompat
+import androidx.core.content.FileProvider
 import butterknife.BindView
 import butterknife.ButterKnife
 import com.project100pi.library.misc.Util
@@ -33,7 +35,9 @@ import com.project100pi.pivideoplayer.adapters.StorageFileAdapter
 import com.project100pi.pivideoplayer.factory.MainViewModelFactory
 import com.project100pi.pivideoplayer.listeners.ItemDeleteListener
 import com.project100pi.pivideoplayer.model.FolderInfo
+import com.project100pi.pivideoplayer.utils.ContextMenuUtil
 import com.project100pi.pivideoplayer.utils.PermissionsUtil
+import java.io.File
 import kotlin.collections.ArrayList
 
 
@@ -275,26 +279,40 @@ class VideoListActivity : AppCompatActivity(), OnClickListener, ItemDeleteListen
     }
 
     private fun doActionOnOverflowItemClick(position: Int, viewId: Int) {
-        val data = videoListData[model.CURRENT_SONG_FOLDER_INDEX].songsList[position]
+        //val data = videoListData[model.CURRENT_SONG_FOLDER_INDEX].songsList[position]
 
         when (viewId) {
             R.id.itemPlay -> {
-                val playerIntent = Intent(this, PlayerActivity::class.java)
-                playerIntent.putExtra(Constants.FILE_PATH, data.path)
-                val pathsList = ArrayList<String?>()
-                for ((tempPos, folder) in videoListData[model.CURRENT_SONG_FOLDER_INDEX].songsList.withIndex()) {
-                    if (tempPos >= position) {
-                        pathsList.add(folder.path)
-                    }
-                }
-                playerIntent.putExtra(Constants.QUEUE, pathsList)
-                startActivity(playerIntent)
+                launcherPlayerActivity(position)
             }
-            R.id.itemShare -> {}
+            R.id.itemShare -> {
+                shareVideos(position)
+            }
             R.id.itemDelete -> {
                 model.delete(listOf(position), false, this)
             }
         }
+    }
+
+    private fun shareVideos(position: Int) {
+        val currentVideo = videoListData[model.CURRENT_SONG_FOLDER_INDEX].songsList[position]
+
+        startActivity(Intent.createChooser(Intent().setAction(Intent.ACTION_SEND)
+            .setType("video/*")
+            .setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            .putExtra(Intent.EXTRA_STREAM,  ContextMenuUtil.getAudioContentUri(this@VideoListActivity, File(currentVideo.path))), "Share Video"))
+    }
+
+    private fun shareMultipleVideos() {
+        val listOfVideoUris = ArrayList<Uri?>()
+        for (position in adapter!!.getSelectedItems()) {
+            val currentVideo = videoListData[model.CURRENT_SONG_FOLDER_INDEX].songsList[position]
+            listOfVideoUris.add(ContextMenuUtil.getAudioContentUri(this@VideoListActivity, File(currentVideo.path)))
+        }
+        startActivity(Intent.createChooser(Intent().setAction(Intent.ACTION_SEND_MULTIPLE)
+            .setType("video/*")
+            .setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            .putExtra(Intent.EXTRA_STREAM,  listOfVideoUris), "Share Video"))
     }
 
     override fun onBackPressed() {
@@ -331,12 +349,14 @@ class VideoListActivity : AppCompatActivity(), OnClickListener, ItemDeleteListen
 
         override fun onActionItemClicked(mode: ActionMode?, item: MenuItem?): Boolean {
             when (item!!.itemId) {
-                R.id.itemSelectAll -> {
+                R.id.multiChoiceSelectAll -> {
                     adapter!!.selectAllItems()
                 }
-                R.id.itemPlay -> {}
-                R.id.itemShare -> {}
-                R.id.itemDelete -> {
+                R.id.multiChoicePlay -> {}
+                R.id.multiChoiceShare -> {
+                    shareMultipleVideos()
+                }
+                R.id.multiChoiceDelete -> {
                     if (model.MODE == Constants.SONG_VIEW)
                         model.delete(adapter!!.getSelectedItems(), false, mContext)
                     else
@@ -344,7 +364,7 @@ class VideoListActivity : AppCompatActivity(), OnClickListener, ItemDeleteListen
                 }
             }
             // We have to end the multi select, if the user clicks on an option other than select all
-            if (item.itemId != R.id.itemSelectAll)
+            if (item.itemId != R.id.multiChoiceSelectAll)
                 actionMode!!.finish()
             return true
         }
