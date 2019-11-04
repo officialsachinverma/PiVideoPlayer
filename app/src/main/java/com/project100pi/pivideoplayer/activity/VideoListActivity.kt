@@ -8,7 +8,6 @@ import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.provider.Settings
-import android.util.Log
 import android.view.View
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProviders
@@ -23,14 +22,11 @@ import android.view.MenuItem
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
-import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.view.ActionMode
 import androidx.appcompat.widget.Toolbar
 import androidx.core.app.ActivityCompat
-import androidx.core.content.FileProvider
 import butterknife.BindView
 import butterknife.ButterKnife
-import com.project100pi.library.misc.Util
 import com.project100pi.pivideoplayer.adapters.StorageFileAdapter
 import com.project100pi.pivideoplayer.factory.MainViewModelFactory
 import com.project100pi.pivideoplayer.listeners.ItemDeleteListener
@@ -250,7 +246,7 @@ class VideoListActivity : AppCompatActivity(), OnClickListener, ItemDeleteListen
 
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                     if (Settings.System.canWrite(this)) {
-                        launcherPlayerActivity(position)
+                        launchPlayerActivity(position)
                     } else {
                         showBrightnessPermissionDialog(this)
                     }
@@ -262,7 +258,7 @@ class VideoListActivity : AppCompatActivity(), OnClickListener, ItemDeleteListen
 
     }
 
-    private fun launcherPlayerActivity(position: Int) {
+    private fun launchPlayerActivity(position: Int) {
         //Play the video
         val currentVideo = videoListData[model.CURRENT_SONG_FOLDER_INDEX].songsList[position]
 
@@ -270,9 +266,20 @@ class VideoListActivity : AppCompatActivity(), OnClickListener, ItemDeleteListen
         playerIntent.putExtra(Constants.FILE_PATH, currentVideo.path)
         val pathsList = ArrayList<String?>()
         for ((tempPos, folder) in videoListData[model.CURRENT_SONG_FOLDER_INDEX].songsList.withIndex()) {
-            if (tempPos >= position) {
+            //if (tempPos >= position) {
                 pathsList.add(folder.path)
-            }
+            //}
+        }
+        playerIntent.putExtra(Constants.Playback.WINDOW, position)
+        playerIntent.putExtra(Constants.QUEUE, pathsList)
+        startActivity(playerIntent)
+    }
+
+    private fun playSelectedVideos() {
+        val playerIntent = Intent(this, PlayerActivity::class.java)
+        val pathsList = ArrayList<String?>()
+        for(position in adapter!!.getSelectedItems()) {
+            pathsList.add(videoListData[model.CURRENT_SONG_FOLDER_INDEX].songsList[position].path)
         }
         playerIntent.putExtra(Constants.QUEUE, pathsList)
         startActivity(playerIntent)
@@ -283,7 +290,7 @@ class VideoListActivity : AppCompatActivity(), OnClickListener, ItemDeleteListen
 
         when (viewId) {
             R.id.itemPlay -> {
-                launcherPlayerActivity(position)
+                launchPlayerActivity(position)
             }
             R.id.itemShare -> {
                 shareVideos(position)
@@ -352,7 +359,9 @@ class VideoListActivity : AppCompatActivity(), OnClickListener, ItemDeleteListen
                 R.id.multiChoiceSelectAll -> {
                     adapter!!.selectAllItems()
                 }
-                R.id.multiChoicePlay -> {}
+                R.id.multiChoicePlay -> {
+                    playSelectedVideos()
+                }
                 R.id.multiChoiceShare -> {
                     shareMultipleVideos()
                 }
