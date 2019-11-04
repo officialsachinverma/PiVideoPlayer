@@ -5,8 +5,10 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.media.AudioManager
+import android.media.session.MediaSession
 import android.net.Uri
 import android.os.Looper
+import android.support.v4.media.session.MediaSessionCompat
 import android.util.Log
 import com.google.android.exoplayer2.*
 import com.google.android.exoplayer2.audio.AudioAttributes
@@ -18,16 +20,15 @@ import com.google.android.exoplayer2.util.Util
 import com.google.android.exoplayer2.video.VideoListener
 import com.project100pi.library.misc.Util.userAgent
 import com.google.android.exoplayer2.Format.NO_VALUE
+import com.google.android.exoplayer2.ext.mediasession.MediaSessionConnector
 import com.google.android.exoplayer2.util.MimeTypes
-
-
 
 class PiVideoPlayer {
 
     private val TAG: String = "PiVideoPlayer"
 
-    private val DEFAULT_REWIND_TIME = 10000 // 10 secs
-    private val DEFAULT_FAST_FORWARD_TIME = 10000 // 10 secs
+    val DEFAULT_REWIND_TIME = 10000 // 10 secs
+    val DEFAULT_FAST_FORWARD_TIME = 10000 // 10 secs
 
     private var context: Context
     private var player: SimpleExoPlayer? = null
@@ -42,8 +43,13 @@ class PiVideoPlayer {
         .build()
 
     private val intentFilter = IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY)
-
+    private var noisyIntentRegistered = false
     private val becomingNoisyReceiver = BecomingNoisyReceiver()
+
+    // Media Session
+    private val mediaSession: MediaSession
+    private val mediaSessionCompat: MediaSessionCompat
+    private val mediaSessionConnector: MediaSessionConnector
 
     constructor(context: Context) {
         this.context = context
@@ -59,6 +65,17 @@ class PiVideoPlayer {
             player?.seekTo(currentWindow, playbackPosition)
         }
 
+        /*
+         * Media Session and Media Session Connector automatically
+         * handles a basic set of playback actions such as play, pause,
+         * seek to, forward, rewind and stop.
+         * For these basic actions putting listeners is not required.
+         */
+
+        mediaSession = MediaSession(context.applicationContext, TAG)
+        mediaSessionCompat = MediaSessionCompat.fromMediaSession(context, mediaSession)
+        mediaSessionConnector = MediaSessionConnector(mediaSessionCompat)
+        mediaSessionConnector.setPlayer(player)
     }
 
     private fun buildMediaSource(uri: Uri): MediaSource {
@@ -76,9 +93,10 @@ class PiVideoPlayer {
         val mediaSource = buildMediaSource(Uri.parse(path))
         player?.prepare(mediaSource, true, false)
         context.registerReceiver(becomingNoisyReceiver, intentFilter)
+        noisyIntentRegistered = true
     }
 
-    fun prepare(mediaPath: String, subtitlePath: String) {
+    fun prepare(mediaPath: String, subtitlePath: String, resetPosition: Boolean, resetState: Boolean) {
         this.path = mediaPath
         val dataSourceFactory = DefaultDataSourceFactory(
             context, Util.getUserAgent(context, userAgent))
@@ -88,8 +106,8 @@ class PiVideoPlayer {
             NO_VALUE, "hi"
         )
         val subtitleSource = SingleSampleMediaSource.Factory(dataSourceFactory).createMediaSource(Uri.parse(subtitlePath), textFormat, C.TIME_UNSET)
-        player?.prepare(MergingMediaSource(mediaSource, subtitleSource), true, false)
-        context.registerReceiver(becomingNoisyReceiver, intentFilter)
+        player?.prepare(MergingMediaSource(mediaSource, subtitleSource), resetPosition, resetState)
+       // context.registerReceiver(becomingNoisyReceiver, intentFilter)
     }
 
     fun prepare(paths: ArrayList<String?>?, resetPosition: Boolean, resetState: Boolean) {
@@ -102,12 +120,14 @@ class PiVideoPlayer {
 
         player?.prepare(concatenatingMediaSource, resetPosition, resetState)
         context.registerReceiver(becomingNoisyReceiver, intentFilter)
+        noisyIntentRegistered = true
     }
 
     fun release(){
         player?.release()
         player = null
-        context.unregisterReceiver(becomingNoisyReceiver)
+        if (noisyIntentRegistered)
+            context.unregisterReceiver(becomingNoisyReceiver)
     }
 
     fun play(){
@@ -203,7 +223,8 @@ class PiVideoPlayer {
 
         override fun onPlayerError(error: ExoPlaybackException?) {
             Log.i(TAG,"onPlayerError")
-            context.unregisterReceiver(becomingNoisyReceiver)
+            if (noisyIntentRegistered)
+                context.unregisterReceiver(becomingNoisyReceiver)
         }
 
         override fun onPositionDiscontinuity(reason: Int) {
