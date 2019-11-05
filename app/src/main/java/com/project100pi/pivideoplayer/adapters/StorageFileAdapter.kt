@@ -6,7 +6,7 @@ import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
-import com.project100pi.pivideoplayer.activity.MainActivity
+import com.project100pi.pivideoplayer.activity.VideoListActivity
 import com.project100pi.pivideoplayer.listeners.OnClickListener
 import com.project100pi.pivideoplayer.adapters.viewholder.StorageFileViewHolder
 import com.project100pi.pivideoplayer.model.FolderInfo
@@ -25,6 +25,7 @@ class StorageFileAdapter(
 
     override fun onBindViewHolder(holder: StorageFileViewHolder, position: Int) {
         holder.bind(getItem(position), position)
+        //TODO: Remove this
         holder.clItemRow.setOnClickListener {
             listener.onDirectorySelected(position)
         }
@@ -76,7 +77,7 @@ class StorageFileAdapter(
     }
 
     fun selectAllItems() {
-        if (MainActivity.mIsMultiSelectMode) {
+        if (VideoListActivity.mIsMultiSelectMode) {
             this.clearSelection()
             var i = 0
             var size = 0

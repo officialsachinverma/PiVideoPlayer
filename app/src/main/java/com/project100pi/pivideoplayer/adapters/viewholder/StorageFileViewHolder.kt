@@ -10,7 +10,7 @@ import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 import com.project100pi.pivideoplayer.model.FolderInfo
 import com.project100pi.pivideoplayer.R
-import com.project100pi.pivideoplayer.activity.MainActivity
+import com.project100pi.pivideoplayer.activity.VideoListActivity
 import com.project100pi.pivideoplayer.adapters.StorageFileAdapter
 import com.project100pi.pivideoplayer.listeners.OnClickListener
 
@@ -49,7 +49,7 @@ class StorageFileViewHolder(private val context: Context, itemView: View, var li
     override fun onClick(view: View?) {
             when (view!!.id) {
                 R.id.cl_item_row -> listener.onDirectorySelected(adapterPosition)
-                R.id.iv_overflow_menu -> if (!MainActivity.mIsMultiSelectMode) overflowItemClicked(view, adapterPosition)
+                R.id.iv_overflow_menu -> if (!VideoListActivity.mIsMultiSelectMode) overflowItemClicked(view, adapterPosition)
             }
     }
 
@@ -60,7 +60,7 @@ class StorageFileViewHolder(private val context: Context, itemView: View, var li
     }
 
     private fun overflowItemClicked(view: View, position: Int) {
-        if (!MainActivity.mIsMultiSelectMode) {
+        if (!VideoListActivity.mIsMultiSelectMode) {
             val popupMenu = PopupMenu(context, view)
             popupMenu.inflate(R.menu.item_overflow_menu)
 
