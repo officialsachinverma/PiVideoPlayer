@@ -9,10 +9,10 @@ object CursorFactory {
      fun getAllVideoCursor(mContext: Context): Cursor? {
 
          val sortOrder = MediaStore.Video.Media.TITLE + " ASC"
-
+         val projection = arrayOf(MediaStore.Video.Media.DATA, MediaStore.Video.Media._ID)
          return mContext.contentResolver.query(
             MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
-             null,
+             projection,
             null,
              null,
              sortOrder
