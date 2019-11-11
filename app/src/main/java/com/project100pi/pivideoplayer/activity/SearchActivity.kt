@@ -27,7 +27,6 @@ import butterknife.BindView
 import butterknife.ButterKnife
 import com.project100pi.library.misc.Logger
 import com.project100pi.pivideoplayer.R
-import com.project100pi.pivideoplayer.adapters.AutoCompleteTextAdapter
 import com.project100pi.pivideoplayer.adapters.StorageFileAdapter
 import com.project100pi.pivideoplayer.factory.SearchViewModelFactory
 import com.project100pi.pivideoplayer.listeners.ItemDeleteListener
@@ -56,7 +55,6 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
     @BindView(R.id.sorryMessage)
     lateinit var sorryMessageTextView: TextView
 
-    val AUTOCOMPLETE_DRAWABLE_LEFT_POSITION = 0
     val AUTOCOMPLETE_DRAWABLE_RIGHT_POSITION = 2
 
     private var videoSearchResultData: ArrayList<FolderInfo> = ArrayList()
@@ -145,7 +143,6 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
     }
 
     private fun initializeAutoCompleteTextView() {
-        setSearchHint()
         autoCompleteTextView.dropDownWidth = resources.displayMetrics.widthPixels
         //Only when 2 or more characters is typed we will trigger the search.
         autoCompleteTextView.threshold = 2
@@ -158,13 +155,8 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
         )
     }
 
-    private fun setSearchHint() {
-        autoCompleteTextView.hint = resources.getString(R.string.search_library)
-    }
-
     private fun setListeners() {
         Logger.i("setListeners() :: setting listeners for auto complete textview and viewpager.")
-        setOnTouchListener()
         setOnEditorActionListener()
         autoCompleteTextView.addTextChangedListener(AutoCompleteTextWatcher())
         autoCompleteTextView.setOnFocusChangeListener { _: View, hasFocus: Boolean ->
@@ -175,17 +167,6 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
             } else {
                 hideKeyboard()
             }
-        }
-    }
-
-    private fun setOnTouchListener() {
-        autoCompleteTextView.setOnTouchListener { view: View, event: MotionEvent ->
-            if (event.action == MotionEvent.ACTION_UP && autoCompleteTextView.compoundDrawables[AUTOCOMPLETE_DRAWABLE_RIGHT_POSITION] != null) {
-                if (event.rawX >= autoCompleteTextView.right - autoCompleteTextView.compoundDrawables[AUTOCOMPLETE_DRAWABLE_RIGHT_POSITION].bounds.width()) {
-                    autoCompleteTextView.clearFocus()
-                }
-            }
-            false
         }
     }
 

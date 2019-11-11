@@ -1,4 +1,4 @@
-package com.project100pi.listeners
+package com.project100pi.library.listeners
 
 interface MediaSessionListener{
     fun msPlay()

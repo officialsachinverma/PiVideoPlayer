@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">Library</string>
+    <string name="pi_controls_screen_lock_description">Screen Lock</string>
 </resources>

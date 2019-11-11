@@ -3,21 +3,21 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <item
-        android:id="@+id/itemSelectAll"
+        android:id="@+id/multiChoiceSelectAll"
         android:icon="@drawable/select_all"
         android:orderInCategory="100"
         android:title="Select All"
         app:showAsAction="ifRoom"></item>
     <item
-        android:id="@+id/itemPlay"
-        android:title="@string/context_menu_play"
+        android:id="@+id/multiChoicePlay"
+        android:title="@string/overflow_menu_play"
         app:showAsAction="never"></item>
     <item
-        android:id="@+id/itemToPlaylist"
-        android:title="@string/context_menu_share"
+        android:id="@+id/multiChoiceShare"
+        android:title="@string/overflow_menu_share"
         app:showAsAction="never"></item>
     <item
-        android:id="@+id/itemDelete"
-        android:title="@string/context_menu_delete"
+        android:id="@+id/multiChoiceDelete"
+        android:title="@string/overflow_menu_delete"
         app:showAsAction="never"></item>
 </menu>

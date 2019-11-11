@@ -4,14 +4,14 @@ import android.app.Application
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import com.project100pi.pivideoplayer.activity.MainViewModel
+import com.project100pi.pivideoplayer.activity.VideoListViewModel
 
-class MainViewModelFactory(private val context: Context?,
-                            private val application: Application
+class VideoListViewModelFactory(private val context: Context?,
+                                private val application: Application
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel?> create(modelClass: Class<T>): T {
-        if (modelClass.isAssignableFrom(MainViewModel::class.java)) {
-            return MainViewModel(context, application) as T
+        if (modelClass.isAssignableFrom(VideoListViewModel::class.java)) {
+            return VideoListViewModel(context, application) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

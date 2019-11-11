@@ -8,7 +8,7 @@ import android.support.v4.media.session.MediaControllerCompat
 import android.support.v4.media.session.MediaSessionCompat
 import com.project100pi.library.misc.ApplicationHelper
 import com.project100pi.library.misc.Logger
-import com.project100pi.listeners.MediaSessionListener
+import com.project100pi.library.listeners.MediaSessionListener
 
 class MediaSessionManager: MediaSessionCompat.Callback {
 

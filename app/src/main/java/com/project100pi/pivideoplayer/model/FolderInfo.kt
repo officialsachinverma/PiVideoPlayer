@@ -3,7 +3,7 @@ package com.project100pi.pivideoplayer.model
 import android.os.Parcel
 import android.os.Parcelable
 
-data class FolderInfo(var songName: String? = "", var folderId: String? = "", var path: String? = "", var isSong: Boolean = false):
+data class FolderInfo(var videoName: String? = "", var folderId: String? = "", var path: String? = "", var isSong: Boolean = false):
     Parcelable {
 
     var songsList: ArrayList<FolderInfo> = ArrayList()
@@ -23,13 +23,22 @@ data class FolderInfo(var songName: String? = "", var folderId: String? = "", va
         folderId: String
     ): this(folderName, folderId, fullPath)
 
+    constructor(
+        folderName: String,
+        fullPath: String,
+        subFolder: String,
+        songName: String,
+        folderId: String,
+        isSong: Boolean
+    ): this(folderName, folderId, fullPath, isSong)
+
     fun addSong(songName: String, folderId: String) {
         songsList.add(FolderInfo(songName, folderId, path + songName, true))
 
     }
 
     override fun writeToParcel(parcel: Parcel, flags: Int) {
-        parcel.writeString(songName)
+        parcel.writeString(videoName)
         parcel.writeString(folderId)
         parcel.writeString(path)
         parcel.writeByte(if (isSong) 1 else 0)

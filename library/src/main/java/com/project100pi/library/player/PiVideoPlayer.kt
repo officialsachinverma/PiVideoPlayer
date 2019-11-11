@@ -1,15 +1,10 @@
 package com.project100pi.library.player
 
-import android.content.BroadcastReceiver
-import android.content.Context
-import android.content.Intent
-import android.content.IntentFilter
+import android.content.*
 import android.media.AudioManager
-import android.media.session.MediaSession
 import android.net.Uri
 import android.os.Looper
-import android.support.v4.media.session.MediaSessionCompat
-import android.util.Log
+import android.support.v4.media.session.MediaControllerCompat
 import com.google.android.exoplayer2.*
 import com.google.android.exoplayer2.audio.AudioAttributes
 import com.google.android.exoplayer2.source.*
@@ -20,15 +15,25 @@ import com.google.android.exoplayer2.util.Util
 import com.google.android.exoplayer2.video.VideoListener
 import com.project100pi.library.misc.Util.userAgent
 import com.google.android.exoplayer2.Format.NO_VALUE
-import com.google.android.exoplayer2.ext.mediasession.MediaSessionConnector
 import com.google.android.exoplayer2.util.MimeTypes
+import com.project100pi.library.misc.Logger
+import com.google.android.exoplayer2.Player
+import com.google.android.exoplayer2.source.dash.DashMediaSource
+import com.google.android.exoplayer2.source.hls.HlsMediaSource
+import com.google.android.exoplayer2.source.smoothstreaming.SsMediaSource
+import com.project100pi.library.media.MediaSessionManager
+import com.project100pi.library.misc.ApplicationHelper
+import com.project100pi.library.misc.CurrentSettings
+import com.project100pi.library.listeners.MediaSessionListener
+import com.project100pi.library.listeners.PlayerEventListener
 
-class PiVideoPlayer {
+
+class PiVideoPlayer: MediaSessionListener {
 
     private val TAG: String = "PiVideoPlayer"
 
-    val DEFAULT_REWIND_TIME = 10000 // 10 secs
-    val DEFAULT_FAST_FORWARD_TIME = 10000 // 10 secs
+    val DEFAULT_REWIND_TIME = 3000 // 3 secs
+    val DEFAULT_FAST_FORWARD_TIME = 3000 // 3 secs
 
     private var context: Context
     private var player: SimpleExoPlayer? = null
@@ -37,53 +42,58 @@ class PiVideoPlayer {
     private var currentWindow = 0
     private var playbackPosition: Long = 0
 
-    private var audioAttributes = AudioAttributes.Builder()
+    private val audioAttributes = AudioAttributes.Builder()
         .setUsage(C.USAGE_MEDIA)
         .setContentType(C.CONTENT_TYPE_MUSIC)
         .build()
 
+    private val dataSourceFactory: DefaultDataSourceFactory
+
+    // Noisy Intent
     private val intentFilter = IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY)
     private var noisyIntentRegistered = false
     private val becomingNoisyReceiver = BecomingNoisyReceiver()
 
     // Media Session
-    private val mediaSession: MediaSession
-    private val mediaSessionCompat: MediaSessionCompat
-    private val mediaSessionConnector: MediaSessionConnector
+    private var mediaSessionManager: MediaSessionManager
+    private var transportControls: MediaControllerCompat.TransportControls
 
     constructor(context: Context) {
         this.context = context
+
         if (player == null) {
             player = ExoPlayerFactory.newSimpleInstance( context,
                 DefaultRenderersFactory(context),
                 DefaultTrackSelector(),
                 DefaultLoadControl()
             )
-            player?.addListener(EventListener())
-            player?.setAudioAttributes(audioAttributes, true)
-            player?.playWhenReady = this.playWhenReady
-            player?.seekTo(currentWindow, playbackPosition)
+
         }
 
-        /*
-         * Media Session and Media Session Connector automatically
-         * handles a basic set of playback actions such as play, pause,
-         * seek to, forward, rewind and stop.
-         * For these basic actions putting listeners is not required.
-         */
+        dataSourceFactory = DefaultDataSourceFactory(
+        context, Util.getUserAgent(context, userAgent))
 
-        mediaSession = MediaSession(context.applicationContext, TAG)
-        mediaSessionCompat = MediaSessionCompat.fromMediaSession(context, mediaSession)
-        mediaSessionConnector = MediaSessionConnector(mediaSessionCompat)
-        mediaSessionConnector.setPlayer(player)
+        mediaSessionManager =
+            MediaSessionManager(context.applicationContext, this)
+        transportControls = mediaSessionManager.getTransportControls()
+        ApplicationHelper.mediaSessionToken = mediaSessionManager.getMediaSessionToken()
+        CurrentSettings.MediaSession.avaiable = true
+
+        player?.addListener(EventListener())
+        player?.setAudioAttributes(audioAttributes, true)
+        player?.playWhenReady = this.playWhenReady
+        player?.seekTo(currentWindow, playbackPosition)
     }
 
     private fun buildMediaSource(uri: Uri): MediaSource {
-
-        val dataSourceFactory = DefaultDataSourceFactory(
-            context, Util.getUserAgent(context, userAgent))
-
-        return ProgressiveMediaSource.Factory(dataSourceFactory).createMediaSource(uri)
+        return when (@C.ContentType val type = Util.inferContentType(uri)) {
+            C.TYPE_DASH -> DashMediaSource.Factory(dataSourceFactory).createMediaSource(uri)
+            C.TYPE_SS -> SsMediaSource.Factory(dataSourceFactory).createMediaSource(uri)
+            C.TYPE_HLS -> HlsMediaSource.Factory(dataSourceFactory).createMediaSource(uri)
+            C.TYPE_OTHER -> ProgressiveMediaSource.Factory(dataSourceFactory)
+                .createMediaSource(uri)
+            else -> throw IllegalStateException("Unsupported type: $type")
+        }
     }
 
     // Public APIs starts
@@ -94,6 +104,7 @@ class PiVideoPlayer {
         player?.prepare(mediaSource, true, false)
         context.registerReceiver(becomingNoisyReceiver, intentFilter)
         noisyIntentRegistered = true
+        CurrentSettings.Playback.playing = true
     }
 
     fun prepare(mediaPath: String, subtitlePath: String, resetPosition: Boolean, resetState: Boolean) {
@@ -108,6 +119,7 @@ class PiVideoPlayer {
         val subtitleSource = SingleSampleMediaSource.Factory(dataSourceFactory).createMediaSource(Uri.parse(subtitlePath), textFormat, C.TIME_UNSET)
         player?.prepare(MergingMediaSource(mediaSource, subtitleSource), resetPosition, resetState)
        // context.registerReceiver(becomingNoisyReceiver, intentFilter)
+        CurrentSettings.Playback.playing = true
     }
 
     fun prepare(paths: ArrayList<String?>?, resetPosition: Boolean, resetState: Boolean) {
@@ -121,6 +133,7 @@ class PiVideoPlayer {
         player?.prepare(concatenatingMediaSource, resetPosition, resetState)
         context.registerReceiver(becomingNoisyReceiver, intentFilter)
         noisyIntentRegistered = true
+        CurrentSettings.Playback.playing = true
     }
 
     fun release(){
@@ -128,14 +141,17 @@ class PiVideoPlayer {
         player = null
         if (noisyIntentRegistered)
             context.unregisterReceiver(becomingNoisyReceiver)
+        CurrentSettings.Playback.playing = false
     }
 
     fun play(){
         player?.playWhenReady = true
+        CurrentSettings.Playback.playing = true
     }
 
     fun pause(){
         player?.playWhenReady = false
+        CurrentSettings.Playback.playing = false
     }
 
     fun seekTo(positionMs: Long){
@@ -157,6 +173,14 @@ class PiVideoPlayer {
         // do operation on playback time
         val seekPos = if((currentPosition + DEFAULT_FAST_FORWARD_TIME) > 100) 0 else (currentPosition + DEFAULT_FAST_FORWARD_TIME)
         player?.seekTo(seekPos)
+    }
+
+    fun next(){
+        player?.next()
+    }
+
+    fun previous() {
+        player?.previous()
     }
 
     fun getCurrentPosition() = player!!.currentPosition
@@ -185,7 +209,7 @@ class PiVideoPlayer {
 
     // Module APIs starts
 
-    internal fun getPlayer(): SimpleExoPlayer? {
+    internal fun getExoPlayer(): SimpleExoPlayer? {
         return player
     }
 
@@ -195,59 +219,83 @@ class PiVideoPlayer {
 
     internal fun getTextComponent() = player!!.textComponent
 
+    internal fun setVideoScalingMode(videoScalingMode: Int){
+        player!!.videoScalingMode = videoScalingMode
+    }
+
     // Module APIs ends
 
-    inner class EventListener: Player.EventListener {
+    // Media Session Listeners Starts
+
+    override fun msPlay() {
+        play()
+    }
+
+    override fun msPause() {
+        pause()
+    }
+
+    override fun msSkipToNext() {
+        next()
+    }
+
+    override fun msSkipToPrevious() {
+        previous()
+    }
+
+    // Media Session Listener Ends
+
+    inner class EventListener: PlayerEventListener {
 
         override fun onPlayerStateChanged(playWhenReady: Boolean, playbackState: Int) {
-            Log.i(TAG, "onPlayerStateChanged")
+            Logger.i("onPlayerStateChanged")
             when(playbackState) {
-                Player.STATE_IDLE -> {Log.i(TAG, "STATE_IDLE")}
-                Player.STATE_BUFFERING -> {Log.i(TAG, "STATE_BUFFERING")}
-                Player.STATE_READY -> {Log.i(TAG,"STATE_READY")}
-                Player.STATE_ENDED -> {Log.i(TAG,"STATE_ENDED")}
+                Player.STATE_IDLE -> {Logger.i("STATE_IDLE")}
+                Player.STATE_BUFFERING -> {Logger.i("STATE_BUFFERING")}
+                Player.STATE_READY -> {Logger.i("STATE_READY")}
+                Player.STATE_ENDED -> {Logger.i("STATE_ENDED")}
             }
         }
 
         override fun onSeekProcessed() {
-            Log.i(TAG, "onSeekProcessed")
+            Logger.i("onSeekProcessed")
         }
 
         override fun onLoadingChanged(isLoading: Boolean) {
-            Log.i(TAG,"onLoadingChanged")
+            Logger.i("onLoadingChanged")
         }
 
         override fun onPlaybackParametersChanged(playbackParameters: PlaybackParameters?) {
-            Log.i(TAG,"onPlaybackParametersChanged")
+            Logger.i("onPlaybackParametersChanged")
         }
 
         override fun onPlayerError(error: ExoPlaybackException?) {
-            Log.i(TAG,"onPlayerError")
+            Logger.i("onPlayerError")
             if (noisyIntentRegistered)
                 context.unregisterReceiver(becomingNoisyReceiver)
         }
 
         override fun onPositionDiscontinuity(reason: Int) {
-            Log.i(TAG,"onPositionDiscontinuity")
+            Logger.i("onPositionDiscontinuity")
         }
 
         override fun onRepeatModeChanged(repeatMode: Int) {
-            Log.i(TAG,"onRepeatModeChanged")
+            Logger.i("onRepeatModeChanged")
         }
 
         override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
-            Log.i(TAG,"onShuffleModeEnabledChanged")
+            Logger.i("onShuffleModeEnabledChanged")
         }
 
         override fun onTimelineChanged(timeline: Timeline?, manifest: Any?, reason: Int) {
-            Log.i(TAG,"onTimelineChanged")
+            Logger.i("onTimelineChanged")
         }
 
         override fun onTracksChanged(
             trackGroups: TrackGroupArray?,
             trackSelections: TrackSelectionArray?
         ) {
-            Log.i(TAG,"onTracksChanged")
+            Logger.i("onTracksChanged")
         }
     }
 

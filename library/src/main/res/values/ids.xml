@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <item name="pi_content_frame" type="id"/>
+    <item name="pi_toolbar" type="id"/>
+    <item name="pi_toolbar_placeholder" type="id"/>
     <item name="pi_shutter" type="id"/>
     <item name="pi_subtitles" type="id"/>
     <item name="pi_artwork" type="id"/>
@@ -13,8 +15,8 @@
     <item name="pi_rew" type="id"/>
     <item name="pi_ffwd" type="id"/>
     <item name="pi_prev" type="id"/>
-    <item name="pi_next" type="id"/>
     <item name="pi_full_screen" type="id"/>
+    <item name="pi_next" type="id"/>
     <item name="pi_screen_lock" type="id"/>
     <item name="pi_shuffle" type="id"/>
     <item name="pi_repeat_toggle" type="id"/>
@@ -23,6 +25,7 @@
     <item name="pi_progress_placeholder" type="id"/>
     <item name="pi_progress" type="id"/>
     <item name="pi_buffering" type="id"/>
+    <item name="pi_video_resize" type="id"/>
     <item name="pi_error_message" type="id"/>
     <item name="pi_vr" type="id"/>
 </resources>

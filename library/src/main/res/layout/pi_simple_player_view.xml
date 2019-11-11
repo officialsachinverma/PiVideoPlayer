@@ -1,7 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<merge xmlns:android="http://schemas.android.com/apk/res/android">
+<merge xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tool="http://schemas.android.com/tools">
 
-    <com.google.android.exoplayer2.ui.AspectRatioFrameLayout android:id="@id/pi_content_frame"
+    <com.google.android.exoplayer2.ui.AspectRatioFrameLayout
+        android:id="@id/pi_content_frame"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_gravity="center">
@@ -46,5 +49,40 @@
     <View android:id="@id/pi_controller_placeholder"
         android:layout_width="match_parent"
         android:layout_height="match_parent"/>
+
+    <androidx.appcompat.widget.Toolbar
+        android:id="@id/pi_toolbar_placeholder"
+        android:layout_width="match_parent"
+        android:layout_height="70dp"
+        android:fitsSystemWindows="true"
+        android:background="#CC000000"
+        app:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
+        android:hapticFeedbackEnabled="true"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="@+id/pi_content_frame" />
+
+    <ImageButton
+        android:id="@id/pi_screen_lock"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:src="@drawable/ic_screen_lock"
+        android:background="#CC000000"
+        android:hapticFeedbackEnabled="true"
+        android:layout_below="@id/pi_toolbar_placeholder"
+        android:layout_marginTop="50dp"
+        android:layout_marginStart="50dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="@+id/pi_content_frame"/>
+
+    <TextView android:id="@id/pi_video_resize"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:text="FIT"
+        android:textSize="30sp"
+        android:gravity="center"
+        android:textColor="@android:color/white"
+        android:layout_gravity="center"/>
 
 </merge>

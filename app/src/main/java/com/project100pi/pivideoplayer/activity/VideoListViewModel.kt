@@ -19,22 +19,26 @@ import kotlin.collections.ArrayList
 import android.content.Intent
 import com.project100pi.pivideoplayer.listeners.ItemDeleteListener
 
-class MainViewModel(private val context: Context?, application: Application): AndroidViewModel(application), ClickInterface {
+class VideoListViewModel(private val context: Context?, application: Application): AndroidViewModel(application), ClickInterface {
 
-    private var viewModelJob = Job()
-    private val viewModelScope = CoroutineScope(viewModelJob + Dispatchers.IO)
     private val allFilePaths = mutableListOf<String>()
     private var foldersList = MutableLiveData<ArrayList<FolderInfo>>()
     val foldersListExposed: LiveData<ArrayList<FolderInfo>>
         get() = foldersList
     private var pathToIdInfo = HashMap<String, String>()
     private var foldersWithPathMap = HashMap<String, FolderInfo>()
-    private var TAG = "MainViewModel"
+
+    private val coroutineJob = Job()
+    private val coroutineScope = CoroutineScope(Dispatchers.IO + coroutineJob)
 
     //Mode to know whether folders are visible or songs of folder are visible
     var MODE = Constants.FOLDER_VIEW
 
     var CURRENT_SONG_FOLDER_INDEX = -1
+
+    init {
+        loadAllFolderData()
+    }
 
     override fun onItemClicked(position: Int) {
         CURRENT_SONG_FOLDER_INDEX = position
@@ -45,12 +49,13 @@ class MainViewModel(private val context: Context?, application: Application): An
         CURRENT_SONG_FOLDER_INDEX = -1
         MODE = Constants.FOLDER_VIEW
     }
+
     override fun onItemLongClicked(position: Int): Boolean {
         return false
     }
 
     fun delete(listOfIndexes: List<Int>, isDirectory: Boolean, listener: ItemDeleteListener) {
-        viewModelScope.launch {
+        coroutineScope.launch {
 
             for (position in listOfIndexes) {
                 try {
@@ -87,12 +92,12 @@ class MainViewModel(private val context: Context?, application: Application): An
         }
     }
 
-    fun loadAllFolderData() {
+    private fun loadAllFolderData() {
         foldersWithPathMap.clear()
         allFilePaths.clear()
         pathToIdInfo.clear()
 
-        viewModelScope.launch {
+        coroutineScope.launch {
             val cursor = CursorFactory.getAllVideoCursor(context!!)
 
             if (cursor != null && cursor.moveToFirst()) {
@@ -107,8 +112,7 @@ class MainViewModel(private val context: Context?, application: Application): An
                         if (FileExtension.isVideo(path)) {
                             if (path != null) {
                                 allFilePaths.add(path)
-                                pathToIdInfo[path] = songId
-
+                                pathToIdInfo[path] = songId // change to video id
 
                                 //Splitting song path to list by using .split("/") to get elements from song path separated
                                 // /storage/emulated/music/abc.mp3
@@ -154,7 +158,7 @@ class MainViewModel(private val context: Context?, application: Application): An
                                 continue
                         }
 
-                    } catch (e: Exception) {
+                    } catch (e: Exception) { // catch specific exception
                         e.printStackTrace()
                     }
                 } while (cursor.moveToNext())
@@ -163,16 +167,15 @@ class MainViewModel(private val context: Context?, application: Application): An
             withContext(Dispatchers.Main)
                 {
                     //Converting hash map to arraylist which will be submitted to adapter
-                    var list = ArrayList(foldersWithPathMap.values.sortedWith(compareBy { it.songName }))
+                    var list = ArrayList(foldersWithPathMap.values.sortedWith(compareBy { it.videoName }))
                     foldersList.value = list
                 }
-
         }
     }
 
     override fun onCleared() {
         super.onCleared()
-        viewModelJob.cancel()
+        coroutineJob.cancel()
     }
 
     fun removeElementAt(position: Int) {

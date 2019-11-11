@@ -39,7 +39,7 @@ class StorageFileViewHolder(private val context: Context, itemView: View, var li
             ivThumbnail.background = ContextCompat.getDrawable(context, R.drawable.ic_folder)
             ivOverFlow.visibility = View.GONE
         }
-        tvTitle.text = file.songName
+        tvTitle.text = file.videoName
 
         clItemRow.setOnClickListener(this)
         clItemRow.setOnLongClickListener(this)

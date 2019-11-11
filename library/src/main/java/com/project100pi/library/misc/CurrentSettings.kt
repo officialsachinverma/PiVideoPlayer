@@ -19,4 +19,8 @@ object CurrentSettings {
         var stopped = false
     }
 
+    object Video {
+        var mode = 0
+    }
+
 }

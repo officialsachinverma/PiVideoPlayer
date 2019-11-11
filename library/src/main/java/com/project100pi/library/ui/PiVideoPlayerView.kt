@@ -1,34 +1,34 @@
 package com.project100pi.library.ui
 
-import android.annotation.TargetApi
 import android.app.Activity
 import android.content.Context
-import android.content.res.Resources
-import android.graphics.BitmapFactory
+import android.content.Context.AUDIO_SERVICE
 import android.graphics.Matrix
+import android.graphics.Point
 import android.graphics.RectF
-import android.graphics.drawable.BitmapDrawable
-import android.graphics.drawable.Drawable
+import android.media.AudioManager
+import android.os.Build
 import android.os.Looper
+import android.os.SystemClock
+import android.provider.Settings
 import android.util.AttributeSet
 import android.view.*
 import android.widget.FrameLayout
-import android.widget.ImageView
 import android.widget.TextView
-import androidx.annotation.IntDef
-import androidx.core.content.ContextCompat
-import androidx.core.content.res.ResourcesCompat
+import android.view.GestureDetector
+import android.widget.ImageButton
+import androidx.appcompat.app.ActionBar
+import androidx.appcompat.widget.Toolbar
+import androidx.appcompat.app.AppCompatActivity
 import com.google.android.exoplayer2.C
 import com.google.android.exoplayer2.ExoPlaybackException
 import com.google.android.exoplayer2.Player
-import com.google.android.exoplayer2.metadata.Metadata
-import com.google.android.exoplayer2.metadata.flac.PictureFrame
-import com.google.android.exoplayer2.metadata.id3.ApicFrame
 import com.google.android.exoplayer2.source.TrackGroupArray
 import com.google.android.exoplayer2.text.Cue
 import com.google.android.exoplayer2.text.TextOutput
 import com.google.android.exoplayer2.trackselection.TrackSelectionArray
 import com.google.android.exoplayer2.ui.AspectRatioFrameLayout
+import com.google.android.exoplayer2.ui.AspectRatioFrameLayout.ResizeMode
 import com.google.android.exoplayer2.ui.PlayerControlView
 import com.google.android.exoplayer2.ui.PlayerView.*
 import com.google.android.exoplayer2.ui.SubtitleView
@@ -38,24 +38,49 @@ import com.google.android.exoplayer2.util.Assertions
 import com.google.android.exoplayer2.util.ErrorMessageProvider
 import com.google.android.exoplayer2.video.VideoListener
 import com.project100pi.library.R
-import com.project100pi.library.misc.Util
+import com.project100pi.library.misc.CountDown
+import com.project100pi.library.misc.CurrentSettings
+import com.project100pi.library.misc.Logger
 import com.project100pi.library.player.PiVideoPlayer
 
 class PiVideoPlayerView: FrameLayout {
+
+    /** The default show timeout, in milliseconds.  */
+    val DEFAULT_SHOW_TIMEOUT_MS = 5000
 
     private val SURFACE_TYPE_NONE = 0
     private val SURFACE_TYPE_SURFACE_VIEW = 1
     private val SURFACE_TYPE_TEXTURE_VIEW = 2
     private val SURFACE_TYPE_MONO360_VIEW = 3
 
+    // Gestures
+    private val mGestureDetector: GestureDetector
+    private val am: AudioManager
+    private var systemWidth: Int = 0
+    private var systemHeight: Int = 0
+    private var systemSize: Point = Point()
+    private var streamVolume: Int
+    private var maxSystemVolume: Int
+    private var minSystemVolume: Int
+    private var screenBrightness: Int
+    private var maxSystemBrightness: Int = 255
+    private var minSystemBrightness: Int = 0
+
+    var toolbar: Toolbar
+    private var mActionBar: ActionBar? = null
     private var contentFrame: AspectRatioFrameLayout
     private var shutterView: View
     private var surfaceView: View? = null
     private var subtitleView: SubtitleView
     private var bufferingView: View
     private var errorMessageView: TextView
-    private var controller: PiVideoPlayerControlView? = null
+    private var videoResizingView: TextView
+    private var screenLock: ImageButton
+    private var screenLockButton: View
+    private var fullScreenButton: View
+    private var controller: PlayerControlView? = null
     private var componentListener = ComponentListener()
+    private var gestureListener = PiGesture()
 
     private var player: PiVideoPlayer? = null
     private var useController: Boolean = false
@@ -68,6 +93,13 @@ class PiVideoPlayerView: FrameLayout {
     private var controllerAutoShow: Boolean = true
     private var controllerHideOnTouch: Boolean = true
     private var textureViewRotation: Int = 0
+    private var hideSystemUI = true
+    private var hideAction: Runnable
+    private var hideAtMs: Long = 0
+    private var showTimeoutMillis: Int = 0
+    private var activeGesture = ""
+
+    private var isScreenLocked: Boolean = false
 
     constructor(context: Context): this(context, null)
 
@@ -85,6 +117,8 @@ class PiVideoPlayerView: FrameLayout {
         var controllerHideOnTouch = true
         var controllerAutoShow = true
         var showBuffering = SHOW_BUFFERING_NEVER
+        hideAtMs = C.TIME_UNSET
+        showTimeoutMillis = DEFAULT_SHOW_TIMEOUT_MS
         if (attrs != null) {
             val a = context.theme.obtainStyledAttributes(attrs, R.styleable.PlayerView, 0, 0)
             try {
@@ -114,6 +148,12 @@ class PiVideoPlayerView: FrameLayout {
         LayoutInflater.from(context).inflate(playerLayoutId, this)
         descendantFocusability = ViewGroup.FOCUS_AFTER_DESCENDANTS
 
+        // Toolbar
+        toolbar = findViewById(R.id.pi_toolbar_placeholder)
+        (context as AppCompatActivity).setSupportActionBar(toolbar)
+        mActionBar = context.supportActionBar
+        mActionBar?.setDisplayHomeAsUpEnabled(true)
+
         // Content frame.
         contentFrame = findViewById(R.id.pi_content_frame)
         setResizeModeRaw(contentFrame, resizeMode)
@@ -133,7 +173,7 @@ class PiVideoPlayerView: FrameLayout {
                 SURFACE_TYPE_TEXTURE_VIEW -> TextureView(context)
                 SURFACE_TYPE_MONO360_VIEW -> {
                     val sphericalSurfaceView = SphericalSurfaceView(context)
-                    sphericalSurfaceView.setSingleTapListener(componentListener)
+                    sphericalSurfaceView.setSingleTapListener(gestureListener)
                     sphericalSurfaceView
                 }
                 else -> SurfaceView(context)
@@ -154,25 +194,61 @@ class PiVideoPlayerView: FrameLayout {
         subtitleView.setUserDefaultStyle()
         subtitleView.setUserDefaultTextSize()
         subtitleView.setCues(null)
+
+        // Video Resizing view.
+        videoResizingView = findViewById(R.id.pi_video_resize)
+        videoResizingView.visibility = View.GONE
+
         // Error message view.
         errorMessageView = findViewById(R.id.pi_error_message)
         errorMessageView.visibility = View.GONE
 
+        // Screen Lock
+        screenLock = findViewById(R.id.pi_screen_lock)
+        screenLock.visibility = View.GONE
+        screenLock.setOnLongClickListener {
+            isScreenLocked = false
+            screenLock.visibility = View.GONE
+            showController(false)
+            false
+        }
+
+        mGestureDetector = GestureDetector(context, gestureListener)
+        am = context.applicationContext.getSystemService(AUDIO_SERVICE) as AudioManager
+        maxSystemVolume = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC) * 3
+        minSystemVolume = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            am.getStreamMinVolume(AudioManager.STREAM_MUSIC)
+        } else {
+            0
+        }
+        streamVolume = am.getStreamVolume(AudioManager.STREAM_MUSIC)
+        getScreenSize()
+
+        screenBrightness = Settings.System.getInt(
+            context.contentResolver,
+            Settings.System.SCREEN_BRIGHTNESS,
+            0
+        )
+
+        Settings.System.putInt(context.contentResolver, Settings.System.SCREEN_BRIGHTNESS_MODE, Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL)
+
         // Playback control view.
-        val customController = findViewById<PiVideoPlayerControlView>(R.id.pi_controller)
+        val customController = findViewById<PlayerControlView>(R.id.pi_controller)
         val controllerPlaceholder = findViewById<View>(R.id.pi_controller_placeholder)
         when {
             customController != null -> this.controller = customController
             controllerPlaceholder != null -> {
                 // Propagate attrs as playbackAttrs so that PlayerControlView's custom attributes are
                 // transferred, but standard attributes (e.g. background) are not.
-                this.controller = PiVideoPlayerControlView(context, null, 0, attrs)
-                controller!!.id = R.id.pi_controller
-                controller!!.layoutParams = controllerPlaceholder.layoutParams
+                this.controller = PlayerControlView(context, null, 0, attrs)
+                //controller!!.playerControllerListener = this@PiVideoPlayerView
+                this.controller!!.id = R.id.pi_controller
+                this.controller!!.layoutParams = controllerPlaceholder.layoutParams
                 val parent = controllerPlaceholder.parent as ViewGroup
                 val controllerIndex = parent.indexOfChild(controllerPlaceholder)
                 parent.removeView(controllerPlaceholder)
                 parent.addView(controller, controllerIndex)
+
             }
             else -> this.controller = null
         }
@@ -181,6 +257,17 @@ class PiVideoPlayerView: FrameLayout {
         this.controllerAutoShow = controllerAutoShow
         this.useController = useController && controller != null
         hideController()
+        hideAction = Runnable { this.hide() }
+
+        screenLockButton = this.controller!!.findViewById(R.id.pi_screen_lock)
+        fullScreenButton = this.controller!!.findViewById(R.id.pi_full_screen)
+
+        screenLockButton.setOnClickListener {
+            lockScreen()
+        }
+        fullScreenButton.setOnClickListener {
+            videoResize()
+        }
     }
 
     /**
@@ -219,7 +306,7 @@ class PiVideoPlayerView: FrameLayout {
         }
         this.player = videoPlayer
         if (useController) {
-            controller!!.setPiPlayer(videoPlayer!!.getPlayer())
+            controller!!.player = videoPlayer!!.getExoPlayer()
         }
         if (subtitleView != null) {
             subtitleView!!.setCues(null)
@@ -292,9 +379,28 @@ class PiVideoPlayerView: FrameLayout {
         }
     }
 
+    fun hide(){
+        if (!hideSystemUI) {
+            hideSystemUI()
+            removeCallbacks(hideAction)
+            hideAtMs = C.TIME_UNSET
+        }
+    }
+
+    private fun hideAfterTimeout() {
+        removeCallbacks(hideAction)
+        if (showTimeoutMillis > 0) {
+            hideAtMs = SystemClock.uptimeMillis() + showTimeoutMillis
+            postDelayed(hideAction, showTimeoutMillis.toLong())
+        } else {
+            hideAtMs = C.TIME_UNSET
+        }
+    }
+
     /** Hides the playback controls. Does nothing if playback controls are disabled.  */
     fun hideController() {
         controller?.hide()
+        hideSystemUI()
     }
 
     /** Returns whether the controller is currently visible.  */
@@ -352,7 +458,7 @@ class PiVideoPlayerView: FrameLayout {
     /** Shows the playback controls, but only if forced or shown indefinitely.  */
     private fun maybeShowController(isForced: Boolean) {
         if (useController) {
-            val wasShowingIndefinitely = controller!!.isVisible() && controller!!.showTimeoutMillis <= 0
+            val wasShowingIndefinitely = controller!!.isVisible() && controller!!.showTimeoutMs <= 0
             val shouldShowIndefinitely = shouldShowControllerIndefinitely()
             if (isForced || wasShowingIndefinitely || shouldShowIndefinitely) {
                 showController(shouldShowIndefinitely)
@@ -360,12 +466,15 @@ class PiVideoPlayerView: FrameLayout {
         }
     }
 
-    fun showController(showIndefinitely: Boolean) {
-        if (!useController) {
+    private fun showController(showIndefinitely: Boolean) {
+        if (!useController)
             return
-        }
-        controller!!.showTimeoutMillis = if (showIndefinitely) 0 else controllerShowTimeoutMs
-        controller?.show()
+        if (isScreenLocked)
+            return
+        controller!!.showTimeoutMs = if (showIndefinitely) 0 else controllerShowTimeoutMs
+        controller!!.show()
+        hideAfterTimeout()
+        showSystemUI()
     }
 
     private fun shouldShowControllerIndefinitely(): Boolean {
@@ -386,8 +495,39 @@ class PiVideoPlayerView: FrameLayout {
             maybeShowController(true)
         } else if (controllerHideOnTouch) {
             controller?.hide()
+            hideSystemUI()
         }
         return true
+    }
+
+    // Shows the system bars by removing all the flags
+    // except for the ones that make the content appear under the system bars.
+
+    private fun showSystemUI() {
+        (context as AppCompatActivity).window.decorView.systemUiVisibility = (View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN)
+        (context as AppCompatActivity).supportActionBar?.show()
+        hideSystemUI = false
+    }
+
+    private fun hideSystemUI() {
+        if (!hideSystemUI) {
+            // Enables regular immersive mode.
+            // For "lean back" mode, remove SYSTEM_UI_FLAG_IMMERSIVE.
+            // Or for "sticky immersive," replace it with SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+            (context as Activity).window.decorView.systemUiVisibility = (View.SYSTEM_UI_FLAG_IMMERSIVE
+                    // Set the content to appear under the system bars so that the
+                    // content doesn't resize when the system bars hide and show.
+                    or View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                    or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                    or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                    // Hide the nav bar and status bar
+                    or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                    or View.SYSTEM_UI_FLAG_FULLSCREEN)
+            (context as AppCompatActivity).supportActionBar?.hide()
+            hideSystemUI = true
+        }
     }
 
     /** Applies a texture rotation to a [TextureView].  */
@@ -416,11 +556,64 @@ class PiVideoPlayerView: FrameLayout {
         }
     }
 
+    // Controller View Actions Starts
+
+    private fun lockScreen() {
+        isScreenLocked = true
+        hideController()
+        screenLock.visibility = View.VISIBLE
+    }
+
+    private fun videoResize() {
+        CurrentSettings.Video.mode++
+
+        if (CurrentSettings.Video.mode > 2)
+            CurrentSettings.Video.mode = 0
+
+        videoResizingView.visibility = View.VISIBLE
+
+        when (CurrentSettings.Video.mode) {
+//            0 -> {
+//                setResizeMode(AspectRatioFrameLayout.RESIZE_MODE_FILL)
+//                player?.setVideoScalingMode(C.VIDEO_SCALING_MODE_DEFAULT)
+//                videoResizingView.text = "DEFAULT"
+//            }
+            0 -> {
+                setResizeMode(AspectRatioFrameLayout.RESIZE_MODE_FIT)
+                player?.setVideoScalingMode(C.VIDEO_SCALING_MODE_SCALE_TO_FIT)
+                videoResizingView.text = "FIT TO SCREEN"
+//                videoResizingView.text = "FIT"
+            }
+            1 -> {
+                setResizeMode(AspectRatioFrameLayout.RESIZE_MODE_FILL)
+                player?.setVideoScalingMode(C.VIDEO_SCALING_MODE_SCALE_TO_FIT)
+                videoResizingView.text = "STRETCH"
+            }
+            2 -> {
+                setResizeMode(AspectRatioFrameLayout.RESIZE_MODE_ZOOM)
+                player?.setVideoScalingMode(C.VIDEO_SCALING_MODE_SCALE_TO_FIT)
+                videoResizingView.text = "CROP"
+            }
+        }
+        CountDown(2000, 1000, videoResizingView)
+    }
+
+    /**
+     * Sets the [ResizeMode].
+     *
+     * @param resizeMode The [ResizeMode].
+     */
+    private fun setResizeMode(@ResizeMode resizeMode: Int) {
+        Assertions.checkState(contentFrame != null)
+        contentFrame.resizeMode = resizeMode
+    }
+
+    // Controller View Actions Ends
+
     private inner class ComponentListener : Player.EventListener,
         TextOutput,
         VideoListener,
-        OnLayoutChangeListener,
-        SingleTapListener {
+        OnLayoutChangeListener{
 
         // TextOutput implementation
 
@@ -493,12 +686,102 @@ class PiVideoPlayerView: FrameLayout {
         ) {
             applyTextureViewRotation(view as TextureView, textureViewRotation)
         }
+    }
 
-        // SingleTapListener implementation
+    private fun getScreenSize() {
+        val display = (context as Activity).windowManager.defaultDisplay
+        display.getSize(systemSize)
+        systemWidth = systemSize.x
+        systemHeight = systemSize.y
+    }
+
+
+    override fun onTouchEvent(event: MotionEvent?): Boolean {
+        if (!isScreenLocked)
+            mGestureDetector.onTouchEvent(event)
+        return true
+    }
+
+    private inner class PiGesture: GestureDetector.SimpleOnGestureListener(), SingleTapListener{
 
         override fun onSingleTapUp(e: MotionEvent): Boolean {
             return toggleControllerVisibility()
         }
+
+        override fun onScroll(e1: MotionEvent?, e2: MotionEvent?, p2: Float, p3: Float): Boolean {
+
+            activeGesture = when {
+                (e1!!.x < (systemWidth / 2) && e2!!.x < (systemWidth / 2) && activeGesture.isEmpty()) -> "Brightness"
+                (e1!!.x > (systemWidth / 2) && e2!!.x > (systemWidth / 2) && activeGesture.isEmpty()) -> "Volume"
+                (e1!!.y > (systemHeight / 2) && e2!!.y > (systemHeight / 2) && activeGesture.isEmpty()) -> "Seek"
+                else -> ""
+            }
+
+            // for brightness
+            if (e1!!.x < (systemWidth / 2) && e2!!.x < (systemWidth / 2) && activeGesture == "Brightness") {
+                Logger.d("Gesture: Brightness")
+                if (e1!!.y < e2!!.y){
+                    Logger.d("Gesture: Scroll Down")
+                    if (screenBrightness > minSystemBrightness)
+                        Settings.System.putInt(context!!.contentResolver, Settings.System.SCREEN_BRIGHTNESS, --screenBrightness)
+                }
+                if(e1.y > e2.y){
+                    Logger.d("Gesture: Scroll Up")
+                    if (screenBrightness < maxSystemBrightness)
+                        Settings.System.putInt(context!!.contentResolver, Settings.System.SCREEN_BRIGHTNESS, ++screenBrightness)
+                }
+            }
+
+            // for volume
+            if (e1!!.x > (systemWidth / 2) && e2!!.x > (systemWidth / 2) && activeGesture == "Volume") {
+                Logger.d("Gesture: Volume")
+                if (e1!!.y < e2!!.y){
+                    Logger.d("Gesture: Scroll Down")
+
+                    if (streamVolume > minSystemVolume) {
+                        --streamVolume
+                        if (streamVolume % 3 == 0) {
+                            am.setStreamVolume(
+                                AudioManager.STREAM_MUSIC,
+                                streamVolume / 3,
+                                AudioManager.FLAG_SHOW_UI
+                            )
+                        }
+                    }
+                }
+                if(e1.y > e2.y){
+                    Logger.d("Gesture: Scroll Up")
+                    if (streamVolume < maxSystemVolume) {
+                        ++streamVolume
+                        if (streamVolume % 3 == 0) {
+                            am.setStreamVolume(
+                                AudioManager.STREAM_MUSIC,
+                                streamVolume / 3,
+                                AudioManager.FLAG_SHOW_UI
+                            )
+                        }
+                    }
+                }
+            }
+
+            // for seek
+            if (e1!!.y > (systemHeight / 2) && e2!!.y > (systemHeight / 2) && activeGesture == "Seek") {
+                Logger.d("Gesture: Seek")
+                if (e1!!.x < e2!!.x){
+                    Logger.d("Gesture: Left to Right swipe: "+ e1.x + " - " + e2.x)
+                    player!!.seekTo(player!!.getCurrentWindowIndex(), player!!.getCurrentPosition() + player!!.DEFAULT_FAST_FORWARD_TIME)
+                }
+                if (e1.x > e2.x) {
+                    Logger.d("Gesture: Right to Left swipe: "+ e1.x + " - " + e2.x)
+                    player!!.seekTo(player!!.getCurrentWindowIndex(), player!!.getCurrentPosition() - player!!.DEFAULT_REWIND_TIME)
+                }
+            }
+
+            activeGesture = ""
+
+            return true
+        }
+
     }
 
 }

@@ -3,14 +3,14 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
     <item
         android:id="@+id/itemPlay"
-        android:title="@string/context_menu_play"
+        android:title="@string/overflow_menu_play"
         app:showAsAction="never"></item>
     <item
         android:id="@+id/itemShare"
-        android:title="@string/context_menu_share"
+        android:title="@string/overflow_menu_share"
         app:showAsAction="never"></item>
     <item
         android:id="@+id/itemDelete"
-        android:title="@string/context_menu_delete"
+        android:title="@string/overflow_menu_delete"
         app:showAsAction="never"></item>
 </menu>

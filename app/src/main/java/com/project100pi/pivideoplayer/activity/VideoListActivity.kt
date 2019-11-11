@@ -28,7 +28,7 @@ import androidx.core.app.ActivityCompat
 import butterknife.BindView
 import butterknife.ButterKnife
 import com.project100pi.pivideoplayer.adapters.StorageFileAdapter
-import com.project100pi.pivideoplayer.factory.MainViewModelFactory
+import com.project100pi.pivideoplayer.factory.VideoListViewModelFactory
 import com.project100pi.pivideoplayer.listeners.ItemDeleteListener
 import com.project100pi.pivideoplayer.model.FolderInfo
 import com.project100pi.pivideoplayer.utils.ContextMenuUtil
@@ -39,12 +39,18 @@ import kotlin.collections.ArrayList
 
 class VideoListActivity : AppCompatActivity(), OnClickListener, ItemDeleteListener, PermissionsUtil.ShowAlertCallback{
 
-    @BindView(R.id.rv_video_file_list) lateinit var  rvVideoList: RecyclerView
-    @BindView(R.id.folder_view_container) lateinit var mFolderViewContainer: View
-    @BindView(R.id.folder_up_text) lateinit var folderUpText: TextView
-    @BindView(R.id.folder_up_image) lateinit var folderUpIconImage: ImageView
-    @BindView(R.id.anim_toolbar) lateinit var mToolbar: Toolbar
-    @BindView(R.id.tv_no_video_found_msg) lateinit var tvEmptyList: TextView
+    @BindView(R.id.rv_video_file_list)
+    lateinit var  rvVideoList: RecyclerView
+    @BindView(R.id.folder_view_container)
+    lateinit var mFolderViewContainer: View
+    @BindView(R.id.folder_up_text)
+    lateinit var folderUpText: TextView
+    @BindView(R.id.folder_up_image)
+    lateinit var folderUpIconImage: ImageView
+    @BindView(R.id.anim_toolbar)
+    lateinit var mToolbar: Toolbar
+    @BindView(R.id.tv_no_video_found_msg)
+    lateinit var tvEmptyList: TextView
 
     private lateinit var model: VideoListViewModel
     private var adapter: StorageFileAdapter? = null
@@ -52,7 +58,7 @@ class VideoListActivity : AppCompatActivity(), OnClickListener, ItemDeleteListen
     private var actionMode: ActionMode? = null
     private val mContext = this
     private var granted: Boolean = false
-    val permission =  Manifest.permission.WRITE_EXTERNAL_STORAGE
+    private val permission =  Manifest.permission.WRITE_EXTERNAL_STORAGE
     private lateinit var permissionUtil: PermissionsUtil
     private var videoListData: ArrayList<FolderInfo> = ArrayList()
 
@@ -62,7 +68,7 @@ class VideoListActivity : AppCompatActivity(), OnClickListener, ItemDeleteListen
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+        setContentView(R.layout.activity_video_list)
         ButterKnife.bind(this)
         setSupportActionBar(mToolbar)
 
@@ -78,7 +84,7 @@ class VideoListActivity : AppCompatActivity(), OnClickListener, ItemDeleteListen
     private fun init() {
 
         val application = requireNotNull(this).application
-        val viewModelFactory = MainViewModelFactory(this , application)
+        val viewModelFactory = VideoListViewModelFactory(this , application)
         model = ViewModelProviders.of(this, viewModelFactory).get(VideoListViewModel::class.java)
 
         val folderUpIcon = ContextCompat.getDrawable(this, R.drawable.folder_up)
@@ -96,7 +102,6 @@ class VideoListActivity : AppCompatActivity(), OnClickListener, ItemDeleteListen
         rvVideoList.visibility = View.GONE
 
         observeForObservers()
-
     }
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
@@ -107,6 +112,10 @@ class VideoListActivity : AppCompatActivity(), OnClickListener, ItemDeleteListen
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
             R.id.itemSettings -> {
+                return true
+            }
+            R.id.itemSearch -> {
+                openSearchActivity()
                 return true
             }
             else -> super.onOptionsItemSelected(item)
@@ -124,20 +133,6 @@ class VideoListActivity : AppCompatActivity(), OnClickListener, ItemDeleteListen
     }
 
     private fun showBrightnessPermissionDialog(context: Context) {
-
-//        val builder = AlertDialog.Builder(context)
-//        builder.setCancelable(true)
-//        val alert = builder.create()
-//        builder.setMessage("Please give the permission to change brightness. \n Thanks ")
-//            .setCancelable(false)
-//            .setPositiveButton("OK") { dialog, id ->
-//                val intent = Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS)
-//                intent.data = Uri.parse("package:" + context.packageName)
-//                context.startActivity(intent)
-//                alert.dismiss()
-//            }
-//        alert.show()
-
         val intent = Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS)
         intent.data = Uri.parse("package:" + context.packageName)
         context.startActivity(intent)
@@ -243,14 +238,7 @@ class VideoListActivity : AppCompatActivity(), OnClickListener, ItemDeleteListen
                 model.onItemClicked(position)
                 setAdapter()
             } else {
-
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                    if (Settings.System.canWrite(this)) {
-                        launchPlayerActivity(position)
-                    } else {
-                        showBrightnessPermissionDialog(this)
-                    }
-                }
+                launchPlayerActivity(position)
             }
         } else {
             toggleSelection(position)
@@ -259,30 +247,51 @@ class VideoListActivity : AppCompatActivity(), OnClickListener, ItemDeleteListen
     }
 
     private fun launchPlayerActivity(position: Int) {
-        //Play the video
-        val currentVideo = videoListData[model.CURRENT_SONG_FOLDER_INDEX].songsList[position]
-
-        val playerIntent = Intent(this, PlayerActivity::class.java)
-        playerIntent.putExtra(Constants.FILE_PATH, currentVideo.path)
-        val pathsList = ArrayList<String?>()
-        for ((tempPos, folder) in videoListData[model.CURRENT_SONG_FOLDER_INDEX].songsList.withIndex()) {
-            //if (tempPos >= position) {
-                pathsList.add(folder.path)
-            //}
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (Settings.System.canWrite(this)) {
+                playVideo(position, false)
+            } else {
+                showBrightnessPermissionDialog(this)
+            }
+        } else {
+            playVideo(position, false)
         }
-        playerIntent.putExtra(Constants.Playback.WINDOW, position)
-        playerIntent.putExtra(Constants.QUEUE, pathsList)
+
+    }
+
+    private fun playVideo(position: Int, isMultiple: Boolean) {
+        val playerIntent = Intent(this, PlayerActivity::class.java)
+       if (!isMultiple) {
+           val currentVideo = videoListData[model.CURRENT_SONG_FOLDER_INDEX].songsList[position]
+           playerIntent.putExtra(Constants.FILE_PATH, currentVideo.path)
+           val pathsList = ArrayList<String?>()
+           for (folder in videoListData[model.CURRENT_SONG_FOLDER_INDEX].songsList) {
+               pathsList.add(folder.path)
+           }
+           playerIntent.putExtra(Constants.Playback.WINDOW, position)
+           playerIntent.putExtra(Constants.QUEUE, pathsList)
+       } else {
+           val pathsList = ArrayList<String?>()
+           for(position in adapter!!.getSelectedItems()) {
+               pathsList.add(videoListData[model.CURRENT_SONG_FOLDER_INDEX].songsList[position].path)
+           }
+           playerIntent.putExtra(Constants.QUEUE, pathsList)
+       }
         startActivity(playerIntent)
     }
 
+
     private fun playSelectedVideos() {
-        val playerIntent = Intent(this, PlayerActivity::class.java)
-        val pathsList = ArrayList<String?>()
-        for(position in adapter!!.getSelectedItems()) {
-            pathsList.add(videoListData[model.CURRENT_SONG_FOLDER_INDEX].songsList[position].path)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (Settings.System.canWrite(this)) {
+                playVideo(-1, true)
+            } else {
+                showBrightnessPermissionDialog(this)
+            }
+        } else {
+            playVideo(-1, true)
         }
-        playerIntent.putExtra(Constants.QUEUE, pathsList)
-        startActivity(playerIntent)
+
     }
 
     private fun doActionOnOverflowItemClick(position: Int, viewId: Int) {
@@ -337,10 +346,21 @@ class VideoListActivity : AppCompatActivity(), OnClickListener, ItemDeleteListen
             model.removeElementAt(position)
             adapter!!.notifyItemRemoved(position)
         }
+        Toast.makeText(
+            this@VideoListActivity,
+            "${listOfIndexes.size} " + getString(R.string.songs_deleted_toast),
+            Toast.LENGTH_SHORT
+        ).show()
     }
 
     override fun onDeleteError() {
-        Toast.makeText(mContext, "", Toast.LENGTH_SHORT).show()
+        Toast.makeText(mContext, "Some error occurred while deleting video(s)", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun openSearchActivity() {
+        val intent = Intent(this@VideoListActivity, SearchActivity::class.java)
+        intent.putExtra("reason", "general")
+        startActivity(intent)
     }
 
     inner class ActionModeCallback: ActionMode.Callback {
