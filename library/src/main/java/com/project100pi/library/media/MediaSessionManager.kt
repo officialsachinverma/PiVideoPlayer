@@ -4,6 +4,7 @@ import android.app.PendingIntent
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.media.AudioManager
 import android.support.v4.media.session.MediaControllerCompat
 import android.support.v4.media.session.MediaSessionCompat
 import com.project100pi.library.misc.ApplicationHelper
@@ -31,8 +32,11 @@ class MediaSessionManager: MediaSessionCompat.Callback {
 
         val mediaButtonReceiver = ComponentName(appContext, MediaReceiver::class.java)
         val mediaButtonIntent = Intent(Intent.ACTION_MEDIA_BUTTON)
+        mediaButtonIntent.`package` = appContext.packageName
         mediaButtonIntent.setClass(appContext, MediaReceiver::class.java)
+
         val pendingIntent = PendingIntent.getBroadcast(appContext, 0, mediaButtonIntent, 0)
+
         mediaSessionCompat = MediaSessionCompat(appContext, "MediaSessionManager", mediaButtonReceiver, pendingIntent)
         mediaSessionCompat.setFlags(
             MediaSessionCompat.FLAG_HANDLES_MEDIA_BUTTONS or MediaSessionCompat.FLAG_HANDLES_TRANSPORT_CONTROLS
@@ -40,6 +44,9 @@ class MediaSessionManager: MediaSessionCompat.Callback {
         mediaSessionCompat.setCallback(this)
         mediaSessionCompat.isActive = true
         storeTokenAndID()
+
+//        val mAudioManager =  appContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+//        mAudioManager.registerMediaButtonEventReceiver(mediaButtonReceiver)
     }
 
     fun getTransportControls(): MediaControllerCompat.TransportControls = mediaSessionCompat.controller.transportControls
