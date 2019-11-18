@@ -18,6 +18,8 @@
     <item name="pi_full_screen" type="id"/>
     <item name="pi_next" type="id"/>
     <item name="pi_screen_lock" type="id"/>
+    <item name="pi_screen_unlock" type="id"/>
+    <item name="pi_screen_rotation" type="id"/>
     <item name="pi_shuffle" type="id"/>
     <item name="pi_repeat_toggle" type="id"/>
     <item name="pi_duration" type="id"/>

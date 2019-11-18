@@ -1,4 +1,108 @@
 <?xml version="1.0" encoding="utf-8"?>
-<merge>
-    <include layout="@layout/pi_simple_player_view"/>
-</merge>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/constraintLayout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <com.google.android.exoplayer2.ui.PlayerView
+        android:id="@+id/exo_player_view"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        app:controller_layout_id="@layout/pi_playback_control_view"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <View
+        android:id="@+id/gesture_capture"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <include
+        android:id="@id/pi_toolbar"
+        layout="@layout/titlebar" />
+
+    <ImageButton
+        android:id="@id/pi_screen_unlock"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_below="@id/pi_toolbar"
+        android:layout_marginStart="50dp"
+        android:background="#CC000000"
+        android:hapticFeedbackEnabled="true"
+        android:src="@drawable/ic_lock_black_24dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="@+id/top_horizontal_guideline" />
+
+    <ImageButton
+        android:id="@id/pi_screen_rotation"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_below="@id/pi_toolbar"
+        android:layout_marginStart="50dp"
+        android:background="#CC000000"
+        android:hapticFeedbackEnabled="true"
+        android:src="@drawable/ic_screen_rotation_black_24dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="@+id/top_horizontal_guideline" />
+
+    <TextView
+        android:id="@id/pi_video_resize"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_gravity="center"
+        android:gravity="center"
+        android:text="FIT"
+        android:textColor="@android:color/white"
+        android:textSize="30sp" />
+
+    <ProgressBar
+        android:id="@+id/pb_brightness"
+        style="@android:style/Widget.ProgressBar.Horizontal"
+        android:layout_width="50dp"
+        android:layout_height="150dp"
+        android:scaleY="3"
+        android:scaleX="1.5"
+        android:progressDrawable="@drawable/progressbar_states"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@+id/right_vertical_guideline"
+        app:layout_constraintTop_toTopOf="parent"/>
+
+    <ProgressBar
+        android:id="@+id/pb_volume"
+        style="@android:style/Widget.ProgressBar.Horizontal"
+        android:layout_width="50dp"
+        android:layout_height="150dp"
+        android:scaleY="3"
+        android:scaleX="1.5"
+        android:progressDrawable="@drawable/progressbar_states"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="@+id/left_vertical_guideline"
+        app:layout_constraintTop_toTopOf="parent"/>
+
+    <androidx.constraintlayout.widget.Guideline
+        android:id="@+id/top_horizontal_guideline"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        app:layout_constraintGuide_begin="100dp" />
+
+    <androidx.constraintlayout.widget.Guideline
+        android:id="@+id/right_vertical_guideline"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        app:layout_constraintGuide_end="50dp" />
+
+    <androidx.constraintlayout.widget.Guideline
+        android:id="@+id/left_vertical_guideline"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        app:layout_constraintGuide_begin="50dp" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

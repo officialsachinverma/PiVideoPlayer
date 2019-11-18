@@ -9,7 +9,7 @@ import java.io.File
 
 object ContextMenuUtil {
 
-    fun getAudioContentUri(context: Context, videoFile: File): Uri? {
+    fun getVideoContentUri(context: Context, videoFile: File): Uri? {
         var uri: Uri? = null
         val filePath = videoFile.absolutePath
         val cursor = context.contentResolver.query(

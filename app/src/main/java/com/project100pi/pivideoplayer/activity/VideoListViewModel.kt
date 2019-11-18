@@ -2,79 +2,40 @@ package com.project100pi.pivideoplayer.activity
 
 import android.app.Application
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
-import android.provider.MediaStore
+import android.widget.Toast
 import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
-import com.project100pi.pivideoplayer.listeners.ClickInterface
+import com.project100pi.library.misc.Logger
+import com.project100pi.library.model.VideoMetaData
+import com.project100pi.pivideoplayer.listeners.ItemDeleteListener
 import com.project100pi.pivideoplayer.model.FolderInfo
 import com.project100pi.pivideoplayer.utils.Constants
-import com.project100pi.pivideoplayer.database.CursorFactory
-import com.project100pi.pivideoplayer.utils.FileExtension
+import com.project100pi.pivideoplayer.utils.ContextMenuUtil
 import kotlinx.coroutines.*
 import java.io.File
-import java.util.*
-import kotlin.collections.ArrayList
-import android.content.Intent
-import com.project100pi.pivideoplayer.listeners.ItemDeleteListener
 
-class VideoListViewModel(private val context: Context?, application: Application): AndroidViewModel(application), ClickInterface {
-
-    private val allFilePaths = mutableListOf<String>()
-    private var foldersList = MutableLiveData<ArrayList<FolderInfo>>()
-    val foldersListExposed: LiveData<ArrayList<FolderInfo>>
-        get() = foldersList
-    private var pathToIdInfo = HashMap<String, String>()
-    private var foldersWithPathMap = HashMap<String, FolderInfo>()
+class VideoListViewModel (private val context: Context, private val videoList: ArrayList<FolderInfo>, application: Application): AndroidViewModel(application) {
 
     private val coroutineJob = Job()
     private val coroutineScope = CoroutineScope(Dispatchers.IO + coroutineJob)
 
-    //Mode to know whether folders are visible or songs of folder are visible
-    var MODE = Constants.FOLDER_VIEW
-
-    var CURRENT_SONG_FOLDER_INDEX = -1
-
-    init {
-        loadAllFolderData()
-    }
-
-    override fun onItemClicked(position: Int) {
-        CURRENT_SONG_FOLDER_INDEX = position
-        MODE = Constants.SONG_VIEW
-    }
-
-    override fun onBackFolderPressed() {
-        CURRENT_SONG_FOLDER_INDEX = -1
-        MODE = Constants.FOLDER_VIEW
-    }
-
-    override fun onItemLongClicked(position: Int): Boolean {
-        return false
-    }
-
-    fun delete(listOfIndexes: List<Int>, isDirectory: Boolean, listener: ItemDeleteListener) {
+    fun delete(listOfIndexes: List<Int>, listener: ItemDeleteListener) {
         coroutineScope.launch {
 
             for (position in listOfIndexes) {
                 try {
-                    val file = if (!isDirectory) {
-                        val folder = foldersList.value!![CURRENT_SONG_FOLDER_INDEX].songsList[position]
-                        File(folder.path!!)
-                    } else {
-                        val folder = foldersList.value!![position].path!!
-                        File(folder)
-                    }
+                    val folder = videoList[position]
+                    val file = File(folder.path)
                     if(file.exists()) {
                         file.delete()
-                        context!!.applicationContext.sendBroadcast(Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.fromFile(file)))
+                        context.applicationContext.sendBroadcast(Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.fromFile(file)))
                     }
                     if (file.exists()) {
                         file.canonicalFile.delete()
                         if (file.exists()) {
                             file.delete()
-                            context!!.applicationContext.sendBroadcast(Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.fromFile(file)))
+                            context.applicationContext.sendBroadcast(Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.fromFile(file)))
                         }
                     }
                 } catch (e: Exception) {
@@ -92,94 +53,56 @@ class VideoListViewModel(private val context: Context?, application: Application
         }
     }
 
-    private fun loadAllFolderData() {
-        foldersWithPathMap.clear()
-        allFilePaths.clear()
-        pathToIdInfo.clear()
-
-        coroutineScope.launch {
-            val cursor = CursorFactory.getAllVideoCursor(context!!)
-
-            if (cursor != null && cursor.moveToFirst()) {
-                // We populate something, only if the cursor is available
-                do {
-                    try {
-                        //To get path of song
-                        val path = cursor.getString(cursor.getColumnIndex(MediaStore.Video.Media.DATA))
-                        //To get song id
-                        val songId = cursor.getString(cursor.getColumnIndex(MediaStore.Video.Media._ID))
-
-                        if (FileExtension.isVideo(path)) {
-                            if (path != null) {
-                                allFilePaths.add(path)
-                                pathToIdInfo[path] = songId // change to video id
-
-                                //Splitting song path to list by using .split("/") to get elements from song path separated
-                                // /storage/emulated/music/abc.mp3
-                                // -> music will be folder name
-                                // -> emulated will be subfolder name
-                                // -> abc will be song name
-
-                                val pathsList = path.split("/")
-
-                                //Getting folder name from path Example
-                                // /storage/emulated/music/abc.mp3 -> music will be folder name
-                                val folderName = pathsList[pathsList.size - 2]
-
-                                //If there exists a sub folder then add its name
-                                // /storage/emulated/music/abc.mp3 -> emulated will be subfolder name
-                                var subFolderName = ""
-                                if (pathsList.size > 2) {
-                                    subFolderName = pathsList[pathsList.size - 3]
-                                }
-                                //"key" Contains path of song excluding song name
-                                //Complete Path length - Song Name Length
-                                //Song Name Length = pathsList.get(pathsList.size-1).length
-                                var key = path.substring(0, path.length - pathsList[pathsList.size - 1].length)
-
-                                var videoName = pathsList[pathsList.size - 1]
-                                //If folder is not already present in the hashmap
-                                if (!foldersWithPathMap.containsKey(key)) {
-                                    foldersWithPathMap[key] = FolderInfo(
-                                        folderName,
-                                        path.substring(
-                                            0,
-                                            path.length - pathsList[pathsList.size - 1].length
-                                        ),
-                                        subFolderName,
-                                        videoName,
-                                        songId
-                                    )
-                                }
-
-                                foldersWithPathMap[key]?.addSong(videoName, songId)
-
-                            } else
-                                continue
-                        }
-
-                    } catch (e: Exception) { // catch specific exception
-                        e.printStackTrace()
-                    }
-                } while (cursor.moveToNext())
-                cursor.close()
-            }
-            withContext(Dispatchers.Main)
-                {
-                    //Converting hash map to arraylist which will be submitted to adapter
-                    var list = ArrayList(foldersWithPathMap.values.sortedWith(compareBy { it.videoName }))
-                    foldersList.value = list
-                }
-        }
-    }
-
     override fun onCleared() {
         super.onCleared()
         coroutineJob.cancel()
     }
 
     fun removeElementAt(position: Int) {
-        foldersList.value!!.get(CURRENT_SONG_FOLDER_INDEX).songsList.removeAt(position)
+        videoList.removeAt(position)
+    }
+
+    fun shareMultipleVideos(selectedItemPosition: List<Int>) {
+        coroutineScope.launch {
+
+            val listOfVideoUris = ArrayList<Uri?>()
+            for (position in selectedItemPosition) {
+                for (video in videoList[position].songsList) {
+                    listOfVideoUris.add(ContextMenuUtil.getVideoContentUri(context, File(video.path)))
+                }
+            }
+
+            withContext(Dispatchers.Main) {
+                context.startActivity(Intent.createChooser(Intent().setAction(Intent.ACTION_SEND_MULTIPLE)
+                    .setType("video/*")
+                    .setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    .putExtra(Intent.EXTRA_STREAM,  listOfVideoUris), "Share Video"))
+            }
+        }
+    }
+
+    fun playMultipleVideos(selectedItemPosition: List<Int>) {
+        try {
+
+            coroutineScope.launch {
+                val playerIntent = Intent(context, PlayerActivity::class.java)
+                val metaDataList = ArrayList<VideoMetaData>()
+                for(position in selectedItemPosition) {
+//                    metaDataList.add(directoryListViewModel.getVideoMetaData(videoListData[directoryListViewModel.currentSongFolderIndex].songsList[selectedItemPosition].folderId)!!)
+                    for (video in videoList[position].songsList) {
+                        metaDataList.add(VideoMetaData(video.folderId.toInt(), video.videoName, video.path))
+                    }
+                }
+                playerIntent.putExtra(Constants.QUEUE, metaDataList)
+                withContext(Dispatchers.Main) {
+                    context.startActivity(playerIntent)
+                }
+            }
+
+        } catch (e: java.lang.Exception) {
+            Logger.i(e.toString())
+            Toast.makeText(context, "Failed to play with video.", Toast.LENGTH_SHORT).show()
+        }
     }
 
 }

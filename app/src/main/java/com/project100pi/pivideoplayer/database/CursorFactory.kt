@@ -7,21 +7,34 @@ import android.provider.MediaStore
 object CursorFactory {
 
      fun getAllVideoCursor(context: Context): Cursor? {
-         val sortOrder = MediaStore.Video.Media.TITLE + " ASC"
-         val projection = arrayOf(MediaStore.Video.Media.DATA, MediaStore.Video.Media._ID)
+         //val sortOrder = MediaStore.Video.Media.TITLE + " ASC"
+         val projection = arrayOf(MediaStore.Video.Media.DATA, MediaStore.Video.Media._ID, MediaStore.Video.Media.TITLE, MediaStore.Video.Media.DURATION)
          return context.contentResolver.query(
             MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
              projection,
             null,
              null,
-             sortOrder
+             null
         )
     }
 
     fun getVideoSearchData(context: Context, searchData: String): Cursor? {
         val sortOrder = MediaStore.Video.Media.TITLE + " ASC"
-        val projection = arrayOf(MediaStore.Video.Media.DATA, MediaStore.Video.Media._ID)
+        val projection = arrayOf(MediaStore.Video.Media.DATA, MediaStore.Video.Media._ID, MediaStore.Video.Media.TITLE, MediaStore.Video.Media.DURATION)
         val selection = "${MediaStore.Video.Media.TITLE} LIKE '${searchData}%'"
+        return context.contentResolver.query(
+            MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+            projection,
+            selection,
+            null,
+            sortOrder
+        )
+    }
+
+    fun getVideoMetaDataById(context: Context, _id: String): Cursor? {
+        val sortOrder = MediaStore.Video.Media.TITLE + " ASC"
+        val projection = arrayOf(MediaStore.Video.Media.DATA, MediaStore.Video.Media._ID, MediaStore.Video.Media.TITLE)
+        val selection = "${MediaStore.Video.Media._ID} LIKE '${_id}'"
         return context.contentResolver.query(
             MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
             projection,

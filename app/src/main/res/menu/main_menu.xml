@@ -5,8 +5,7 @@
         android:id="@+id/itemSearch"
         android:title="@string/context_menu_search"
         app:showAsAction="ifRoom"
-        android:icon="@drawable/search_icon"
-        android:iconTint="@android:color/black"/>
+        android:icon="@drawable/ic_search" />
     <item
         android:id="@+id/itemSettings"
         android:title="@string/context_menu_settings"

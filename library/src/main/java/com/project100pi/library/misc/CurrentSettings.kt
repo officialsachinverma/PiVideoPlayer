@@ -21,6 +21,7 @@ object CurrentSettings {
 
     object Video {
         var mode = 0
+        var orientation = "landscape"
     }
 
 }

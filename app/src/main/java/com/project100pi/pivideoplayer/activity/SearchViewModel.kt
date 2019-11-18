@@ -15,7 +15,7 @@ import com.project100pi.pivideoplayer.utils.FileExtension
 import kotlinx.coroutines.*
 import java.io.File
 
-class SearchViewModel(private val context: Context?, application: Application): AndroidViewModel(application) {
+class SearchViewModel(private val context: Context, application: Application): AndroidViewModel(application) {
 
     private var foldersList = MutableLiveData<ArrayList<FolderInfo>>()
     val foldersListExposed: LiveData<ArrayList<FolderInfo>>
@@ -29,17 +29,17 @@ class SearchViewModel(private val context: Context?, application: Application): 
 
             for (position in listOfIndexes) {
                 try {
-                    val folder = foldersList.value!![position].path!!
+                    val folder = foldersList.value!![position].path
                     val file = File(folder)
                     if(file.exists()) {
                         file.delete()
-                        context!!.applicationContext.sendBroadcast(Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.fromFile(file)))
+                        context.applicationContext.sendBroadcast(Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.fromFile(file)))
                     }
                     if (file.exists()) {
                         file.canonicalFile.delete()
                         if (file.exists()) {
                             file.delete()
-                            context!!.applicationContext.sendBroadcast(Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.fromFile(file)))
+                            context.applicationContext.sendBroadcast(Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.fromFile(file)))
                         }
                     }
                 } catch (e: Exception) {
@@ -61,7 +61,7 @@ class SearchViewModel(private val context: Context?, application: Application): 
         val searchResult = ArrayList<FolderInfo>()
         try {
             coroutineScope.launch  {
-                val cursor = CursorFactory.getVideoSearchData(context!!, queryText)
+                val cursor = CursorFactory.getVideoSearchData(context, queryText)
                 if (cursor != null && cursor.moveToFirst()) {
                     // We populate something, only if the cursor is available
                     do {
@@ -70,7 +70,8 @@ class SearchViewModel(private val context: Context?, application: Application): 
                             val path = cursor.getString(cursor.getColumnIndex(MediaStore.Video.Media.DATA))
                             //To get song id
                             val songId = cursor.getString(cursor.getColumnIndex(MediaStore.Video.Media._ID))
-
+                            //To get song duration
+                            val songDuration = cursor.getLong(cursor.getColumnIndex(MediaStore.Video.Media.DURATION))
                             if (FileExtension.isVideo(path)) {
                                 if (path != null) {
 
@@ -82,7 +83,22 @@ class SearchViewModel(private val context: Context?, application: Application): 
 
                                     val pathsList = path.split("/")
 
-                                    var videoName = pathsList[pathsList.size - 1]
+                                    val videoName = pathsList[pathsList.size - 1]
+
+                                    var seconds: Long = songDuration / 1000
+                                    var minutes: Long
+                                    var hours: Long
+
+                                    minutes = seconds / 60
+                                    seconds %= 60
+                                    hours = minutes / 60
+                                    minutes %= 60
+
+                                    val duration = if (hours > 0){
+                                        "$hours:$minutes:$seconds"
+                                    } else {
+                                        "$minutes:$seconds"
+                                    }
 
                                     searchResult.add(FolderInfo(
                                         videoName,
@@ -90,7 +106,8 @@ class SearchViewModel(private val context: Context?, application: Application): 
                                         "",
                                         videoName,
                                         songId,
-                                        true
+                                        true,
+                                        duration
                                     ))
 
                                 } else

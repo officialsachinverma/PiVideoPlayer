@@ -1,6 +1,7 @@
 <resources>
-    <string name="app_name">PiVideoPlayer</string>
+    <string name="app_name">Pi Video Player</string>
     <string name="no_video_found">No Videos Found</string>
+    <string name="no_directory_found">No Directory Found</string>
     <string name="n_items_selected_toast"> item(s) selected</string>
     <string name="launcher_not_supporting_homescreen_shortcut">Sorry. Your launcher does not support home screen shortcuts!</string>
 
@@ -9,7 +10,7 @@
     <string name="context_menu_subtitle">Subtitle</string>
     <string name="context_menu_settings">Settings</string>
     <string name="context_menu_search">Search</string>
-    <string name="songs_deleted_toast">Songs Deleted</string>
+    <string name="songs_deleted_toast">Video(s) Deleted</string>
 
     // Search
     <string name="search_library">Search Library...</string>

@@ -5,6 +5,8 @@ import android.media.AudioManager
 import android.net.Uri
 import android.os.Looper
 import android.support.v4.media.session.MediaControllerCompat
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
 import com.google.android.exoplayer2.*
 import com.google.android.exoplayer2.audio.AudioAttributes
 import com.google.android.exoplayer2.source.*
@@ -25,20 +27,24 @@ import com.project100pi.library.media.MediaSessionManager
 import com.project100pi.library.misc.ApplicationHelper
 import com.project100pi.library.misc.CurrentSettings
 import com.project100pi.library.listeners.MediaSessionListener
-import com.project100pi.library.listeners.PlayerEventListener
+import com.project100pi.library.listeners.PiPlayerEventListener
+import com.project100pi.library.model.VideoMetaData
 
 
-class PiVideoPlayer: MediaSessionListener {
+class PiVideoPlayer(private val context: Context): MediaSessionListener {
 
     private val TAG: String = "PiVideoPlayer"
 
     val DEFAULT_REWIND_TIME = 3000 // 3 secs
     val DEFAULT_FAST_FORWARD_TIME = 3000 // 3 secs
 
-    private var context: Context
     private var player: SimpleExoPlayer? = null
-    var path: String = ""
     var playWhenReady: Boolean = true
+
+    private var videoList = MutableLiveData<ArrayList<VideoMetaData>>()
+    val videoListExposed: LiveData<ArrayList<VideoMetaData>>
+        get() = videoList
+
     private var currentWindow = 0
     private var playbackPosition: Long = 0
 
@@ -49,6 +55,8 @@ class PiVideoPlayer: MediaSessionListener {
 
     private val dataSourceFactory: DefaultDataSourceFactory
 
+    private var srtPath = ""
+
     // Noisy Intent
     private val intentFilter = IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY)
     private var noisyIntentRegistered = false
@@ -58,8 +66,16 @@ class PiVideoPlayer: MediaSessionListener {
     private var mediaSessionManager: MediaSessionManager
     private var transportControls: MediaControllerCompat.TransportControls
 
-    constructor(context: Context) {
-        this.context = context
+    //Currently Playing Queue
+    private var nowPlaying = MutableLiveData<VideoMetaData>()
+    val nowPlayingExposed: LiveData<VideoMetaData>
+        get() = nowPlaying
+
+    private var playerListener: PiPlayerEventListener? = null
+
+    val concatenatingMediaSource = ConcatenatingMediaSource()
+
+    init {
 
         if (player == null) {
             player = ExoPlayerFactory.newSimpleInstance( context,
@@ -98,38 +114,37 @@ class PiVideoPlayer: MediaSessionListener {
 
     // Public APIs starts
 
-    fun prepare(path: String) {
-        this.path = path
-        val mediaSource = buildMediaSource(Uri.parse(path))
+    fun prepare(videoMetaData: VideoMetaData) {
+        nowPlaying.value = videoMetaData
+        val mediaSource = buildMediaSource(Uri.parse(videoMetaData.path))
         player?.prepare(mediaSource, true, false)
         context.registerReceiver(becomingNoisyReceiver, intentFilter)
         noisyIntentRegistered = true
         CurrentSettings.Playback.playing = true
     }
 
-    fun prepare(mediaPath: String, subtitlePath: String, resetPosition: Boolean, resetState: Boolean) {
-        this.path = mediaPath
+    fun prepare(videoMetaData: VideoMetaData, subtitlePath: String, resetPosition: Boolean, resetState: Boolean) {
+        nowPlaying.value = videoMetaData
         val dataSourceFactory = DefaultDataSourceFactory(
             context, Util.getUserAgent(context, userAgent))
-        val mediaSource = buildMediaSource(Uri.parse(path))
+        val mediaSource = buildMediaSource(Uri.parse(videoMetaData.path))
         val textFormat = Format.createTextSampleFormat(
             null, MimeTypes.TEXT_VTT,
             NO_VALUE, "hi"
         )
         val subtitleSource = SingleSampleMediaSource.Factory(dataSourceFactory).createMediaSource(Uri.parse(subtitlePath), textFormat, C.TIME_UNSET)
         player?.prepare(MergingMediaSource(mediaSource, subtitleSource), resetPosition, resetState)
-       // context.registerReceiver(becomingNoisyReceiver, intentFilter)
+        context.registerReceiver(becomingNoisyReceiver, intentFilter)
+        noisyIntentRegistered = true
         CurrentSettings.Playback.playing = true
     }
 
-    fun prepare(paths: ArrayList<String?>?, resetPosition: Boolean, resetState: Boolean) {
-
-        val concatenatingMediaSource = ConcatenatingMediaSource()
-        for (path in paths!!) {
-            val mediaSource = buildMediaSource(Uri.parse(path))
+    fun prepare(videoMetaDataList: ArrayList<VideoMetaData>, resetPosition: Boolean, resetState: Boolean) {
+        videoList.value = videoMetaDataList
+        for (videoMetaData in videoMetaDataList) {
+            val mediaSource = buildMediaSource(Uri.parse(videoMetaData.path))
             concatenatingMediaSource.addMediaSource(mediaSource)
         }
-
         player?.prepare(concatenatingMediaSource, resetPosition, resetState)
         context.registerReceiver(becomingNoisyReceiver, intentFilter)
         noisyIntentRegistered = true
@@ -160,6 +175,10 @@ class PiVideoPlayer: MediaSessionListener {
 
     fun seekTo(windowIndex: Int, positionMs: Long){
         player?.seekTo(windowIndex, positionMs)
+        videoList.value?.let {
+            nowPlaying.value = videoList.value!![windowIndex]
+        }
+
     }
 
     fun rewind(){
@@ -205,13 +224,31 @@ class PiVideoPlayer: MediaSessionListener {
 
     fun getCurrentTrackGroups(): TrackGroupArray = player!!.currentTrackGroups
 
+    fun setPlayerEventListener(playerListener: PiPlayerEventListener) {
+        this.playerListener = playerListener
+    }
+
+    fun hasNext() = player?.hasNext() ?: false
+
+    fun hasPrevious() = player?.hasPrevious() ?: false
+
+    fun repeatOff() {
+        player?.repeatMode = SimpleExoPlayer.REPEAT_MODE_OFF
+    }
+
+    fun repeatOne() {
+        player?.repeatMode = SimpleExoPlayer.REPEAT_MODE_ONE
+    }
+
+    fun repeatAll() {
+        player?.repeatMode = SimpleExoPlayer.REPEAT_MODE_ALL
+    }
+
     // Public APIs ends
 
     // Module APIs starts
 
-    internal fun getExoPlayer(): SimpleExoPlayer? {
-        return player
-    }
+    internal fun getExoPlayer() = player
 
     internal fun getApplicationLooper(): Looper = player!!.applicationLooper
 
@@ -222,6 +259,23 @@ class PiVideoPlayer: MediaSessionListener {
     internal fun setVideoScalingMode(videoScalingMode: Int){
         player!!.videoScalingMode = videoScalingMode
     }
+
+    internal fun addSubtitle(absolutePath: String) {
+        this.srtPath = absolutePath
+        val playbackPosition = getCurrentPosition()
+        val currentWindow = getCurrentWindowIndex()
+        when {
+            videoList.value!!.size > 0 -> {
+                prepare(videoList.value!![getCurrentWindowIndex()], absolutePath, resetPosition = true, resetState = true)
+            }
+            nowPlaying.value != null -> {
+                prepare(nowPlaying.value!!, absolutePath, resetPosition = true, resetState = true)
+            }
+        }
+        seekTo(currentWindow, playbackPosition)
+    }
+
+    //internal fun getCurrentPlayingVideo() = nowPlaying.value
 
     // Module APIs ends
 
@@ -245,15 +299,24 @@ class PiVideoPlayer: MediaSessionListener {
 
     // Media Session Listener Ends
 
-    inner class EventListener: PlayerEventListener {
+    inner class EventListener: Player.EventListener {
 
         override fun onPlayerStateChanged(playWhenReady: Boolean, playbackState: Int) {
             Logger.i("onPlayerStateChanged")
             when(playbackState) {
-                Player.STATE_IDLE -> {Logger.i("STATE_IDLE")}
-                Player.STATE_BUFFERING -> {Logger.i("STATE_BUFFERING")}
-                Player.STATE_READY -> {Logger.i("STATE_READY")}
-                Player.STATE_ENDED -> {Logger.i("STATE_ENDED")}
+                Player.STATE_IDLE -> {
+                    Logger.i("STATE_IDLE")
+                }
+                Player.STATE_BUFFERING -> {
+                    Logger.i("STATE_BUFFERING")
+                }
+                Player.STATE_READY -> {
+                    Logger.i("STATE_READY")
+                }
+                Player.STATE_ENDED -> {
+                    Logger.i("STATE_ENDED")
+                    playerListener?.onPlayerTrackCompleted()
+                }
             }
         }
 
@@ -273,10 +336,12 @@ class PiVideoPlayer: MediaSessionListener {
             Logger.i("onPlayerError")
             if (noisyIntentRegistered)
                 context.unregisterReceiver(becomingNoisyReceiver)
+            playerListener?.onPlayerError(error)
         }
 
         override fun onPositionDiscontinuity(reason: Int) {
             Logger.i("onPositionDiscontinuity")
+            playerListener?.onTracksChanged()
         }
 
         override fun onRepeatModeChanged(repeatMode: Int) {
@@ -296,6 +361,10 @@ class PiVideoPlayer: MediaSessionListener {
             trackSelections: TrackSelectionArray?
         ) {
             Logger.i("onTracksChanged")
+            videoList.value?.let {
+                nowPlaying.value = it[getCurrentWindowIndex()]
+            }
+            playerListener?.onTracksChanged()
         }
     }
 

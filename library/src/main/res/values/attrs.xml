@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <declare-styleable name="PiVideoPlayerView">
+    <declare-styleable name="PiVideoPlayerViewTemp">
         <attr name="use_artwork" format="boolean"/>
         <attr name="shutter_background_color" format="color"/>
         <attr name="default_artwork" format="reference"/>

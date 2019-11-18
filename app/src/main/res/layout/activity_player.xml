@@ -13,19 +13,6 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:controller_layout_id="@layout/pi_playback_control_view"/>
-
-<!--    <androidx.appcompat.widget.Toolbar-->
-<!--        android:id="@+id/anim_toolbar"-->
-<!--        android:layout_width="match_parent"-->
-<!--        android:layout_height="70dp"-->
-<!--        android:fitsSystemWindows="true"-->
-<!--        android:background="#CC000000"-->
-<!--        app:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"-->
-<!--        android:hapticFeedbackEnabled="true"-->
-<!--        app:layout_constraintEnd_toEndOf="parent"-->
-<!--        app:layout_constraintStart_toStartOf="parent"-->
-<!--        app:layout_constraintTop_toTopOf="@+id/pv_player" />-->
+        app:layout_constraintTop_toTopOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

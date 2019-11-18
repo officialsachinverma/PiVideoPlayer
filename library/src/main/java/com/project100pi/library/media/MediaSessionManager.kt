@@ -31,7 +31,7 @@ class MediaSessionManager: MediaSessionCompat.Callback {
 
         val mediaButtonReceiver = ComponentName(appContext, MediaReceiver::class.java)
         val mediaButtonIntent = Intent(Intent.ACTION_MEDIA_BUTTON)
-        mediaButtonIntent.setClass(appContext, MediaReceiver::class.java!!)
+        mediaButtonIntent.setClass(appContext, MediaReceiver::class.java)
         val pendingIntent = PendingIntent.getBroadcast(appContext, 0, mediaButtonIntent, 0)
         mediaSessionCompat = MediaSessionCompat(appContext, "MediaSessionManager", mediaButtonReceiver, pendingIntent)
         mediaSessionCompat.setFlags(

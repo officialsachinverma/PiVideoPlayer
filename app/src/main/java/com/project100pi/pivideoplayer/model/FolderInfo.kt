@@ -3,16 +3,17 @@ package com.project100pi.pivideoplayer.model
 import android.os.Parcel
 import android.os.Parcelable
 
-data class FolderInfo(var videoName: String? = "", var folderId: String? = "", var path: String? = "", var isSong: Boolean = false):
+data class FolderInfo(var videoName: String = "", var folderId: String = "", var path: String = "", var isSong: Boolean = false, var duration: String = ""):
     Parcelable {
 
     var songsList: ArrayList<FolderInfo> = ArrayList()
 
     constructor(parcel: Parcel) : this(
-        parcel.readString(),
-        parcel.readString(),
-        parcel.readString(),
-        parcel.readByte() != 0.toByte()
+        parcel.readString() ?: "",
+        parcel.readString() ?: "",
+        parcel.readString() ?: "",
+        parcel.readByte() != 0.toByte(),
+        parcel.readString() ?: ""
     )
 
     constructor(
@@ -29,11 +30,12 @@ data class FolderInfo(var videoName: String? = "", var folderId: String? = "", v
         subFolder: String,
         songName: String,
         folderId: String,
-        isSong: Boolean
-    ): this(folderName, folderId, fullPath, isSong)
+        isSong: Boolean,
+        duration: String
+    ): this(folderName, folderId, fullPath, isSong, duration)
 
-    fun addSong(songName: String, folderId: String) {
-        songsList.add(FolderInfo(songName, folderId, path + songName, true))
+    fun addSong(songName: String, folderId: String, duration: String) {
+        songsList.add(FolderInfo(songName, folderId, path + songName, true, duration))
 
     }
 
@@ -42,6 +44,7 @@ data class FolderInfo(var videoName: String? = "", var folderId: String? = "", v
         parcel.writeString(folderId)
         parcel.writeString(path)
         parcel.writeByte(if (isSong) 1 else 0)
+        parcel.writeString(duration)
     }
 
     override fun describeContents(): Int {

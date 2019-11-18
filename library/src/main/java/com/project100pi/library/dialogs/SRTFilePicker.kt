@@ -1,101 +1,83 @@
-package com.project100pi.pivideoplayer.dialogs
+package com.project100pi.library.dialogs
 
+import android.app.Dialog
 import android.content.Context
+import android.net.Uri
 import android.os.Environment
 import androidx.fragment.app.DialogFragment
 import android.view.View
-import butterknife.BindView
-import butterknife.ButterKnife
 import android.os.Bundle
 import android.view.ViewGroup
 import android.view.LayoutInflater
 import android.view.Window
-import com.project100pi.pivideoplayer.R
-import com.project100pi.pivideoplayer.dialogs.listeners.SRTFilePickerClickListener
+import com.project100pi.library.dialogs.listeners.SRTFilePickerClickListener
 import java.util.Collections
-import kotlin.collections.ArrayList
 import android.widget.*
+import com.bumptech.glide.Glide
+import com.project100pi.library.R
 import java.io.File
 import java.io.FilenameFilter
-import android.R.string
-import android.net.Uri
-
 
 class SRTFilePicker(private val mContext: Context,
                     private val SRTFilePickerClickListener: SRTFilePickerClickListener)
-    : DialogFragment(), AdapterView.OnItemClickListener {
+    : Dialog(mContext), AdapterView.OnItemClickListener {
 
-    private val DEFAULT_INITIAL_DIRECTORY = Environment.getExternalStorageDirectory().absolutePath
+    private val defaultInternalDirectory = Environment.getExternalStorageDirectory().absolutePath
     private var mDirectory: File? = null
-    private var mFiles: ArrayList<File>? = null
+    private var mFiles = mutableListOf<File>()
     private var mShowHiddenFiles = false
     private var acceptedFileExtensions: Array<String>? = null
 
     private var mAdapter: FilePickerListAdapter? = null
-    @BindView(R.id.listView)
-    lateinit var listView: ListView
-    @BindView(R.id.empty)
-    lateinit var empty: View
-    @BindView(R.id.srt_view_container)
-    lateinit var mSRTViewContainer: View
-    @BindView(R.id.srt_up_text)
-    lateinit var srtUpText: TextView
-    @BindView(R.id.srt_up_image)
-    lateinit var srtUpIconImage: ImageView
+    private lateinit var listView: ListView
+    private lateinit var empty: View
+    private lateinit var srtUpText: TextView
+    private lateinit var srtUpIconImage: ImageView
+    private lateinit var closeIconImage: ImageView
+    private lateinit var toolbar: View
 
-    override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View? {
-        val fragmentView = inflater.inflate(R.layout.dialog_file_picker, container, false)
-        dialog!!.window!!.requestFeature(Window.FEATURE_NO_TITLE)
-        ButterKnife.bind(this, fragmentView)
-        return fragmentView
-    }
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        requestWindowFeature(Window.FEATURE_NO_TITLE)
+        setContentView(R.layout.dialog_file_picker)
 
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        toolbar = findViewById(R.id.subtitle_toolbar)
+        listView = findViewById(R.id.file_picker_listView)
+        empty = findViewById(R.id.file_picker_empty)
+        srtUpText = findViewById(R.id.srt_up_text)
+        srtUpIconImage = findViewById(R.id.srt_up_image)
+        closeIconImage = findViewById(R.id.srt_close_image)
+
         try {
-            mDirectory = File(DEFAULT_INITIAL_DIRECTORY)
+            mDirectory = File(defaultInternalDirectory)
             mFiles = arrayListOf()
-            mAdapter = FilePickerListAdapter(mContext, mFiles!!)
+            mAdapter = FilePickerListAdapter(mContext, mFiles)
             listView.adapter = mAdapter
             listView.onItemClickListener = this
             listView.emptyView = empty
             acceptedFileExtensions = arrayOf("vtt", "srt")
 
-            mSRTViewContainer.setOnClickListener {
+            closeIconImage.setOnClickListener {
+                dismiss()
+            }
 
+            toolbar.setOnClickListener {
+
+                // srtUpText.text = mDirectory!!.name.substring(0, mDirectory!!.name.lastIndexOf("/") - 1)
                 //mDirectory = File(mDirectory!!.name.substring(0, mDirectory!!.name.lastIndexOf("/") - 1))
-                mDirectory = File(DEFAULT_INITIAL_DIRECTORY)
+                srtUpText.text = "..."
+                mDirectory = File(defaultInternalDirectory)
                 refreshFilesList()
             }
 
             refreshFilesList()
         } catch (e: Exception) {
-           e.printStackTrace()
+            e.printStackTrace()
         }
-
-    }
-
-    override fun onStart() {
-        super.onStart()
-        val d = dialog
-        if (d != null) {
-            val width = ViewGroup.LayoutParams.MATCH_PARENT
-            val height = ViewGroup.LayoutParams.MATCH_PARENT
-//            val width = 800
-//            val height = 600
-            d.window!!.setLayout(width, height)
-        }
-    }
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setStyle(STYLE_NORMAL, R.style.MY_DIALOG)
     }
 
     private fun refreshFilesList() {
-        mFiles!!.clear()
+        mFiles.clear()
         val filter = ExtensionFilenameFilter(acceptedFileExtensions)
 
         val files = mDirectory!!.listFiles(filter)
@@ -108,7 +90,7 @@ class SRTFilePicker(private val mContext: Context,
 
                 if (!f.toString().equals("/storage/emulated", ignoreCase = true)) {
                     if (isFileExist(f))
-                        mFiles!!.add(f)
+                        mFiles.add(f)
                 }
             }
 
@@ -130,6 +112,7 @@ class SRTFilePicker(private val mContext: Context,
                     else -> Toast.makeText(mContext, "Please select subtitle file", Toast.LENGTH_SHORT).show()
                 }
             } else {
+                srtUpText.text = newFile.absolutePath
                 mDirectory = newFile
                 refreshFilesList()
             }
@@ -144,7 +127,7 @@ class SRTFilePicker(private val mContext: Context,
 
         override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
 
-            var row: View?
+            val row: View?
 
             row = if (convertView == null) {
                 val inflater =
@@ -156,13 +139,13 @@ class SRTFilePicker(private val mContext: Context,
 
             val `object` = mObjects[position]
 
-            val imageView = row!!.findViewById<View>(R.id.file_picker_image)
+            val imageView = row!!.findViewById<ImageView>(R.id.file_picker_image)
             val textView = row.findViewById<TextView>(R.id.file_picker_text)
             // Set single line
             textView.isSingleLine = true
             val fileName = `object`.name
 
-            var title = when {
+            val title = when {
                 fileName.contains("UsbDriveA") -> "USB Drive"
                 fileName.contains("sdcard0") -> "Internal Storage"
                 fileName.contains("extSdCard") -> "SD Card"
@@ -171,10 +154,22 @@ class SRTFilePicker(private val mContext: Context,
             textView.text = title
             if (`object`.isFile) {
                 // Show the file icon
-                imageView.background = context.resources.getDrawable(R.drawable.ic_file)
+                //imageView.background = context.resources.getDrawable(R.drawable.ic_file)
+                Glide
+                    .with(context)
+                    .asBitmap()
+                    .load(R.drawable.ic_file)
+                    .thumbnail(0.1f)
+                    .into(imageView)
             } else {
                 // Show the folder icon
-                imageView.background = context.resources.getDrawable(R.drawable.ic_folder)
+                //imageView.background = context.resources.getDrawable(R.drawable.ic_folder)
+                Glide
+                    .with(context)
+                    .asBitmap()
+                    .load(R.drawable.ic_folder)
+                    .thumbnail(0.1f)
+                    .into(imageView)
             }
             return row
         }

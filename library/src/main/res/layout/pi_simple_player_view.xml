@@ -66,7 +66,7 @@
         android:id="@id/pi_screen_lock"
         android:layout_width="40dp"
         android:layout_height="40dp"
-        android:src="@drawable/ic_screen_lock"
+        android:src="@drawable/ic_lock_black_24dp"
         android:background="#CC000000"
         android:hapticFeedbackEnabled="true"
         android:layout_below="@id/pi_toolbar_placeholder"

@@ -6,7 +6,7 @@ object FileExtension  {
         "m4b", "m4r", "m4b", "mov", "mkv", "fly", "webm", "wmv", "avi")
 
     fun isVideo(path: String): Boolean {
-        var ext = path.substring(path.lastIndexOf(".") + 1)
+        val ext = path.substring(path.lastIndexOf(".") + 1)
         return  exts.contains(ext)
     }
 

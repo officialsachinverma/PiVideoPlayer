@@ -6,7 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.project100pi.pivideoplayer.activity.SearchViewModel
 
-class SearchViewModelFactory(private val context: Context?,
+class SearchViewModelFactory(private val context: Context,
                                 private val application: Application
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel?> create(modelClass: Class<T>): T {

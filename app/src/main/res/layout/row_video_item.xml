@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="90dp"
+    android:id="@+id/cl_video_item_row"
+    android:background="@android:color/white">
+
+    <ImageView
+        android:id="@+id/iv_video_thumnail"
+        android:layout_width="100dp"
+        android:layout_height="match_parent"
+        android:layout_marginStart="8dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="8dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:background="@drawable/ic_folder"
+        android:background="@drawable/rounded_corner_transparent"
+        android:scaleType="fitXY"/>
+
+    <TextView
+        android:id="@+id/tv_video_duration"
+        style="@style/FolderNameTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:background="@drawable/rounded_corners"
+        android:maxLines="1"
+        android:layout_marginEnd="15dp"
+        android:layout_marginBottom="14dp"
+        android:text="1:50:08"
+        android:textColor="@android:color/white"
+        android:textSize="10sp"
+        android:gravity="center"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@+id/tv_video_name" />
+
+    <TextView
+        android:id="@+id/tv_video_name"
+        style="@style/FolderNameTextView"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_margin="10dp"
+        android:maxLines="3"
+        android:textSize="14sp"
+        android:text="TextView"
+        android:gravity="left|center_vertical"
+        android:textColor="@android:color/black"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/iv_video_overflow_menu"
+        app:layout_constraintStart_toEndOf="@+id/iv_video_thumnail"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <ImageView
+        android:id="@+id/iv_video_overflow_menu"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="10dp"
+        android:background="@drawable/ic_overflow"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

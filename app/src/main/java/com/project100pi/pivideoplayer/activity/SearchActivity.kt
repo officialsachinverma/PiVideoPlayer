@@ -26,8 +26,10 @@ import androidx.recyclerview.widget.RecyclerView
 import butterknife.BindView
 import butterknife.ButterKnife
 import com.project100pi.library.misc.Logger
+import com.project100pi.library.model.VideoMetaData
 import com.project100pi.pivideoplayer.R
 import com.project100pi.pivideoplayer.adapters.StorageFileAdapter
+import com.project100pi.pivideoplayer.adapters.VideoFilesAdapter
 import com.project100pi.pivideoplayer.factory.SearchViewModelFactory
 import com.project100pi.pivideoplayer.listeners.ItemDeleteListener
 import com.project100pi.pivideoplayer.listeners.OnClickListener
@@ -55,15 +57,13 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
     @BindView(R.id.sorryMessage)
     lateinit var sorryMessageTextView: TextView
 
-    val AUTOCOMPLETE_DRAWABLE_RIGHT_POSITION = 2
-
     private var videoSearchResultData: ArrayList<FolderInfo> = ArrayList()
 
     private var isSearchTriggered = false
 
-    private lateinit var model: SearchViewModel
-    private var adapter: StorageFileAdapter? = null
-    var mIsMultiSelectMode: Boolean = false
+    private lateinit var searchViewModel: SearchViewModel
+    private var adapter: VideoFilesAdapter? = null
+    private var mIsMultiSelectMode: Boolean = false
     private var actionModeCallback = ActionModeCallback()
     private var actionMode: ActionMode? = null
 
@@ -74,7 +74,7 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
 
         val application = requireNotNull(this).application
         val viewModelFactory = SearchViewModelFactory(this , application)
-        model = ViewModelProviders.of(this, viewModelFactory).get(SearchViewModel::class.java)
+        searchViewModel = ViewModelProviders.of(this, viewModelFactory).get(SearchViewModel::class.java)
 
         initializeToolbar()
         initializeAutoCompleteTextView()
@@ -108,7 +108,7 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
     }
 
     private fun observeForObservers() {
-        model.foldersListExposed.observe(this, Observer {
+        searchViewModel.foldersListExposed.observe(this, Observer {
             if (it != null) {
                 videoSearchResultData = it
                 if (it.size > 0) {
@@ -127,7 +127,7 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
 
         if (adapter == null) {
 
-            adapter = StorageFileAdapter(this, R.layout.row_folder_item, this)
+            adapter = VideoFilesAdapter(this, R.layout.row_video_item, this)
             val linearLayout = LinearLayoutManager(this)
             linearLayout.orientation = LinearLayoutManager.VERTICAL
             searchResultsRecyclerView.layoutManager = linearLayout
@@ -148,7 +148,7 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
         autoCompleteTextView.threshold = 2
 
         autoCompleteTextView.setCompoundDrawablesWithIntrinsicBounds(
-            resources.getDrawable(R.drawable.search_icon),
+            resources.getDrawable(R.drawable.ic_search_black_24dp),
             null,
             null,
             null
@@ -174,7 +174,7 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
         /*
          onEditorActionListener is needed to get the Keyevent when search icon is pressed in the keyboard.
          */
-        autoCompleteTextView.setOnEditorActionListener { v: TextView, actionId: Int, event: KeyEvent? ->
+        autoCompleteTextView.setOnEditorActionListener { _: TextView, actionId: Int, _: KeyEvent? ->
             if (actionId == EditorInfo.IME_ACTION_SEARCH) {
                 val currentQuery = autoCompleteTextView.text.toString()
                 if (!TextUtils.isEmpty(currentQuery)) {
@@ -189,7 +189,7 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
     private fun triggerSearch(searchSource: String) {
         val queryText = autoCompleteTextView.text.toString()
         when (searchSource) {
-            Constants.SearchSource.SEARCH_LOCAL -> model.performSearch(queryText)
+            Constants.SearchSource.SEARCH_LOCAL -> searchViewModel.performSearch(queryText)
         }
         isSearchTriggered = true
     }
@@ -219,7 +219,7 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
     }
 
     private fun doActionOnOverflowItemClick(position: Int, viewId: Int) {
-        //val data = videoListData[model.CURRENT_SONG_FOLDER_INDEX].songsList[position]
+        //val data = videoListData[searchViewModel.currentSongFolderIndex].songsList[position]
 
         when (viewId) {
             R.id.itemPlay -> {
@@ -229,7 +229,7 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
                 shareVideos(position)
             }
             R.id.itemDelete -> {
-                model.delete(listOf(position), this)
+                searchViewModel.delete(listOf(position), this)
             }
         }
     }
@@ -240,7 +240,7 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
         startActivity(Intent.createChooser(Intent().setAction(Intent.ACTION_SEND)
             .setType("video/*")
             .setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            .putExtra(Intent.EXTRA_STREAM,  ContextMenuUtil.getAudioContentUri(this@SearchActivity, File(currentVideo.path))), "Share Video"))
+            .putExtra(Intent.EXTRA_STREAM,  ContextMenuUtil.getVideoContentUri(this@SearchActivity, File(currentVideo.path))), "Share Video"))
     }
 
     private fun launchPlayerActivity(position: Int) {
@@ -261,22 +261,32 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
         val playerIntent = Intent(this, PlayerActivity::class.java)
         if (!isMultiple) {
             val currentVideo = videoSearchResultData[position]
-            playerIntent.putExtra(Constants.FILE_PATH, currentVideo.path)
+            val metadata = VideoMetaData(currentVideo.folderId.toInt(), currentVideo.videoName, currentVideo.path)
+            playerIntent.putExtra(Constants.FILE_PATH, metadata)
             playerIntent.putExtra(Constants.Playback.WINDOW, 0)
         } else {
-            val pathsList = ArrayList<String?>()
-            for(position in adapter!!.getSelectedItems()) {
-                pathsList.add(videoSearchResultData[position].path)
+            val metaDataList = ArrayList<VideoMetaData>()
+            for(selectedItemPosition in adapter!!.getSelectedItems()) {
+                for(selectedItemPosition in adapter!!.getSelectedItems()) {
+//                    metaDataList.add(directoryListViewModel.getVideoMetaData(videoListData[directoryListViewModel.currentSongFolderIndex].songsList[selectedItemPosition].folderId)!!)
+                    metaDataList.add(
+                        VideoMetaData(videoSearchResultData[selectedItemPosition].folderId.toInt(),
+                            videoSearchResultData[selectedItemPosition].videoName,
+                            videoSearchResultData[selectedItemPosition].path)
+                    )
+                }
             }
-            playerIntent.putExtra(Constants.QUEUE, pathsList)
+            playerIntent.putExtra(Constants.QUEUE, metaDataList)
         }
         startActivity(playerIntent)
     }
 
     private fun showBrightnessPermissionDialog(context: Context) {
-        val intent = Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS)
-        intent.data = Uri.parse("package:" + context.packageName)
-        context.startActivity(intent)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            val intent = Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS)
+            intent.data = Uri.parse("package:" + context.packageName)
+            context.startActivity(intent)
+        }
     }
 
     private fun toggleSelection(position: Int) {
@@ -296,7 +306,7 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
 
     override fun onDeleteSuccess(listOfIndexes: List<Int>) {
         for(position in listOfIndexes) {
-            model.removeElementAt(position)
+            searchViewModel.removeElementAt(position)
             adapter!!.notifyItemRemoved(position)
         }
         Toast.makeText(
@@ -327,7 +337,7 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
         val listOfVideoUris = ArrayList<Uri?>()
         for (position in adapter!!.getSelectedItems()) {
             val currentVideo = videoSearchResultData[position]
-            listOfVideoUris.add(ContextMenuUtil.getAudioContentUri(this@SearchActivity, File(currentVideo.path)))
+            listOfVideoUris.add(ContextMenuUtil.getVideoContentUri(this@SearchActivity, File(currentVideo.path)))
         }
         startActivity(Intent.createChooser(Intent().setAction(Intent.ACTION_SEND_MULTIPLE)
             .setType("video/*")
@@ -369,7 +379,7 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
                     shareMultipleVideos()
                 }
                 R.id.multiChoiceDelete -> {
-                    model.delete(adapter!!.getSelectedItems(), this@SearchActivity)
+                    searchViewModel.delete(adapter!!.getSelectedItems(), this@SearchActivity)
                 }
             }
             // We have to end the multi select, if the user clicks on an option other than select all
@@ -379,7 +389,7 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
         }
 
         override fun onDestroyActionMode(mode: ActionMode?) {
-            VideoListActivity.mIsMultiSelectMode = false
+            mIsMultiSelectMode = false
             actionMode = null
             mToolbar.visibility = View.VISIBLE
             adapter!!.clearSelection()

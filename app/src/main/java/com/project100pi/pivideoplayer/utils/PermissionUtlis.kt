@@ -62,7 +62,7 @@ class PermissionsUtil(private var activity: Activity, private val showAlertCallb
 
             if (count == 1) {
                 if ((!shouldShowRequestPermissionRationale(activity,
-                        Manifest.permission.WRITE_EXTERNAL_STORAGE)) && (!(beforeClickPermissionRat!!))) {
+                        Manifest.permission.WRITE_EXTERNAL_STORAGE)) && (!(beforeClickPermissionRat))) {
                     count = 2
                     Toast.makeText(activity, "Click on permission and check storage permission for app to continue.", Toast.LENGTH_SHORT).show()
 

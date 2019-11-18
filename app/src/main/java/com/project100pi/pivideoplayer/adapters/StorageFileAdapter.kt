@@ -6,7 +6,7 @@ import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
-import com.project100pi.pivideoplayer.activity.VideoListActivity
+import com.project100pi.pivideoplayer.activity.DirectoryListActivity
 import com.project100pi.pivideoplayer.listeners.OnClickListener
 import com.project100pi.pivideoplayer.adapters.viewholder.StorageFileViewHolder
 import com.project100pi.pivideoplayer.model.FolderInfo
@@ -77,17 +77,17 @@ class StorageFileAdapter(
     }
 
     fun selectAllItems() {
-        if (VideoListActivity.mIsMultiSelectMode) {
+        if (DirectoryListActivity.mIsMultiSelectMode) {
             this.clearSelection()
             var i = 0
-            var size = 0
-            size = itemCount
-            i = 0
+            val size: Int = itemCount
             while (i < size) {
                 listener.onDirectorySelected(i)
                 i++
             }
         }
     }
+
+    fun getInternalItem(position: Int) = getItem(position)
 
 }

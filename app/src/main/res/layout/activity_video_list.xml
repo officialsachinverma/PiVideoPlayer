@@ -1,55 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:orientation="vertical"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    xmlns:tools="http://schemas.android.com/tools">
+    android:background="@android:color/white">
 
     <androidx.appcompat.widget.Toolbar
-        android:id="@+id/anim_toolbar"
+        android:id="@+id/video_list_toolbar"
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         android:background="@color/colorPrimary"/>
-
-    <LinearLayout
-        android:id="@+id/folder_view_container"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:background="@color/colorPrimary"
-        android:gravity="center"
-        android:orientation="horizontal"
-        android:padding="5dp"
-        android:visibility="gone"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/anim_toolbar"
-        tools:visibility="visible">
-
-        <ImageView
-            android:id="@+id/folder_up_image"
-            android:layout_width="45dp"
-            android:layout_height="45dp" />
-
-        <TextView
-            android:id="@+id/folder_up_text"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:layout_marginStart="8dp"
-            android:layout_marginEnd="8dp"
-            android:ellipsize="end"
-            android:foreground="?android:attr/selectableItemBackground"
-            android:gravity="center_vertical"
-            android:maxLines="1"
-            android:paddingStart="8dp"
-            android:paddingEnd="16dp"
-            android:text="..."
-            android:textAppearance="?android:attr/textAppearanceMedium"
-            android:textSize="16sp" />
-
-    </LinearLayout>
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rv_video_file_list"
@@ -58,17 +22,26 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/folder_view_container" />
+        app:layout_constraintTop_toBottomOf="@id/video_list_toolbar" />
 
     <TextView
         android:id="@+id/tv_no_video_found_msg"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="@string/no_video_found"
+        android:textColor="@android:color/black"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"/>
 
+    <ProgressBar
+        android:id="@+id/pg_video_waiting"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"/>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

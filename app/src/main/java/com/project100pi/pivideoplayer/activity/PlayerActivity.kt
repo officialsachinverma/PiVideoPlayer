@@ -2,36 +2,30 @@ package com.project100pi.pivideoplayer.activity
 
 import android.os.Build
 import android.os.Bundle
-import android.provider.Settings
 import android.view.Menu
 import android.view.MenuItem
-import androidx.appcompat.app.ActionBar
 import androidx.appcompat.app.AppCompatActivity
-import androidx.appcompat.widget.Toolbar
 import butterknife.BindView
 import butterknife.ButterKnife
 import com.project100pi.library.factory.PiPlayerFactory
-import com.project100pi.library.misc.Util
 import com.project100pi.library.player.PiVideoPlayer
-import com.project100pi.library.ui.PiVideoPlayerView
 import com.project100pi.pivideoplayer.R
-import com.project100pi.pivideoplayer.dialogs.SRTFilePicker
-import com.project100pi.pivideoplayer.dialogs.listeners.SRTFilePickerClickListener
 import com.project100pi.pivideoplayer.utils.Constants
 import android.content.pm.ActivityInfo
 import android.graphics.Bitmap
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import com.project100pi.library.misc.Logger
+import com.project100pi.library.model.VideoMetaData
+import com.project100pi.library.ui.PiVideoPlayerView
 
 
-class PlayerActivity : AppCompatActivity(), SRTFilePickerClickListener {
+class PlayerActivity : AppCompatActivity() {
 
-    private var mediaPath: String? = null
-    private var srtPath: String? = null
-    private var videoList: ArrayList<String?>? = null
+    private var mediaPath: VideoMetaData? = null
+    private var srtPath = ""
+    private var videoList = arrayListOf<VideoMetaData>()
 
-    private lateinit var mToolbar: Toolbar
     @BindView(R.id.pv_player)
     lateinit var playerView: PiVideoPlayerView
 
@@ -48,40 +42,39 @@ class PlayerActivity : AppCompatActivity(), SRTFilePickerClickListener {
 
         if (this.intent != null) {
             if (this.intent.hasExtra(Constants.QUEUE))
-                this.videoList = this.intent.getStringArrayListExtra(Constants.QUEUE)
+                this.videoList = this.intent.getParcelableArrayListExtra(Constants.QUEUE)
             if (this.intent.extras != null && this.intent.hasExtra(Constants.FILE_PATH))
-                this.mediaPath = this.intent.extras!!.getString(Constants.FILE_PATH)
+                this.mediaPath = this.intent.extras!!.getParcelable(Constants.FILE_PATH)
             if (this.intent.hasExtra(Constants.Playback.WINDOW))
                 this.currentWindow = this.intent.getIntExtra(Constants.Playback.WINDOW, 0)
         }
 
         playerView.requestFocus()
-        mToolbar = playerView.toolbar
 
         rotateScreen()
     }
 
-    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
-        menuInflater.inflate(R.menu.player_option, menu)
-        return true
-    }
-
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        return when (item.itemId) {
-            android.R.id.home -> {
-                onBackPressed()
-                return true
-            }
-            R.id.item_subtitle -> {
-                // SRTSelector(this).show(this@PlayerActivity.supportFragmentManager, "Subtitle Selector")
-
-                SRTFilePicker(this, this).show(this@PlayerActivity.supportFragmentManager, "Subtitle Selector")
-
-                return true
-            }
-            else -> super.onOptionsItemSelected(item)
-        }
-    }
+//    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
+//        menuInflater.inflate(R.menu.player_option, menu)
+//        return true
+//    }
+//
+//    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+//        return when (item.itemId) {
+//            android.R.id.home -> {
+//                onBackPressed()
+//                return true
+//            }
+//            R.id.item_subtitle -> {
+//                // SRTSelector(this).show(this@PlayerActivity.supportFragmentManager, "Subtitle Selector")
+//
+//                //SRTFilePicker(this, this).show(this@PlayerActivity.supportFragmentManager, "Subtitle Selector")
+//
+//                return true
+//            }
+//            else -> super.onOptionsItemSelected(item)
+//        }
+//    }
 
     override fun onBackPressed() {
         finish()
@@ -91,7 +84,16 @@ class PlayerActivity : AppCompatActivity(), SRTFilePickerClickListener {
         super.onResume()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && null == videoPlayer) {
             initializePlayer()
+        } else {
+            videoPlayer?.play()
         }
+        playerView.onResume()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        videoPlayer?.pause()
+        playerView.onPause()
     }
 
     public override fun onDestroy() {
@@ -103,25 +105,28 @@ class PlayerActivity : AppCompatActivity(), SRTFilePickerClickListener {
 
         if (null == videoPlayer) {
             videoPlayer = PiPlayerFactory.newPiPlayer(this)
-            playerView.setPlayer(videoPlayer)
+            playerView.setPlayer(videoPlayer!!)
         }
 
         when {
-            videoList != null && null == srtPath -> videoPlayer?.prepare(videoList, resetPosition = false, resetState = false)
-            null != srtPath -> videoPlayer?.prepare(mediaPath!!, srtPath!!, resetPosition = false, resetState = false)
+            videoList.size > 0 && srtPath.isEmpty() -> videoPlayer?.prepare(videoList, resetPosition = false, resetState = false)
+            srtPath.isNotEmpty() -> videoPlayer?.prepare(mediaPath!!,
+                srtPath, resetPosition = false, resetState = false)
             else -> videoPlayer?.prepare(mediaPath!!)
         }
         videoPlayer?.seekTo(currentWindow, playbackPosition)
-        currentWindow = 0
-        playbackPosition = 0
         if (playerView.isControllerVisible())
             playerView.hideController()
-        mToolbar.title = setToolbarTitle()
+
+//       Handler().postDelayed({
+//            Logger.i("exe from activity: player.seekTo()")
+//            videoPlayer?.seekTo(4, 0)
+//        },  10000)
     }
 
     private fun releasePlayer() {
-        if (null != videoPlayer) {
-            videoPlayer?.release()
+        videoPlayer?.let {
+            it.release()
             videoPlayer = null
         }
     }
@@ -133,15 +138,10 @@ class PlayerActivity : AppCompatActivity(), SRTFilePickerClickListener {
             playbackPosition = it.getCurrentPosition()
             currentWindow = it.getCurrentWindowIndex()
         }
-        val tempPlayer = videoPlayer
-        if (null != tempPlayer) {
-            playbackPosition = tempPlayer.getCurrentPosition()
-            currentWindow = tempPlayer.getCurrentWindowIndex()
-        }
 
         outState.putLong("playbackPosition", playbackPosition)
         outState.putInt("currentWindow", currentWindow)
-        outState.putString("mediaPath", mediaPath)
+        outState.putParcelable("mediaPath", mediaPath!!)
     }
 
     override fun onRestoreInstanceState(savedInstanceState: Bundle) {
@@ -149,22 +149,7 @@ class PlayerActivity : AppCompatActivity(), SRTFilePickerClickListener {
 
         playbackPosition = savedInstanceState.getLong("playbackPosition")
         currentWindow = savedInstanceState.getInt("currentWindow")
-        mediaPath = savedInstanceState.getString("mediaPath")
-    }
-
-    private fun setToolbarTitle(): String {
-        val segments = mediaPath!!.split("/")
-        return segments[segments.size - 1]
-    }
-
-    override fun filePickerSuccessClickListener(absolutePath: String) {
-        this.srtPath = absolutePath
-        if (null != videoPlayer) {
-            playbackPosition = videoPlayer!!.getCurrentPosition()
-            currentWindow = videoPlayer!!.getCurrentWindowIndex()
-        }
-        videoPlayer?.prepare(mediaPath!!, srtPath!!, resetPosition = true, resetState = true)
-        videoPlayer?.seekTo(currentWindow, playbackPosition)
+        mediaPath = savedInstanceState.getParcelable("mediaPath")
     }
 
     private fun rotateScreen() {
@@ -176,10 +161,10 @@ class PlayerActivity : AppCompatActivity(), SRTFilePickerClickListener {
 
             var mVideoUri: Uri? = null
             if (this.intent.hasExtra(Constants.QUEUE)) {
-                mVideoUri = Uri.parse(this.videoList?.get(this.currentWindow) ?: "")
+                mVideoUri = Uri.parse(this.videoList[this.currentWindow].path ?: "")
             }
             if (this.intent.extras != null && this.intent.hasExtra(Constants.FILE_PATH)) {
-                mVideoUri = Uri.parse(this.mediaPath)
+                mVideoUri = Uri.parse(this.mediaPath!!.path)
             }
             //Set the video Uri as data source for MediaMetadataRetriever
             retriever.setDataSource(this, mVideoUri!!)
@@ -204,9 +189,6 @@ class PlayerActivity : AppCompatActivity(), SRTFilePickerClickListener {
         } catch (ex: RuntimeException) {
             //error occurred
             Logger.e("MediaMetadataRetriever - Failed to rotate the video")
-
         }
-
     }
-
 }

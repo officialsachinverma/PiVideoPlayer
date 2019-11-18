@@ -1,4 +1,4 @@
-package com.project100pi.pivideoplayer.dialogs.listeners
+package com.project100pi.library.dialogs.listeners
 
 interface SRTFilePickerClickListener {
     fun filePickerSuccessClickListener(absolutePath: String)
