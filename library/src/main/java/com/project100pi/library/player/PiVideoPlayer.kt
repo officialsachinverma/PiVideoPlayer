@@ -95,10 +95,12 @@ class PiVideoPlayer(private val context: Context): MediaSessionListener {
         ApplicationHelper.mediaSessionToken = mediaSessionManager.getMediaSessionToken()
         CurrentSettings.MediaSession.avaiable = true
 
-        player?.addListener(EventListener())
-        player?.setAudioAttributes(audioAttributes, true)
-        player?.playWhenReady = this.playWhenReady
-        player?.seekTo(currentWindow, playbackPosition)
+        player?.let {
+            it.addListener(EventListener())
+            it.setAudioAttributes(audioAttributes, true)
+            it.playWhenReady = this.playWhenReady
+            it.seekTo(currentWindow, playbackPosition)
+        }
     }
 
     private fun buildMediaSource(uri: Uri): MediaSource {
