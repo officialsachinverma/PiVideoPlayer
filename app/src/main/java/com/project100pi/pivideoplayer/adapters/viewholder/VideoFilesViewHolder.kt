@@ -14,6 +14,7 @@ import com.project100pi.pivideoplayer.activity.VideoListActivity
 import com.project100pi.pivideoplayer.adapters.VideoFilesAdapter
 import com.project100pi.pivideoplayer.listeners.OnClickListener
 import com.project100pi.pivideoplayer.model.FolderInfo
+import com.project100pi.pivideoplayer.utils.UtilFunctions
 import java.io.File
 
 class VideoFilesViewHolder(private val context: Context, itemView: View, private val listener: OnClickListener, private val adapter: VideoFilesAdapter):
@@ -42,7 +43,7 @@ class VideoFilesViewHolder(private val context: Context, itemView: View, private
             .into(ivThumbnail)
         ivOverFlow.visibility = View.VISIBLE
         tvDuration.visibility = View.VISIBLE
-        tvDuration.text = file.duration
+        tvDuration.text = UtilFunctions.convertSecondsToHMmSs(file.duration)
         tvTitle.text = file.videoName
 
         clItemRow.setOnClickListener(this)

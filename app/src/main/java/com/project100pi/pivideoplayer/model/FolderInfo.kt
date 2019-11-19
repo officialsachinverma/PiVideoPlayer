@@ -3,7 +3,7 @@ package com.project100pi.pivideoplayer.model
 import android.os.Parcel
 import android.os.Parcelable
 
-data class FolderInfo(var videoName: String = "", var folderId: String = "", var path: String = "", var isSong: Boolean = false, var duration: String = ""):
+data class FolderInfo(var videoName: String = "", var folderId: String = "", var path: String = "", var isSong: Boolean = false, var duration: Long = 0):
     Parcelable {
 
     var songsList: ArrayList<FolderInfo> = ArrayList()
@@ -13,7 +13,7 @@ data class FolderInfo(var videoName: String = "", var folderId: String = "", var
         parcel.readString() ?: "",
         parcel.readString() ?: "",
         parcel.readByte() != 0.toByte(),
-        parcel.readString() ?: ""
+        parcel.readLong()
     )
 
     constructor(
@@ -31,10 +31,10 @@ data class FolderInfo(var videoName: String = "", var folderId: String = "", var
         songName: String,
         folderId: String,
         isSong: Boolean,
-        duration: String
+        duration: Long
     ): this(folderName, folderId, fullPath, isSong, duration)
 
-    fun addSong(songName: String, folderId: String, duration: String) {
+    fun addSong(songName: String, folderId: String, duration: Long) {
         songsList.add(FolderInfo(songName, folderId, path + songName, true, duration))
 
     }
@@ -44,7 +44,7 @@ data class FolderInfo(var videoName: String = "", var folderId: String = "", var
         parcel.writeString(folderId)
         parcel.writeString(path)
         parcel.writeByte(if (isSong) 1 else 0)
-        parcel.writeString(duration)
+        parcel.writeLong(duration)
     }
 
     override fun describeContents(): Int {

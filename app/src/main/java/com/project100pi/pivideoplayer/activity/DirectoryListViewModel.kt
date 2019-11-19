@@ -157,22 +157,7 @@ class DirectoryListViewModel(private val context: Context, application: Applicat
                                     )
                                 }
 
-                                var seconds: Long = songDuration / 1000
-                                var minutes: Long
-                                var hours: Long
-
-                                minutes = seconds / 60
-                                seconds %= 60
-                                hours = minutes / 60
-                                minutes %= 60
-
-                                val duration = if (hours > 0){
-                                    "$hours:$minutes:$seconds"
-                                } else {
-                                    "$minutes:$seconds"
-                                }
-
-                                foldersWithPathMap[key]?.addSong(videoName, songId, duration)
+                                foldersWithPathMap[key]?.addSong(videoName, songId, songDuration)
 
                             } else
                                 continue

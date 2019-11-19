@@ -85,21 +85,6 @@ class SearchViewModel(private val context: Context, application: Application): A
 
                                     val videoName = pathsList[pathsList.size - 1]
 
-                                    var seconds: Long = songDuration / 1000
-                                    var minutes: Long
-                                    var hours: Long
-
-                                    minutes = seconds / 60
-                                    seconds %= 60
-                                    hours = minutes / 60
-                                    minutes %= 60
-
-                                    val duration = if (hours > 0){
-                                        "$hours:$minutes:$seconds"
-                                    } else {
-                                        "$minutes:$seconds"
-                                    }
-
                                     searchResult.add(FolderInfo(
                                         videoName,
                                         path,
@@ -107,7 +92,7 @@ class SearchViewModel(private val context: Context, application: Application): A
                                         videoName,
                                         songId,
                                         true,
-                                        duration
+                                        songDuration
                                     ))
 
                                 } else

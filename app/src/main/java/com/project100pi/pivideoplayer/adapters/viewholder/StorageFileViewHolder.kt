@@ -35,21 +35,7 @@ class StorageFileViewHolder(private val context: Context, itemView: View, privat
         else{
             clItemRow.setBackgroundColor(context.resources.getColor(android.R.color.white))
         }
-        if (file.isSong) {
-            //ivThumbnail.background = ContextCompat.getDrawable(context, R.drawable.music_icon)
-            Glide
-                .with(context)
-                .asBitmap()
-                .load(Uri.fromFile(File(file.path)))
-                .thumbnail(0.1f)
-                .into(ivThumbnail)
-            ivOverFlow.visibility = View.VISIBLE
-            tvItemCount.visibility = View.GONE
-            tvDuration.visibility = View.VISIBLE
-            tvDuration.text = file.duration
-        }
-        else {
-//            ivThumbnail.background = ContextCompat.getDrawable(context, R.drawable.ic_folder)
+
             Glide
                 .with(context)
                 .asBitmap()
@@ -60,7 +46,7 @@ class StorageFileViewHolder(private val context: Context, itemView: View, privat
             tvItemCount.visibility = View.VISIBLE
             tvDuration.visibility = View.GONE
             tvItemCount.text = "${adapter.getInternalItem(position).songsList.size} Videos"
-        }
+
         tvTitle.text = file.videoName
 
         clItemRow.setOnClickListener(this)
