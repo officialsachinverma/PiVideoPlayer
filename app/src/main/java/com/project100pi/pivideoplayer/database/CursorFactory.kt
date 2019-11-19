@@ -21,7 +21,7 @@ object CursorFactory {
     fun getVideoSearchData(context: Context, searchData: String): Cursor? {
         val sortOrder = MediaStore.Video.Media.TITLE + " ASC"
         val projection = arrayOf(MediaStore.Video.Media.DATA, MediaStore.Video.Media._ID, MediaStore.Video.Media.TITLE, MediaStore.Video.Media.DURATION)
-        val selection = "${MediaStore.Video.Media.TITLE} LIKE '${searchData}%'"
+        val selection = "${MediaStore.Video.Media.TITLE} LIKE '%${searchData}%'"
         return context.contentResolver.query(
             MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
             projection,
