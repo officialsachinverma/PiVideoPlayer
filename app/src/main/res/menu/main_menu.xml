@@ -6,8 +6,8 @@
         android:title="@string/context_menu_search"
         app:showAsAction="ifRoom"
         android:icon="@drawable/ic_search" />
-    <item
-        android:id="@+id/itemSettings"
-        android:title="@string/context_menu_settings"
-        app:showAsAction="never" />
+<!--    <item-->
+<!--        android:id="@+id/itemSettings"-->
+<!--        android:title="@string/context_menu_settings"-->
+<!--        app:showAsAction="never" />-->
 </menu>

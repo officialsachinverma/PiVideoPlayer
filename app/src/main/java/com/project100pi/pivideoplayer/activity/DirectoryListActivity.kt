@@ -102,9 +102,9 @@ class DirectoryListActivity : AppCompatActivity(), OnClickListener, ItemDeleteLi
 
     override fun onOptionsItemSelected(item: MenuItem) =
         when (item.itemId) {
-            R.id.itemSettings -> {
-                true
-            }
+//            R.id.itemSettings -> {
+//                true
+//            }
             R.id.itemSearch -> {
                 openSearchActivity()
                 true

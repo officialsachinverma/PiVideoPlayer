@@ -1,6 +1,7 @@
 package com.project100pi.pivideoplayer.activity
 
 import android.content.Context
+import android.content.DialogInterface
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -12,6 +13,7 @@ import android.view.View
 import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.view.ActionMode
 import androidx.appcompat.widget.Toolbar
@@ -119,9 +121,9 @@ class VideoListActivity : AppCompatActivity(), OnClickListener, ItemDeleteListen
 
     override fun onOptionsItemSelected(item: MenuItem) =
         when (item.itemId) {
-            R.id.itemSettings -> {
-                true
-            }
+//            R.id.itemSettings -> {
+//                true
+//            }
             R.id.itemSearch -> {
                 launchSearchActivity()
                 true
@@ -223,7 +225,7 @@ class VideoListActivity : AppCompatActivity(), OnClickListener, ItemDeleteListen
                 shareVideos(position)
             }
             R.id.itemDelete -> {
-                videoListViewModel.delete(listOf(position), this)
+                showDeleteConfirmation(position)
             }
         }
     }
@@ -260,7 +262,7 @@ class VideoListActivity : AppCompatActivity(), OnClickListener, ItemDeleteListen
                     videoListViewModel.shareMultipleVideos(adapter!!.getSelectedItems())
                 }
                 R.id.multiChoiceDelete -> {
-                    videoListViewModel.delete(adapter!!.getSelectedItems(), mContext)
+                    showMultiDeleteConfirmation()
                 }
             }
             // We have to end the multi select, if the user clicks on an option other than select all
@@ -331,6 +333,30 @@ class VideoListActivity : AppCompatActivity(), OnClickListener, ItemDeleteListen
 
     override fun onDeleteError() {
         Toast.makeText(mContext, "Some error occurred while deleting video(s)", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun showMultiDeleteConfirmation() {
+        AlertDialog.Builder(this)
+            .setTitle("Delete")
+            .setMessage("Are you sure you want to delete this ${adapter!!.getSelectedItemCount()} video(s)?")
+            .setPositiveButton(android.R.string.yes) { _, _ ->
+                videoListViewModel.delete(adapter!!.getSelectedItems(), mContext)
+            }
+            .setNegativeButton(android.R.string.no, null)
+            .setCancelable(false)
+            .show()
+    }
+
+    private fun showDeleteConfirmation(position: Int) {
+        AlertDialog.Builder(this)
+            .setTitle("Delete")
+            .setMessage("Are you sure you want to delete this video?")
+            .setPositiveButton(android.R.string.yes) { _, _ ->
+                videoListViewModel.delete(listOf(position), this)
+            }
+            .setNegativeButton(android.R.string.no, null)
+            .setCancelable(false)
+            .show()
     }
 
 }
