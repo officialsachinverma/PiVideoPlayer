@@ -1,4 +1,4 @@
-package com.project100pi.pivideoplayer.adapters.viewholder
+package com.project100pi.pivideoplayer.ui.adapters.viewholder
 
 import android.content.Context
 import android.net.Uri
@@ -10,11 +10,10 @@ import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.project100pi.pivideoplayer.R
-import com.project100pi.pivideoplayer.activity.VideoListActivity
-import com.project100pi.pivideoplayer.adapters.VideoFilesAdapter
+import com.project100pi.pivideoplayer.ui.activity.VideoListActivity
+import com.project100pi.pivideoplayer.ui.adapters.VideoFilesAdapter
 import com.project100pi.pivideoplayer.listeners.OnClickListener
 import com.project100pi.pivideoplayer.model.FileInfo
-import com.project100pi.pivideoplayer.model.FolderInfo
 import com.project100pi.pivideoplayer.utils.UtilFunctions
 import java.io.File
 

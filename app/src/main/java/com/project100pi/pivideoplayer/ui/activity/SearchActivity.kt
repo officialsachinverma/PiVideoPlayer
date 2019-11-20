@@ -1,4 +1,4 @@
-package com.project100pi.pivideoplayer.activity
+package com.project100pi.pivideoplayer.ui.activity
 
 import android.content.Context
 import android.content.Intent
@@ -28,13 +28,12 @@ import butterknife.ButterKnife
 import com.project100pi.library.misc.Logger
 import com.project100pi.library.model.VideoMetaData
 import com.project100pi.pivideoplayer.R
-import com.project100pi.pivideoplayer.adapters.StorageFileAdapter
-import com.project100pi.pivideoplayer.adapters.VideoFilesAdapter
+import com.project100pi.pivideoplayer.ui.adapters.VideoFilesAdapter
 import com.project100pi.pivideoplayer.factory.SearchViewModelFactory
 import com.project100pi.pivideoplayer.listeners.ItemDeleteListener
 import com.project100pi.pivideoplayer.listeners.OnClickListener
 import com.project100pi.pivideoplayer.model.FileInfo
-import com.project100pi.pivideoplayer.model.FolderInfo
+import com.project100pi.pivideoplayer.ui.activity.viewmodel.SearchViewModel
 import com.project100pi.pivideoplayer.utils.Constants
 import com.project100pi.pivideoplayer.utils.ContextMenuUtil
 import java.io.File

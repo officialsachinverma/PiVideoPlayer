@@ -1,4 +1,4 @@
-package com.project100pi.pivideoplayer.adapters
+package com.project100pi.pivideoplayer.ui.adapters
 
 import android.content.Context
 import android.util.SparseBooleanArray
@@ -6,34 +6,34 @@ import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
-import com.project100pi.pivideoplayer.activity.DirectoryListActivity
+import com.project100pi.pivideoplayer.ui.activity.VideoListActivity
+import com.project100pi.pivideoplayer.ui.adapters.viewholder.VideoFilesViewHolder
 import com.project100pi.pivideoplayer.listeners.OnClickListener
-import com.project100pi.pivideoplayer.adapters.viewholder.StorageFileViewHolder
-import com.project100pi.pivideoplayer.model.FolderInfo
+import com.project100pi.pivideoplayer.model.FileInfo
 
-class StorageFileAdapter(
+class VideoFilesAdapter(
     private val context: Context,
     var view: Int,
-    var listener: OnClickListener): ListAdapter<FolderInfo, StorageFileViewHolder>(PlayerDiffUtil()) {
+    private var listener: OnClickListener
+): ListAdapter<FileInfo, VideoFilesViewHolder>(PlayerDiffUtil()) {
 
     private var selectedItems = SparseBooleanArray()
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int)
-            = StorageFileViewHolder(context,
+            = VideoFilesViewHolder(context,
         LayoutInflater.from(parent.context)
             .inflate(view, parent, false), listener, this)
 
-    override fun onBindViewHolder(holder: StorageFileViewHolder, position: Int) {
+    override fun onBindViewHolder(holder: VideoFilesViewHolder, position: Int) {
         holder.bind(getItem(position), position)
     }
 
-    class PlayerDiffUtil: DiffUtil.ItemCallback<FolderInfo>() {
-        override fun areItemsTheSame(oldItem: FolderInfo, newItem: FolderInfo): Boolean {
-            // TODO: add check for video list size @Sachin
-            return oldItem.folderId == newItem.folderId
+    class PlayerDiffUtil: DiffUtil.ItemCallback<FileInfo>() {
+        override fun areItemsTheSame(oldItem: FileInfo, newItem: FileInfo): Boolean {
+            return oldItem._Id == newItem._Id
         }
 
-        override fun areContentsTheSame(oldItem: FolderInfo, newItem: FolderInfo): Boolean {
+        override fun areContentsTheSame(oldItem: FileInfo, newItem: FileInfo): Boolean {
             return oldItem == newItem
         }
 
@@ -74,7 +74,7 @@ class StorageFileAdapter(
     }
 
     fun selectAllItems() {
-        if (DirectoryListActivity.mIsMultiSelectMode) {
+        if (VideoListActivity.mIsMultiSelectMode) {
             this.clearSelection()
             var i = 0
             val size: Int = itemCount
@@ -84,9 +84,4 @@ class StorageFileAdapter(
             }
         }
     }
-
-    fun getInternalItem(position: Int): FolderInfo = getItem(position)
-
-
-
 }

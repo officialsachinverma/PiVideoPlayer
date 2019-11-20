@@ -1,4 +1,4 @@
-package com.project100pi.pivideoplayer.activity
+package com.project100pi.pivideoplayer.ui.activity.viewmodel
 
 import android.app.Application
 import android.content.Context
@@ -15,6 +15,7 @@ import com.project100pi.pivideoplayer.database.CursorFactory
 import com.project100pi.pivideoplayer.listeners.ItemDeleteListener
 import com.project100pi.pivideoplayer.model.FileInfo
 import com.project100pi.pivideoplayer.model.observable.VideoChangeObservable
+import com.project100pi.pivideoplayer.ui.activity.PlayerActivity
 import com.project100pi.pivideoplayer.utils.Constants
 import com.project100pi.pivideoplayer.utils.ContextMenuUtil
 import com.project100pi.pivideoplayer.utils.FileExtension

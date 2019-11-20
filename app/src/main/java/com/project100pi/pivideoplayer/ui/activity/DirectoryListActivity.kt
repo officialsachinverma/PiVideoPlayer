@@ -1,4 +1,4 @@
-package com.project100pi.pivideoplayer.activity
+package com.project100pi.pivideoplayer.ui.activity
 
 import android.Manifest
 import android.content.Context
@@ -27,22 +27,15 @@ import androidx.appcompat.widget.Toolbar
 import androidx.core.app.ActivityCompat
 import butterknife.BindView
 import butterknife.ButterKnife
-import com.project100pi.library.misc.Logger
-import com.project100pi.library.model.VideoMetaData
-import com.project100pi.pivideoplayer.adapters.StorageFileAdapter
-import com.project100pi.pivideoplayer.adapters.viewholder.VideoFilesViewHolder
+import com.project100pi.pivideoplayer.ui.adapters.StorageFileAdapter
 import com.project100pi.pivideoplayer.factory.DirectoryListViewModelFactory
 import com.project100pi.pivideoplayer.listeners.ItemDeleteListener
 import com.project100pi.pivideoplayer.model.FolderInfo
-import com.project100pi.pivideoplayer.model.observable.VideoChangeObservable
-import com.project100pi.pivideoplayer.utils.ContextMenuUtil
-import com.project100pi.pivideoplayer.utils.PermissionsUtil
-import java.io.File
-import java.lang.Exception
+import com.project100pi.pivideoplayer.ui.activity.viewmodel.DirectoryListViewModel
 import kotlin.collections.ArrayList
 
 
-class DirectoryListActivity : AppCompatActivity(), OnClickListener, ItemDeleteListener, PermissionsUtil.ShowAlertCallback{
+class DirectoryListActivity : AppCompatActivity(), OnClickListener, ItemDeleteListener{
 
     @BindView(R.id.rv_directory_file_list)
     lateinit var  rvVideoList: RecyclerView
@@ -57,9 +50,6 @@ class DirectoryListActivity : AppCompatActivity(), OnClickListener, ItemDeleteLi
     private var adapter: StorageFileAdapter? = null
     private var actionModeCallback = ActionModeCallback()
     private var actionMode: ActionMode? = null
-    private var granted: Boolean = false
-    private val permission =  Manifest.permission.WRITE_EXTERNAL_STORAGE
-    private lateinit var permissionUtil: PermissionsUtil
     private var videoListData: ArrayList<FolderInfo> = ArrayList()
 
     private var doubleBackToExitPressedOnce = false
@@ -74,20 +64,15 @@ class DirectoryListActivity : AppCompatActivity(), OnClickListener, ItemDeleteLi
         ButterKnife.bind(this)
         setSupportActionBar(mToolbar)
 
-        permissionUtil = PermissionsUtil(this, this)
-    }
-
-    override fun onStart() {
-        super.onStart()
-        if (!granted)
-            permissionUtil.checkorRequestPermission(permission)
+        init()
     }
 
     private fun init() {
 
         val application = requireNotNull(this).application
         val viewModelFactory = DirectoryListViewModelFactory(this , application)
-        directoryListViewModel = ViewModelProviders.of(this, viewModelFactory).get(DirectoryListViewModel::class.java)
+        directoryListViewModel = ViewModelProviders.of(this, viewModelFactory).get(
+            DirectoryListViewModel::class.java)
 
         tvEmptyList.visibility = View.GONE
         rvVideoList.visibility = View.GONE
@@ -136,26 +121,6 @@ class DirectoryListActivity : AppCompatActivity(), OnClickListener, ItemDeleteLi
             val intent = Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS)
             intent.data = Uri.parse("package:" + context.packageName)
             context.startActivity(intent)
-        }
-    }
-
-    override fun showAlert() {
-        requestPermission()
-    }
-
-    override fun permissionGranted() {
-        init()
-    }
-
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<out String>,
-        grantResults: IntArray
-    ) {
-        when (requestCode) {
-            Constants.PERMISSION_REQUEST_CODE -> {
-                permissionUtil.checkorRequestPermission(permission = permissions[0])
-            }
         }
     }
 

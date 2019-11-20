@@ -1,9 +1,7 @@
-package com.project100pi.pivideoplayer.activity
+package com.project100pi.pivideoplayer.ui.activity
 
 import android.os.Build
 import android.os.Bundle
-import android.view.Menu
-import android.view.MenuItem
 import androidx.appcompat.app.AppCompatActivity
 import butterknife.BindView
 import butterknife.ButterKnife

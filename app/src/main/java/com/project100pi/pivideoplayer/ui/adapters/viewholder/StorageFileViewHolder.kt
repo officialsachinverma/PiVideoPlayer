@@ -1,7 +1,6 @@
-package com.project100pi.pivideoplayer.adapters.viewholder
+package com.project100pi.pivideoplayer.ui.adapters.viewholder
 
 import android.content.Context
-import android.net.Uri
 import android.view.View
 import android.widget.ImageView
 import android.widget.PopupMenu
@@ -11,10 +10,9 @@ import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.project100pi.pivideoplayer.model.FolderInfo
 import com.project100pi.pivideoplayer.R
-import com.project100pi.pivideoplayer.activity.DirectoryListActivity
-import com.project100pi.pivideoplayer.adapters.StorageFileAdapter
+import com.project100pi.pivideoplayer.ui.activity.DirectoryListActivity
+import com.project100pi.pivideoplayer.ui.adapters.StorageFileAdapter
 import com.project100pi.pivideoplayer.listeners.OnClickListener
-import java.io.File
 
 class StorageFileViewHolder(private val context: Context, itemView: View, private val listener: OnClickListener, private val adapter: StorageFileAdapter):
     RecyclerView.ViewHolder(itemView),

@@ -1,4 +1,4 @@
-package com.project100pi.pivideoplayer.activity
+package com.project100pi.pivideoplayer.ui.activity.viewmodel
 
 import android.app.Application
 import android.content.Context
@@ -11,7 +11,6 @@ import androidx.lifecycle.MutableLiveData
 import com.project100pi.pivideoplayer.database.CursorFactory
 import com.project100pi.pivideoplayer.listeners.ItemDeleteListener
 import com.project100pi.pivideoplayer.model.FileInfo
-import com.project100pi.pivideoplayer.model.FolderInfo
 import com.project100pi.pivideoplayer.utils.FileExtension
 import kotlinx.coroutines.*
 import java.io.File
