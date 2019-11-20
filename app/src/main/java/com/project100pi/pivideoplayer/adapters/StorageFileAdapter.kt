@@ -25,14 +25,11 @@ class StorageFileAdapter(
 
     override fun onBindViewHolder(holder: StorageFileViewHolder, position: Int) {
         holder.bind(getItem(position), position)
-        //TODO: Remove this
-        holder.clItemRow.setOnClickListener {
-            listener.onDirectorySelected(position)
-        }
     }
 
     class PlayerDiffUtil: DiffUtil.ItemCallback<FolderInfo>() {
         override fun areItemsTheSame(oldItem: FolderInfo, newItem: FolderInfo): Boolean {
+            // TODO: add check for video list size @Sachin
             return oldItem.folderId == newItem.folderId
         }
 
@@ -88,6 +85,8 @@ class StorageFileAdapter(
         }
     }
 
-    fun getInternalItem(position: Int) = getItem(position)
+    fun getInternalItem(position: Int): FolderInfo = getItem(position)
+
+
 
 }

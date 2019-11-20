@@ -2,30 +2,33 @@ package com.project100pi.pivideoplayer.activity
 
 import android.app.Application
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import android.provider.MediaStore
+import android.widget.Toast
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import com.project100pi.pivideoplayer.listeners.ClickInterface
-import com.project100pi.pivideoplayer.model.FolderInfo
-import com.project100pi.pivideoplayer.utils.Constants
+import com.project100pi.library.misc.Logger
+import com.project100pi.library.model.VideoMetaData
 import com.project100pi.pivideoplayer.database.CursorFactory
+import com.project100pi.pivideoplayer.listeners.ClickInterface
+import com.project100pi.pivideoplayer.listeners.ItemDeleteListener
+import com.project100pi.pivideoplayer.model.FolderInfo
+import com.project100pi.pivideoplayer.model.observable.VideoChangeObservable
+import com.project100pi.pivideoplayer.utils.Constants
+import com.project100pi.pivideoplayer.utils.ContextMenuUtil
 import com.project100pi.pivideoplayer.utils.FileExtension
 import kotlinx.coroutines.*
 import java.io.File
 import java.util.*
 import kotlin.collections.ArrayList
-import android.content.Intent
-import android.widget.Toast
-import com.project100pi.library.misc.Logger
-import com.project100pi.library.model.VideoMetaData
-import com.project100pi.pivideoplayer.listeners.ItemDeleteListener
-import com.project100pi.pivideoplayer.utils.ContextMenuUtil
-import java.util.concurrent.TimeUnit
 
 
-class DirectoryListViewModel(private val context: Context, application: Application): AndroidViewModel(application), ClickInterface {
+class DirectoryListViewModel(private val context: Context, application: Application):
+    AndroidViewModel(application),
+    ClickInterface,
+    Observer {
 
     private val allFilePaths = mutableListOf<String>()
     private var foldersList = MutableLiveData<ArrayList<FolderInfo>>()
@@ -43,7 +46,12 @@ class DirectoryListViewModel(private val context: Context, application: Applicat
     var currentSongFolderIndex = -1
 
     init {
+        observeForVideoChange()
         loadAllFolderData()
+    }
+
+    private fun observeForVideoChange() {
+        VideoChangeObservable.addObserver(this)
     }
 
     override fun onItemClicked(position: Int) {
@@ -61,8 +69,8 @@ class DirectoryListViewModel(private val context: Context, application: Applicat
     }
 
     fun delete(listOfIndexes: List<Int>, listener: ItemDeleteListener) {
+        var errorOccurred = false
         coroutineScope.launch {
-
             for (position in listOfIndexes) {
                 try {
                     val folder = foldersList.value!![position].path
@@ -78,18 +86,20 @@ class DirectoryListViewModel(private val context: Context, application: Applicat
                             context.applicationContext.sendBroadcast(Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.fromFile(file)))
                         }
                     }
+                    errorOccurred = false
                 } catch (e: Exception) {
                     e.printStackTrace()
+                    errorOccurred = true
                     withContext(Dispatchers.Main) {
                         listener.onDeleteError()
                     }
                 }
             }
-
-            withContext(Dispatchers.Main) {
-                listener.onDeleteSuccess(listOfIndexes)
+            if (!errorOccurred) {
+                withContext(Dispatchers.Main) {
+                    listener.onDeleteSuccess(listOfIndexes)
+                }
             }
-
         }
     }
 
@@ -157,7 +167,7 @@ class DirectoryListViewModel(private val context: Context, application: Applicat
                                     )
                                 }
 
-                                foldersWithPathMap[key]?.addSong(videoName, songId, songDuration)
+                                foldersWithPathMap[key]?.addSong(songId, videoName, path, songDuration)
 
                             } else
                                 continue
@@ -194,7 +204,7 @@ class DirectoryListViewModel(private val context: Context, application: Applicat
             val listOfVideoUris = ArrayList<Uri?>()
             for (position in selectedItemPosition) {
                 for (video in foldersList.value!![position].songsList) {
-                    listOfVideoUris.add(ContextMenuUtil.getVideoContentUri(context, File(video.path)))
+                    listOfVideoUris.add(ContextMenuUtil.getVideoContentUri(context, File(video.filePath)))
                 }
             }
 
@@ -216,7 +226,7 @@ class DirectoryListViewModel(private val context: Context, application: Applicat
                 for(position in selectedItemPosition) {
 //                    metaDataList.add(directoryListViewModel.getVideoMetaData(videoListData[directoryListViewModel.currentSongFolderIndex].songsList[selectedItemPosition].folderId)!!)
                     for (video in foldersList.value!![position].songsList) {
-                        metaDataList.add(VideoMetaData(video.folderId.toInt(), video.videoName, video.path))
+                        metaDataList.add(VideoMetaData(video._Id.toInt(), video.fileName, video.filePath))
                     }
                 }
                 playerIntent.putExtra(Constants.QUEUE, metaDataList)
@@ -233,6 +243,10 @@ class DirectoryListViewModel(private val context: Context, application: Applicat
 
     fun removeElementAt(position: Int) {
         foldersList.value!![currentSongFolderIndex].songsList.removeAt(position)
+    }
+
+    override fun update(p0: Observable?, p1: Any?) {
+        loadAllFolderData()
     }
 
 }

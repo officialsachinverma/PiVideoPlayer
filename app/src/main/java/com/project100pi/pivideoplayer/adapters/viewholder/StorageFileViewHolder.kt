@@ -42,10 +42,11 @@ class StorageFileViewHolder(private val context: Context, itemView: View, privat
                 .load(R.drawable.ic_folder)
                 .thumbnail(0.1f)
                 .into(ivThumbnail)
-            ivOverFlow.visibility = View.GONE
-            tvItemCount.visibility = View.VISIBLE
-            tvDuration.visibility = View.GONE
-            tvItemCount.text = "${adapter.getInternalItem(position).songsList.size} Videos"
+//        ivThumbnail.setImageResource(R.drawable.ic_folder)
+        ivOverFlow.visibility = View.GONE
+        tvItemCount.visibility = View.VISIBLE
+        tvDuration.visibility = View.GONE
+        tvItemCount.text = "${adapter.getInternalItem(position).songsList.size} Videos"
 
         tvTitle.text = file.videoName
 

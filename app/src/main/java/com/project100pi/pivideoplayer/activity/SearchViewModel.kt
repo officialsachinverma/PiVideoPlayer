@@ -10,6 +10,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.project100pi.pivideoplayer.database.CursorFactory
 import com.project100pi.pivideoplayer.listeners.ItemDeleteListener
+import com.project100pi.pivideoplayer.model.FileInfo
 import com.project100pi.pivideoplayer.model.FolderInfo
 import com.project100pi.pivideoplayer.utils.FileExtension
 import kotlinx.coroutines.*
@@ -17,8 +18,8 @@ import java.io.File
 
 class SearchViewModel(private val context: Context, application: Application): AndroidViewModel(application) {
 
-    private var foldersList = MutableLiveData<ArrayList<FolderInfo>>()
-    val foldersListExposed: LiveData<ArrayList<FolderInfo>>
+    private var foldersList = MutableLiveData<ArrayList<FileInfo>>()
+    val foldersListExposed: LiveData<ArrayList<FileInfo>>
         get() = foldersList
 
     private val coroutineJob = Job()
@@ -29,7 +30,7 @@ class SearchViewModel(private val context: Context, application: Application): A
 
             for (position in listOfIndexes) {
                 try {
-                    val folder = foldersList.value!![position].path
+                    val folder = foldersList.value!![position].filePath
                     val file = File(folder)
                     if(file.exists()) {
                         file.delete()
@@ -58,7 +59,7 @@ class SearchViewModel(private val context: Context, application: Application): A
     }
 
     fun performSearch(queryText: String) {
-        val searchResult = ArrayList<FolderInfo>()
+        val searchResult = ArrayList<FileInfo>()
         try {
             coroutineScope.launch  {
                 val cursor = CursorFactory.getVideoSearchData(context, queryText)
@@ -85,15 +86,12 @@ class SearchViewModel(private val context: Context, application: Application): A
 
                                     val videoName = pathsList[pathsList.size - 1]
 
-                                    searchResult.add(FolderInfo(
-                                        videoName,
-                                        path,
-                                        "",
-                                        videoName,
-                                        songId,
-                                        true,
-                                        songDuration
-                                    ))
+                                    searchResult.add(
+                                        FileInfo(
+                                            songId,
+                                            videoName,
+                                            path,
+                                            songDuration))
 
                                 } else
                                     continue

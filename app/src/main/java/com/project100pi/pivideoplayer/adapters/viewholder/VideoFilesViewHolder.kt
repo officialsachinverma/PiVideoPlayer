@@ -13,6 +13,7 @@ import com.project100pi.pivideoplayer.R
 import com.project100pi.pivideoplayer.activity.VideoListActivity
 import com.project100pi.pivideoplayer.adapters.VideoFilesAdapter
 import com.project100pi.pivideoplayer.listeners.OnClickListener
+import com.project100pi.pivideoplayer.model.FileInfo
 import com.project100pi.pivideoplayer.model.FolderInfo
 import com.project100pi.pivideoplayer.utils.UtilFunctions
 import java.io.File
@@ -28,7 +29,7 @@ class VideoFilesViewHolder(private val context: Context, itemView: View, private
     private var ivThumbnail: ImageView = itemView.findViewById(R.id.iv_video_thumnail)
     private var ivOverFlow: ImageView = itemView.findViewById(R.id.iv_video_overflow_menu)
 
-    fun bind(file: FolderInfo, position: Int) {
+    fun bind(file: FileInfo, position: Int) {
         if(adapter.isSelected(position)){
             clItemRow.setBackgroundColor(context.resources.getColor(android.R.color.holo_green_dark))
         }
@@ -38,13 +39,13 @@ class VideoFilesViewHolder(private val context: Context, itemView: View, private
         Glide
             .with(context)
             .asBitmap()
-            .load(Uri.fromFile(File(file.path)))
+            .load(Uri.fromFile(File(file.filePath)))
             .thumbnail(0.1f)
             .into(ivThumbnail)
         ivOverFlow.visibility = View.VISIBLE
         tvDuration.visibility = View.VISIBLE
-        tvDuration.text = UtilFunctions.convertSecondsToHMmSs(file.duration)
-        tvTitle.text = file.videoName
+        tvDuration.text = UtilFunctions.convertSecondsToHMmSs(file.fileDuration)
+        tvTitle.text = file.fileName
 
         clItemRow.setOnClickListener(this)
         clItemRow.setOnLongClickListener(this)

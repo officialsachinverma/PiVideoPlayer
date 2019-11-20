@@ -17,6 +17,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.view.ActionMode
 import androidx.appcompat.widget.Toolbar
+import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProviders
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -30,7 +31,9 @@ import com.project100pi.pivideoplayer.adapters.VideoFilesAdapter
 import com.project100pi.pivideoplayer.factory.VideoListViewModelFactory
 import com.project100pi.pivideoplayer.listeners.ItemDeleteListener
 import com.project100pi.pivideoplayer.listeners.OnClickListener
+import com.project100pi.pivideoplayer.model.FileInfo
 import com.project100pi.pivideoplayer.model.FolderInfo
+import com.project100pi.pivideoplayer.model.observable.VideoChangeObservable
 import com.project100pi.pivideoplayer.utils.Constants
 import com.project100pi.pivideoplayer.utils.ContextMenuUtil
 import java.io.File
@@ -49,8 +52,9 @@ class VideoListActivity : AppCompatActivity(), OnClickListener, ItemDeleteListen
 
     private lateinit var videoListViewModel: VideoListViewModel
 
-    private var videoListData = arrayListOf<FolderInfo>()
+    private var videoListData = arrayListOf<FileInfo>()
     private var directoryName = ""
+    private var directoryPath = ""
 
     private var adapter: VideoFilesAdapter? = null
 
@@ -68,23 +72,35 @@ class VideoListActivity : AppCompatActivity(), OnClickListener, ItemDeleteListen
         ButterKnife.bind(this)
         setSupportActionBar(mToolbar)
         this.intent?.let {
-            videoListData = intent.getParcelableArrayListExtra("videoList")
-            directoryName = intent.getStringExtra("directoryName")
+            //videoListData = intent.getParcelableArrayListExtra("videoList") ?: arrayListOf()
+            directoryName = intent.getStringExtra("directoryName") ?: ""
+            directoryPath = intent.getStringExtra("directoryPath") ?: ""
             init()
-            setAdapter()
+            //setAdapter()
+            observeForObservable()
         }
-
     }
 
     private fun init() {
 
         val application = requireNotNull(this).application
-        val viewModelFactory = VideoListViewModelFactory(this, videoListData, application)
+        val viewModelFactory = VideoListViewModelFactory(this, directoryPath, application)
         videoListViewModel = ViewModelProviders.of(this, viewModelFactory).get(VideoListViewModel::class.java)
 
         tvEmptyList.visibility = View.GONE
         rvVideoList.visibility = View.GONE
         pgWaiting.visibility = View.VISIBLE
+    }
+
+    private fun observeForObservable() {
+        observeForVideoList()
+    }
+
+    private fun observeForVideoList(){
+        videoListViewModel.filesListExposed.observe(this, Observer {
+            videoListData = it
+            setAdapter()
+        })
     }
 
     private fun setAdapter(){
@@ -186,13 +202,13 @@ class VideoListActivity : AppCompatActivity(), OnClickListener, ItemDeleteListen
             if (!isMultiple) {
                 val currentVideo = videoListData[position]
 //                val metadata = directoryListViewModel.getVideoMetaData(currentVideo.folderId)
-                val metadata = VideoMetaData(currentVideo.folderId.toInt(), currentVideo.videoName, currentVideo.path)
+                val metadata = VideoMetaData(currentVideo._Id.toInt(), currentVideo.fileName, currentVideo.filePath)
 //           playerIntent.putExtra(Constants.FILE_PATH, currentVideo.path)
                 playerIntent.putExtra(Constants.FILE_PATH, metadata)
                 val pathsList = ArrayList<VideoMetaData>()
                 for (folder in videoListData) {
 //                    pathsList.add(directoryListViewModel.getVideoMetaData(currentVideo.folderId)!!)
-                    pathsList.add(VideoMetaData(folder.folderId.toInt(), folder.videoName, folder.path))
+                    pathsList.add(VideoMetaData(folder._Id.toInt(), folder.fileName, folder.filePath))
                 }
                 playerIntent.putExtra(Constants.Playback.WINDOW, position)
                 playerIntent.putExtra(Constants.QUEUE, pathsList)
@@ -201,9 +217,9 @@ class VideoListActivity : AppCompatActivity(), OnClickListener, ItemDeleteListen
                 for(selectedItemPosition in adapter!!.getSelectedItems()) {
 //                    metaDataList.add(directoryListViewModel.getVideoMetaData(videoListData[directoryListViewModel.currentSongFolderIndex].songsList[selectedItemPosition].folderId)!!)
                     metaDataList.add(
-                        VideoMetaData(videoListData[selectedItemPosition].folderId.toInt(),
-                            videoListData[selectedItemPosition].videoName,
-                            videoListData[selectedItemPosition].path)
+                        VideoMetaData(videoListData[selectedItemPosition]._Id.toInt(),
+                            videoListData[selectedItemPosition].fileName,
+                            videoListData[selectedItemPosition].filePath)
                     )
                 }
                 playerIntent.putExtra(Constants.QUEUE, metaDataList)
@@ -211,7 +227,7 @@ class VideoListActivity : AppCompatActivity(), OnClickListener, ItemDeleteListen
             startActivity(playerIntent)
         } catch (e: Exception) {
             Logger.i(e.toString())
-            Toast.makeText(this, "Failed to play with video.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Failed to play this video.", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -236,7 +252,7 @@ class VideoListActivity : AppCompatActivity(), OnClickListener, ItemDeleteListen
         startActivity(Intent.createChooser(Intent().setAction(Intent.ACTION_SEND)
             .setType("video/*")
             .setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            .putExtra(Intent.EXTRA_STREAM,  ContextMenuUtil.getVideoContentUri(this@VideoListActivity, File(currentVideo.path))), "Share Video"))
+            .putExtra(Intent.EXTRA_STREAM,  ContextMenuUtil.getVideoContentUri(this@VideoListActivity, File(currentVideo.filePath))), "Share Video"))
     }
 
     inner class ActionModeCallback: ActionMode.Callback {
@@ -324,6 +340,7 @@ class VideoListActivity : AppCompatActivity(), OnClickListener, ItemDeleteListen
             videoListViewModel.removeElementAt(position)
             adapter!!.notifyItemRemoved(position)
         }
+        VideoChangeObservable.setChangedOverride()
         Toast.makeText(
             this@VideoListActivity,
             "${listOfIndexes.size} " + getString(R.string.songs_deleted_toast),

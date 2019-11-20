@@ -30,9 +30,11 @@ import butterknife.ButterKnife
 import com.project100pi.library.misc.Logger
 import com.project100pi.library.model.VideoMetaData
 import com.project100pi.pivideoplayer.adapters.StorageFileAdapter
+import com.project100pi.pivideoplayer.adapters.viewholder.VideoFilesViewHolder
 import com.project100pi.pivideoplayer.factory.DirectoryListViewModelFactory
 import com.project100pi.pivideoplayer.listeners.ItemDeleteListener
 import com.project100pi.pivideoplayer.model.FolderInfo
+import com.project100pi.pivideoplayer.model.observable.VideoChangeObservable
 import com.project100pi.pivideoplayer.utils.ContextMenuUtil
 import com.project100pi.pivideoplayer.utils.PermissionsUtil
 import java.io.File
@@ -55,7 +57,6 @@ class DirectoryListActivity : AppCompatActivity(), OnClickListener, ItemDeleteLi
     private var adapter: StorageFileAdapter? = null
     private var actionModeCallback = ActionModeCallback()
     private var actionMode: ActionMode? = null
-    private val mContext = this
     private var granted: Boolean = false
     private val permission =  Manifest.permission.WRITE_EXTERNAL_STORAGE
     private lateinit var permissionUtil: PermissionsUtil
@@ -109,14 +110,14 @@ class DirectoryListActivity : AppCompatActivity(), OnClickListener, ItemDeleteLi
                 openSearchActivity()
                 true
             }
-            android.R.id.home -> {
-                supportActionBar?.setDisplayHomeAsUpEnabled(false)
-                supportActionBar?.title = "Pi Video Player"
-                directoryListViewModel.listViewMode = Constants.FOLDER_VIEW
-                setAdapter()
-                directoryListViewModel.onBackFolderPressed()
-                true
-            }
+//            android.R.id.home -> {
+//                supportActionBar?.setDisplayHomeAsUpEnabled(false)
+//                supportActionBar?.title = "Pi Video Player"
+//                directoryListViewModel.listViewMode = Constants.FOLDER_VIEW
+//                setAdapter()
+//                directoryListViewModel.onBackFolderPressed()
+//                true
+//            }
             else -> false
         }
 
@@ -159,6 +160,10 @@ class DirectoryListActivity : AppCompatActivity(), OnClickListener, ItemDeleteLi
     }
 
     private fun observeForObservers() {
+        observeForFolderList()
+    }
+
+    private fun observeForFolderList() {
         directoryListViewModel.foldersListExposed.observe(this, Observer {
             if (it != null) {
                 if (it.size > 0) {
@@ -231,8 +236,9 @@ class DirectoryListActivity : AppCompatActivity(), OnClickListener, ItemDeleteLi
 
     private fun launchVideoListActivity(position: Int) {
         val videoListIntent = Intent(this, VideoListActivity::class.java)
-        videoListIntent.putExtra("videoList", videoListData[position].songsList)
+//        videoListIntent.putExtra("videoList", videoListData[position].songsList)
         videoListIntent.putExtra("directoryName", videoListData[position].videoName)
+        videoListIntent.putExtra("directoryPath", videoListData[position].path)
         startActivity(videoListIntent)
     }
 
@@ -266,7 +272,7 @@ class DirectoryListActivity : AppCompatActivity(), OnClickListener, ItemDeleteLi
         this.doubleBackToExitPressedOnce = true
         Toast.makeText(this, "Please click BACK again to exit", Toast.LENGTH_SHORT).show()
 
-        Handler().postDelayed(Runnable { doubleBackToExitPressedOnce = false }, 2000)
+        Handler().postDelayed({ doubleBackToExitPressedOnce = false }, 2000)
     }
 
     override fun onDeleteSuccess(listOfIndexes: List<Int>) {
@@ -282,7 +288,7 @@ class DirectoryListActivity : AppCompatActivity(), OnClickListener, ItemDeleteLi
     }
 
     override fun onDeleteError() {
-        Toast.makeText(mContext, "Some error occurred while deleting video(s)", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, "Some error occurred while deleting video(s)", Toast.LENGTH_SHORT).show()
     }
 
     private fun openSearchActivity() {
@@ -314,7 +320,7 @@ class DirectoryListActivity : AppCompatActivity(), OnClickListener, ItemDeleteLi
                     shareMultipleVideos()
                 }
                 R.id.multiChoiceDelete -> {
-                    directoryListViewModel.delete(adapter!!.getSelectedItems(), mContext)
+                    directoryListViewModel.delete(adapter!!.getSelectedItems(), this@DirectoryListActivity)
                 }
             }
             // We have to end the multi select, if the user clicks on an option other than select all

@@ -33,6 +33,7 @@ import com.project100pi.pivideoplayer.adapters.VideoFilesAdapter
 import com.project100pi.pivideoplayer.factory.SearchViewModelFactory
 import com.project100pi.pivideoplayer.listeners.ItemDeleteListener
 import com.project100pi.pivideoplayer.listeners.OnClickListener
+import com.project100pi.pivideoplayer.model.FileInfo
 import com.project100pi.pivideoplayer.model.FolderInfo
 import com.project100pi.pivideoplayer.utils.Constants
 import com.project100pi.pivideoplayer.utils.ContextMenuUtil
@@ -57,7 +58,7 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
     @BindView(R.id.sorryMessage)
     lateinit var sorryMessageTextView: TextView
 
-    private var videoSearchResultData: ArrayList<FolderInfo> = ArrayList()
+    private var videoSearchResultData: ArrayList<FileInfo> = ArrayList()
 
     private var isSearchTriggered = false
 
@@ -78,6 +79,9 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
 
         initializeToolbar()
         initializeAutoCompleteTextView()
+
+        if(autoCompleteTextView.requestFocus())
+            showKeyboard()
 
         sorryMessageTextView.visibility = View.VISIBLE
         searchResultsRecyclerView.visibility = View.GONE
@@ -108,6 +112,10 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
     }
 
     private fun observeForObservers() {
+       observeForSearchResultList()
+    }
+
+    private fun observeForSearchResultList() {
         searchViewModel.foldersListExposed.observe(this, Observer {
             if (it != null) {
                 videoSearchResultData = it
@@ -240,7 +248,7 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
         startActivity(Intent.createChooser(Intent().setAction(Intent.ACTION_SEND)
             .setType("video/*")
             .setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            .putExtra(Intent.EXTRA_STREAM,  ContextMenuUtil.getVideoContentUri(this@SearchActivity, File(currentVideo.path))), "Share Video"))
+            .putExtra(Intent.EXTRA_STREAM,  ContextMenuUtil.getVideoContentUri(this@SearchActivity, File(currentVideo.filePath))), "Share Video"))
     }
 
     private fun launchPlayerActivity(position: Int) {
@@ -261,7 +269,7 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
         val playerIntent = Intent(this, PlayerActivity::class.java)
         if (!isMultiple) {
             val currentVideo = videoSearchResultData[position]
-            val metadata = VideoMetaData(currentVideo.folderId.toInt(), currentVideo.videoName, currentVideo.path)
+            val metadata = VideoMetaData(currentVideo._Id.toInt(), currentVideo.fileName, currentVideo.filePath)
             playerIntent.putExtra(Constants.FILE_PATH, metadata)
             playerIntent.putExtra(Constants.Playback.WINDOW, 0)
         } else {
@@ -270,9 +278,9 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
                 for(selectedItemPosition in adapter!!.getSelectedItems()) {
 //                    metaDataList.add(directoryListViewModel.getVideoMetaData(videoListData[directoryListViewModel.currentSongFolderIndex].songsList[selectedItemPosition].folderId)!!)
                     metaDataList.add(
-                        VideoMetaData(videoSearchResultData[selectedItemPosition].folderId.toInt(),
-                            videoSearchResultData[selectedItemPosition].videoName,
-                            videoSearchResultData[selectedItemPosition].path)
+                        VideoMetaData(videoSearchResultData[selectedItemPosition]._Id.toInt(),
+                            videoSearchResultData[selectedItemPosition].fileName,
+                            videoSearchResultData[selectedItemPosition].filePath)
                     )
                 }
             }
@@ -337,7 +345,7 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
         val listOfVideoUris = ArrayList<Uri?>()
         for (position in adapter!!.getSelectedItems()) {
             val currentVideo = videoSearchResultData[position]
-            listOfVideoUris.add(ContextMenuUtil.getVideoContentUri(this@SearchActivity, File(currentVideo.path)))
+            listOfVideoUris.add(ContextMenuUtil.getVideoContentUri(this@SearchActivity, File(currentVideo.filePath)))
         }
         startActivity(Intent.createChooser(Intent().setAction(Intent.ACTION_SEND_MULTIPLE)
             .setType("video/*")
