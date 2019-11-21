@@ -2,8 +2,7 @@
 
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:fitsSystemWindows="true"
+    android:layout_height="80dp"
     android:layout_gravity="bottom"
     android:gravity="center"
     android:background="#66000000"
@@ -11,10 +10,15 @@
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_height="wrap_content"
         android:layout_marginTop="4dp"
         android:gravity="center_vertical"
         android:orientation="horizontal">
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight=".2" />
 
         <TextView android:id="@id/exo_position"
             android:layout_width="wrap_content"
@@ -28,7 +32,7 @@
 
         <View android:id="@id/exo_progress_placeholder"
             android:layout_width="0dp"
-            android:layout_weight="1"
+            android:layout_weight="1.5"
             android:layout_height="26dp"/>
 
         <TextView android:id="@id/exo_duration"
@@ -40,6 +44,11 @@
             android:paddingRight="4dp"
             android:includeFontPadding="false"
             android:textColor="#FFBEBEBE"/>
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight=".2" />
 
     </LinearLayout>
 
@@ -57,38 +66,38 @@
 
         <ImageButton android:id="@id/pi_screen_lock"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
             android:layout_weight="1"
             style="@style/PiMediaButton.ScreenLock"/>
 
         <ImageButton android:id="@id/pi_prev"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
             android:layout_weight="1"
             style="@style/ExoMediaButton.Previous"/>
 
         <ImageButton android:id="@id/exo_play"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
             android:layout_weight="1"
             android:visibility="gone"
             style="@style/ExoMediaButton.Play"/>
 
         <ImageButton android:id="@id/exo_pause"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
             android:layout_weight="1"
             style="@style/ExoMediaButton.Pause"/>
 
         <ImageButton android:id="@id/pi_next"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
             android:layout_weight="1"
             style="@style/ExoMediaButton.Next"/>
 
         <ImageButton android:id="@id/pi_full_screen"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
             android:layout_weight="1"
             style="@style/PiMediaButton.FullScreen"/>
 
