@@ -1,23 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <item android:id="@+id/shuffle"
+        android:title="Shuffle"
+        android:icon="@drawable/ic_shuffle_black_24dp"
+        android:checkable="true"/>
+
     <item
         android:id="@+id/droppy_menu"
         android:title="Repeat">
 
         <menu>
 
-            <item android:id="@+id/repeat_off"
-                android:title="Repeat Off"
-                android:icon="@drawable/ic_close_black_24dp"/>
+            <group android:id="@+id/group"
+                android:checkableBehavior="single">
+                <item android:id="@+id/repeat_off"
+                    android:title="Repeat Off"
+                    android:icon="@drawable/ic_close_black_24dp"
+                    android:checked="true"/>
 
-            <item android:id="@+id/repeat_one"
-                android:title="Repeat One"
-                android:icon="@drawable/ic_repeat_one_black_24dp"/>
+                <item android:id="@+id/repeat_one"
+                    android:title="Repeat One"
+                    android:icon="@drawable/ic_repeat_one_black_24dp"/>
 
-            <item android:id="@+id/repeat_all"
-                android:title="Repeat All"
-                android:icon="@drawable/ic_repeat_black_24dp"/>
+                <item android:id="@+id/repeat_all"
+                    android:title="Repeat All"
+                    android:icon="@drawable/ic_repeat_black_24dp"/>
+            </group>
 
         </menu>
 

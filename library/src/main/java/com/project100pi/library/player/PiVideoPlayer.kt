@@ -246,6 +246,10 @@ class PiVideoPlayer(private val context: Context): MediaSessionListener {
         player?.repeatMode = SimpleExoPlayer.REPEAT_MODE_ALL
     }
 
+    fun shuffle(enable: Boolean){
+        player?.shuffleModeEnabled = enable
+    }
+
     // Public APIs ends
 
     // Module APIs starts

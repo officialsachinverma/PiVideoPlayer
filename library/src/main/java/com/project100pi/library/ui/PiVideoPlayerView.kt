@@ -14,7 +14,6 @@ import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.lifecycle.Observer
-import com.bumptech.glide.Glide
 import com.google.android.exoplayer2.C
 import com.google.android.exoplayer2.ui.AspectRatioFrameLayout
 import com.google.android.exoplayer2.ui.PlayerControlView
@@ -25,6 +24,7 @@ import com.project100pi.library.dialogs.CurrentPlayingQueueDialog
 import com.project100pi.library.dialogs.SRTFilePicker
 import com.project100pi.library.dialogs.listeners.OnItemClickListener
 import com.project100pi.library.dialogs.listeners.SRTFilePickerClickListener
+import com.project100pi.library.listeners.PlayerViewActionsListener
 import com.project100pi.library.misc.CountDown
 import com.project100pi.library.misc.CurrentSettings
 import com.project100pi.library.misc.Logger
@@ -84,6 +84,8 @@ class PiVideoPlayerView: FrameLayout, SRTFilePickerClickListener, OnItemClickLis
     private var activeGesture = ""
 
     private var superContext: Context
+
+    private var playerViewActionsListener: PlayerViewActionsListener? = null
 
     constructor(context: Context): this(context, null)
 
@@ -162,10 +164,51 @@ class PiVideoPlayerView: FrameLayout, SRTFilePickerClickListener, OnItemClickLis
         hideController()
         hideAction = Runnable { this.hide() }
 
+        // Pop Menu
+        val popupMenu = PopupMenu(context, toolbarMenu)
+        popupMenu.inflate(R.menu.player_menu)
+        popupMenu.setOnMenuItemClickListener { item ->
+            when(item.itemId) {
+                R.id.shuffle -> {
+                    videoPlayer.shuffle(!item.isChecked)
+                    item.isChecked = !item.isChecked
+                    if (item.isChecked)
+                        videoResizingView.text = "Shuffle Enabled"
+                    else
+                        videoResizingView.text = "Shuffle Disabled"
+                    videoResizingView.visibility = View.VISIBLE
+                    CountDown(2000, 1000, videoResizingView)
+                }
+                R.id.repeat_off -> {
+                    videoPlayer.repeatOff()
+                    videoResizingView.visibility = View.VISIBLE
+                    videoResizingView.text = "Repeat Off"
+                    CountDown(2000, 1000, videoResizingView)
+                    item.isChecked = true
+                }
+                R.id.repeat_one -> {
+                    videoPlayer.repeatOne()
+                    videoResizingView.visibility = View.VISIBLE
+                    videoResizingView.text = "Repeat One"
+                    CountDown(2000, 1000, videoResizingView)
+                    item.isChecked = true
+                }
+                R.id.repeat_all -> {
+                    videoPlayer.repeatAll()
+                    videoResizingView.visibility = View.VISIBLE
+                    videoResizingView.text = "Repeat All"
+                    CountDown(2000, 1000, videoResizingView)
+                    item.isChecked = true
+                }
+            }
+            true
+        }
+
         // On clicks
 
         backButton.setOnClickListener {
-            (context as AppCompatActivity).finish()
+//            (context as AppCompatActivity).finish()
+            playerViewActionsListener?.onPlayerBackButtonPressed()
         }
 
         toolbarSubtitle.setOnClickListener {
@@ -176,36 +219,10 @@ class PiVideoPlayerView: FrameLayout, SRTFilePickerClickListener, OnItemClickLis
             val queueDialog = CurrentPlayingQueueDialog(context, currentPlayingList, currentPlaying, this)
             queueDialog.setCanceledOnTouchOutside(false)
             queueDialog.show()
+            playerViewActionsListener?.onPlayerCurrentQueuePressed()
         }
 
         toolbarMenu.setOnClickListener {
-            val popupMenu = PopupMenu(context, it)
-            popupMenu.inflate(R.menu.player_menu)
-
-            popupMenu.setOnMenuItemClickListener { item ->
-                when(item.itemId) {
-                    R.id.repeat_off -> {
-                        videoPlayer.repeatOff()
-                        videoResizingView.visibility = View.VISIBLE
-                        videoResizingView.text = "Repeat Off"
-                        CountDown(2000, 1000, videoResizingView)
-
-                    }
-                    R.id.repeat_one -> {
-                        videoPlayer.repeatOne()
-                        videoResizingView.visibility = View.VISIBLE
-                        videoResizingView.text = "Repeat One"
-                        CountDown(2000, 1000, videoResizingView)
-                    }
-                    R.id.repeat_all -> {
-                        videoPlayer.repeatAll()
-                        videoResizingView.visibility = View.VISIBLE
-                        videoResizingView.text = "Repeat All"
-                        CountDown(2000, 1000, videoResizingView)
-                    }
-                }
-                true
-            }
             popupMenu.show()
         }
 
@@ -221,7 +238,7 @@ class PiVideoPlayerView: FrameLayout, SRTFilePickerClickListener, OnItemClickLis
         }
 
         screenRotation.setOnClickListener {
-            rotateScreen()
+            playerViewActionsListener?.onScreenRotatePressed()
         }
 
         fullScreenButton.setOnClickListener {
@@ -230,7 +247,7 @@ class PiVideoPlayerView: FrameLayout, SRTFilePickerClickListener, OnItemClickLis
 
         nextButton.setOnClickListener {
             if (videoPlayer.hasNext())
-                videoPlayer.seekTo(videoPlayer.getCurrentWindowIndex()+1, 0)
+                videoPlayer.seekTo(videoPlayer.getNextWindowIndex(), 0)
             else
                 videoPlayer.seekTo(0, 0)
         }
@@ -240,9 +257,13 @@ class PiVideoPlayerView: FrameLayout, SRTFilePickerClickListener, OnItemClickLis
                 videoPlayer.seekTo(videoPlayer.getCurrentWindowIndex(), 0)
             } else {
                 if (videoPlayer.hasPrevious())
-                    videoPlayer.seekTo(videoPlayer.getCurrentWindowIndex()-1, 0)
-                else
-                    videoPlayer.seekTo(videoPlayer.getCurrentWindowIndex(), 0)
+                    videoPlayer.seekTo(videoPlayer.getPreviousWindowIndex(), 0)
+                else {
+                    if(currentPlayingList.size > 1)
+                        videoPlayer.seekTo(currentPlayingList.size-1, 0)
+                    else
+                        videoPlayer.seekTo(videoPlayer.getCurrentWindowIndex(), 0)
+                }
             }
         }
 
@@ -262,6 +283,10 @@ class PiVideoPlayerView: FrameLayout, SRTFilePickerClickListener, OnItemClickLis
         this.videoPlayer = videoPlayer
         playerView.player = videoPlayer.getExoPlayer()
         observeForObserver()
+    }
+
+    fun setPlayerActionBarListener(playerViewActionsListener: PlayerViewActionsListener) {
+        this.playerViewActionsListener = playerViewActionsListener
     }
 
     fun onResume() {
@@ -289,7 +314,7 @@ class PiVideoPlayerView: FrameLayout, SRTFilePickerClickListener, OnItemClickLis
         showSystemUI()
 
         val layoutParams = ConstraintLayout.LayoutParams(ConstraintLayout.LayoutParams.MATCH_PARENT, ConstraintLayout.LayoutParams.MATCH_PARENT)
-        layoutParams.bottomMargin = 100
+        layoutParams.bottomMargin = 200
         gestureCapture.layoutParams = layoutParams
     }
 
@@ -357,7 +382,7 @@ class PiVideoPlayerView: FrameLayout, SRTFilePickerClickListener, OnItemClickLis
         videoPlayer.videoListExposed.observe(superContext as AppCompatActivity, Observer {
             currentPlayingList = it
             if (currentPlayingList.size > 1)
-                toolbarQueue.visibility = View.VISIBLE
+                toolbarQueue.visibility = View.GONE
             else
                 toolbarQueue.visibility = View.GONE
         })
@@ -386,7 +411,7 @@ class PiVideoPlayerView: FrameLayout, SRTFilePickerClickListener, OnItemClickLis
             CurrentSettings.Video.mode = 0
 
         videoResizingView.visibility = View.VISIBLE
-
+        fullScreenButton.setImageResource(android.R.color.transparent)
         when (CurrentSettings.Video.mode) {
 //            0 -> {
 //                setResizeMode(AspectRatioFrameLayout.RESIZE_MODE_FILL)
@@ -397,37 +422,19 @@ class PiVideoPlayerView: FrameLayout, SRTFilePickerClickListener, OnItemClickLis
                 playerView.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
                 videoPlayer.setVideoScalingMode(C.VIDEO_SCALING_MODE_SCALE_TO_FIT)
                 videoResizingView.text = "FIT TO SCREEN"
-                Glide
-                    .with(context)
-                    .asBitmap()
-                    .load(R.drawable.ic_fullscreen_exit_black_24dp)
-                    .thumbnail(0.1f)
-                    .into(fullScreenButton)
-                //fullScreenButton.background = superContext.getDrawable(R.drawable.ic_fullscreen_exit_black_24dp)
+                fullScreenButton.setImageResource(R.drawable.ic_fullscreen_exit_black_24dp)
             }
             1 -> {
                 playerView.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FILL
                 videoPlayer.setVideoScalingMode(C.VIDEO_SCALING_MODE_SCALE_TO_FIT)
                 videoResizingView.text = "STRETCH"
-                Glide
-                    .with(context)
-                    .asBitmap()
-                    .load(R.drawable.ic_crop_black_24dp)
-                    .thumbnail(0.1f)
-                    .into(fullScreenButton)
-                //fullScreenButton.background = superContext.getDrawable(R.drawable.ic_crop_black_24dp)
+                fullScreenButton.setImageResource(R.drawable.ic_crop_black_24dp)
             }
             2 -> {
                 playerView.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
                 videoPlayer.setVideoScalingMode(C.VIDEO_SCALING_MODE_SCALE_TO_FIT)
                 videoResizingView.text = "CROP"
-                Glide
-                    .with(context)
-                    .asBitmap()
-                    .load(R.drawable.ic_fullscreen_black_24dp)
-                    .thumbnail(0.1f)
-                    .into(fullScreenButton)
-                //fullScreenButton.background = superContext.getDrawable(R.drawable.ic_fullscreen_black_24dp)
+                fullScreenButton.setImageResource(R.drawable.ic_fullscreen_black_24dp)
             }
         }
         CountDown(2000, 1000, videoResizingView)
@@ -559,25 +566,6 @@ class PiVideoPlayerView: FrameLayout, SRTFilePickerClickListener, OnItemClickLis
             return true
         }
 
-    }
-
-    private fun rotateScreen() {
-        try {
-
-            if (CurrentSettings.Video.orientation === "portrait") {
-                //Set orientation to landscape
-                (context as AppCompatActivity).requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
-                CurrentSettings.Video.orientation = "landscape"
-            } else if (CurrentSettings.Video.orientation === "landscape") {
-                //Set orientation to portrait
-                (context as AppCompatActivity).requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-                CurrentSettings.Video.orientation = "portrait"
-            }
-
-        } catch (ex: RuntimeException) {
-            //error occurred
-            Logger.e("MediaMetadataRetriever - Failed to rotate the video")
-        }
     }
 
 }
