@@ -29,14 +29,12 @@ class StorageFileAdapter(
 
     class PlayerDiffUtil: DiffUtil.ItemCallback<FolderInfo>() {
         override fun areItemsTheSame(oldItem: FolderInfo, newItem: FolderInfo): Boolean {
-            // TODO: add check for video list size @Sachin
-            return oldItem.folderId == newItem.folderId
+            return (oldItem.folderId == newItem.folderId) && (oldItem.songsList.size == newItem.songsList.size)
         }
 
         override fun areContentsTheSame(oldItem: FolderInfo, newItem: FolderInfo): Boolean {
             return oldItem == newItem
         }
-
     }
 
     fun isSelected(position: Int): Boolean {

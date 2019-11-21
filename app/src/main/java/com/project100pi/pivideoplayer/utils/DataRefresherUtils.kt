@@ -30,6 +30,7 @@ object DataRefresherUtils {
 
     private fun notifyObservers() {
         VideoChangeObservable.setChangedOverride()
+        VideoChangeObservable.notifyObserversOverride()
     }
 
     private class DataRefresherTimerTask : TimerTask() {

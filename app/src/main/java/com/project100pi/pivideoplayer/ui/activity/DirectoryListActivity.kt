@@ -31,7 +31,7 @@ import com.project100pi.pivideoplayer.ui.adapters.StorageFileAdapter
 import com.project100pi.pivideoplayer.factory.DirectoryListViewModelFactory
 import com.project100pi.pivideoplayer.listeners.ItemDeleteListener
 import com.project100pi.pivideoplayer.model.FolderInfo
-import com.project100pi.pivideoplayer.ui.activity.viewmodel.DirectoryListViewModel
+import com.project100pi.pivideoplayer.ui.viewmodel.DirectoryListViewModel
 import kotlin.collections.ArrayList
 
 
@@ -158,7 +158,9 @@ class DirectoryListActivity : AppCompatActivity(), OnClickListener, ItemDeleteLi
 
         }
 
-        adapter?.submitList(videoListData)
+        runOnUiThread {
+            adapter?.submitList(videoListData)
+        }
     }
 
     private fun toggleSelection(position: Int) {
