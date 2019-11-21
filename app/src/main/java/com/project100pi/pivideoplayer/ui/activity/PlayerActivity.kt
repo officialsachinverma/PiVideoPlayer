@@ -13,12 +13,13 @@ import android.content.pm.ActivityInfo
 import android.graphics.Bitmap
 import android.media.MediaMetadataRetriever
 import android.net.Uri
+import com.project100pi.library.listeners.PlayerActionBarListener
 import com.project100pi.library.misc.Logger
 import com.project100pi.library.model.VideoMetaData
 import com.project100pi.library.ui.PiVideoPlayerView
 
 
-class PlayerActivity : AppCompatActivity() {
+class PlayerActivity : AppCompatActivity(), PlayerActionBarListener {
 
     private var mediaPath: VideoMetaData? = null
     private var srtPath = ""
@@ -86,6 +87,7 @@ class PlayerActivity : AppCompatActivity() {
             videoPlayer?.play()
         }
         playerView.onResume()
+        playerView.setPlayerActionBarListener(this)
     }
 
     override fun onPause() {
@@ -188,5 +190,13 @@ class PlayerActivity : AppCompatActivity() {
             //error occurred
             Logger.e("MediaMetadataRetriever - Failed to rotate the video")
         }
+    }
+
+    override fun onPlayerBackButtonPressed() {
+        finish()
+    }
+
+    override fun onPlayerCurrentQueuePressed() {
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 }
