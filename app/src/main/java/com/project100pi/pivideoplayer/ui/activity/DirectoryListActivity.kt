@@ -116,14 +116,6 @@ class DirectoryListActivity : AppCompatActivity(), OnClickListener, ItemDeleteLi
             Constants.PERMISSION_REQUEST_CODE)
     }
 
-    private fun showBrightnessPermissionDialog(context: Context) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            val intent = Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS)
-            intent.data = Uri.parse("package:" + context.packageName)
-            context.startActivity(intent)
-        }
-    }
-
     private fun observeForObservers() {
         observeForFolderList()
     }
@@ -215,15 +207,7 @@ class DirectoryListActivity : AppCompatActivity(), OnClickListener, ItemDeleteLi
 
 
     private fun playSelectedVideos() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            if (Settings.System.canWrite(this)) {
-                playVideo()
-            } else {
-                showBrightnessPermissionDialog(this)
-            }
-        } else {
-            playVideo()
-        }
+        playVideo()
     }
 
     private fun shareMultipleVideos() {

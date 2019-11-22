@@ -3,9 +3,7 @@ package com.project100pi.pivideoplayer.ui.activity
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
-import android.provider.Settings
 import android.text.Editable
 import android.text.TextUtils
 import android.text.TextWatcher
@@ -39,8 +37,6 @@ import com.project100pi.pivideoplayer.utils.ContextMenuUtil
 import java.io.File
 
 class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
-
-    private val TAG = "SearchActivity"
 
     @BindView(R.id.outer_window)
     lateinit var outerLayout: ConstraintLayout
@@ -256,25 +252,23 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
 
     private fun playVideo(position: Int, isMultiple: Boolean) {
         val playerIntent = Intent(this, PlayerActivity::class.java)
+        val metaDataList = ArrayList<VideoMetaData>()
         if (!isMultiple) {
             val currentVideo = videoSearchResultData[position]
-            val metadata = VideoMetaData(currentVideo._Id.toInt(), currentVideo.fileName, currentVideo.filePath)
-            playerIntent.putExtra(Constants.FILE_PATH, metadata)
+            val metadata = VideoMetaData(currentVideo._Id, currentVideo.fileName, currentVideo.filePath)
+            metaDataList.add(metadata)
             playerIntent.putExtra(Constants.Playback.WINDOW, 0)
         } else {
-            val metaDataList = ArrayList<VideoMetaData>()
             for(selectedItemPosition in adapter!!.getSelectedItems()) {
-                for(selectedItemPosition in adapter!!.getSelectedItems()) {
-//                    metaDataList.add(directoryListViewModel.getVideoMetaData(videoListData[directoryListViewModel.currentSongFolderIndex].songsList[selectedItemPosition].folderId)!!)
-                    metaDataList.add(
-                        VideoMetaData(videoSearchResultData[selectedItemPosition]._Id.toInt(),
-                            videoSearchResultData[selectedItemPosition].fileName,
-                            videoSearchResultData[selectedItemPosition].filePath)
+//              metaDataList.add(directoryListViewModel.getVideoMetaData(videoListData[directoryListViewModel.currentSongFolderIndex].songsList[selectedItemPosition].folderId)!!)
+                metaDataList.add(
+                    VideoMetaData(videoSearchResultData[selectedItemPosition]._Id.toInt(),
+                        videoSearchResultData[selectedItemPosition].fileName,
+                        videoSearchResultData[selectedItemPosition].filePath)
                     )
-                }
             }
-            playerIntent.putExtra(Constants.QUEUE, metaDataList)
         }
+        playerIntent.putExtra(Constants.QUEUE, metaDataList)
         startActivity(playerIntent)
     }
 

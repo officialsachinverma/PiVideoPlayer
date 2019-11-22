@@ -1,11 +1,7 @@
 package com.project100pi.pivideoplayer.ui.activity
 
-import android.content.Context
 import android.content.Intent
-import android.net.Uri
-import android.os.Build
 import android.os.Bundle
-import android.provider.Settings
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
@@ -58,7 +54,6 @@ class VideoListActivity : AppCompatActivity(), OnClickListener, ItemDeleteListen
 
     private var actionModeCallback = ActionModeCallback()
     private var actionMode: ActionMode? = null
-    private val mContext = this
 
     companion object {
         var mIsMultiSelectMode: Boolean = false
@@ -171,31 +166,28 @@ class VideoListActivity : AppCompatActivity(), OnClickListener, ItemDeleteListen
     private fun playVideo(position: Int, isMultiple: Boolean) {
         try {
             val playerIntent = Intent(this, PlayerActivity::class.java)
+            val metaDataList = arrayListOf<VideoMetaData>()
             if (!isMultiple) {
-                val currentVideo = videoListData[position]
 //                val metadata = directoryListViewModel.getVideoMetaData(currentVideo.folderId)
-                val metadata = VideoMetaData(currentVideo._Id.toInt(), currentVideo.fileName, currentVideo.filePath)
 //           playerIntent.putExtra(Constants.FILE_PATH, currentVideo.path)
-                playerIntent.putExtra(Constants.FILE_PATH, metadata)
-                val pathsList = ArrayList<VideoMetaData>()
+                //playerIntent.putExtra(Constants.FILE_PATH, metadata)
+
                 for (folder in videoListData) {
-//                    pathsList.add(directoryListViewModel.getVideoMetaData(currentVideo.folderId)!!)
-                    pathsList.add(VideoMetaData(folder._Id.toInt(), folder.fileName, folder.filePath))
+                    metaDataList.add(VideoMetaData(folder._Id, folder.fileName, folder.filePath))
                 }
                 playerIntent.putExtra(Constants.Playback.WINDOW, position)
-                playerIntent.putExtra(Constants.QUEUE, pathsList)
             } else {
-                val metaDataList = ArrayList<VideoMetaData>()
                 for(selectedItemPosition in adapter!!.getSelectedItems()) {
 //                    metaDataList.add(directoryListViewModel.getVideoMetaData(videoListData[directoryListViewModel.currentSongFolderIndex].songsList[selectedItemPosition].folderId)!!)
                     metaDataList.add(
-                        VideoMetaData(videoListData[selectedItemPosition]._Id.toInt(),
+                        VideoMetaData(
+                            videoListData[selectedItemPosition]._Id,
                             videoListData[selectedItemPosition].fileName,
                             videoListData[selectedItemPosition].filePath)
                     )
                 }
-                playerIntent.putExtra(Constants.QUEUE, metaDataList)
             }
+            playerIntent.putParcelableArrayListExtra(Constants.QUEUE, metaDataList)
             startActivity(playerIntent)
         } catch (e: Exception) {
             Logger.i(e.toString())
@@ -321,7 +313,7 @@ class VideoListActivity : AppCompatActivity(), OnClickListener, ItemDeleteListen
     }
 
     override fun onDeleteError() {
-        Toast.makeText(mContext, "Some error occurred while deleting video(s)", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, "Some error occurred while deleting video(s)", Toast.LENGTH_SHORT).show()
     }
 
     private fun showMultiDeleteConfirmation() {
@@ -329,7 +321,7 @@ class VideoListActivity : AppCompatActivity(), OnClickListener, ItemDeleteListen
             .setTitle("Delete")
             .setMessage("Are you sure you want to delete this ${adapter!!.getSelectedItemCount()} video(s)?")
             .setPositiveButton(android.R.string.yes) { _, _ ->
-                videoListViewModel.deleteVideo(adapter!!.getSelectedItems(), mContext)
+                videoListViewModel.deleteVideo(adapter!!.getSelectedItems(), this)
             }
             .setNegativeButton(android.R.string.no, null)
             .setCancelable(false)

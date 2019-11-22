@@ -111,7 +111,7 @@ class VideoListViewModel (private val context: Context,
                 val metaDataList = ArrayList<VideoMetaData>()
                 for(position in selectedItemPosition) {
 //                    metaDataList.add(directoryListViewModel.getVideoMetaData(videoListData[directoryListViewModel.currentSongFolderIndex].songsList[selectedItemPosition].folderId)!!)
-                    metaDataList.add(VideoMetaData(videoList[position]._Id.toInt(), videoList[position].fileName, videoList[position].filePath))
+                    metaDataList.add(VideoMetaData(videoList[position]._Id, videoList[position].fileName, videoList[position].filePath))
                 }
                 playerIntent.putExtra(Constants.QUEUE, metaDataList)
                 withContext(Dispatchers.Main) {

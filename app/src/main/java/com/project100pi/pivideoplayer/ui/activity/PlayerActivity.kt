@@ -22,7 +22,6 @@ import com.project100pi.library.ui.PiVideoPlayerView
 
 class PlayerActivity : AppCompatActivity(), PlayerViewActionsListener {
 
-    private var mediaPath: VideoMetaData? = null
     private var srtPath = ""
     private var videoList = arrayListOf<VideoMetaData>()
 
@@ -42,8 +41,6 @@ class PlayerActivity : AppCompatActivity(), PlayerViewActionsListener {
         if (this.intent != null) {
             if (this.intent.hasExtra(Constants.QUEUE))
                 this.videoList = this.intent.getParcelableArrayListExtra(Constants.QUEUE) ?: arrayListOf()
-            if (this.intent.extras != null && this.intent.hasExtra(Constants.FILE_PATH))
-                this.mediaPath = this.intent.extras!!.getParcelable(Constants.FILE_PATH)
             if (this.intent.hasExtra(Constants.Playback.WINDOW))
                 this.currentWindow = this.intent.getIntExtra(Constants.Playback.WINDOW, 0)
         }
@@ -88,9 +85,6 @@ class PlayerActivity : AppCompatActivity(), PlayerViewActionsListener {
 
         when {
             videoList.size > 0 && srtPath.isEmpty() -> videoPlayer?.prepare(videoList, resetPosition = false, resetState = false)
-            srtPath.isNotEmpty() -> videoPlayer?.prepare(mediaPath!!,
-                srtPath, resetPosition = false, resetState = false)
-            else -> videoPlayer?.prepare(mediaPath!!)
         }
         videoPlayer?.seekTo(currentWindow, playbackPosition)
         if (playerView.isControllerVisible())
@@ -119,7 +113,7 @@ class PlayerActivity : AppCompatActivity(), PlayerViewActionsListener {
 
         outState.putLong("playbackPosition", playbackPosition)
         outState.putInt("currentWindow", currentWindow)
-        outState.putParcelable("mediaPath", mediaPath!!)
+        outState.putParcelableArrayList("videoList", videoList)
     }
 
     override fun onRestoreInstanceState(savedInstanceState: Bundle) {
@@ -127,7 +121,7 @@ class PlayerActivity : AppCompatActivity(), PlayerViewActionsListener {
 
         playbackPosition = savedInstanceState.getLong("playbackPosition")
         currentWindow = savedInstanceState.getInt("currentWindow")
-        mediaPath = savedInstanceState.getParcelable("mediaPath")
+        videoList = savedInstanceState.getParcelableArrayList<VideoMetaData>("videoList") as ArrayList<VideoMetaData>
     }
 
 //    private fun getSystemNavigationParams(): Int {
@@ -149,9 +143,6 @@ class PlayerActivity : AppCompatActivity(), PlayerViewActionsListener {
             var mVideoUri: Uri? = null
             if (this.intent.hasExtra(Constants.QUEUE)) {
                 mVideoUri = Uri.parse(this.videoList[this.currentWindow].path)
-            }
-            if (this.intent.extras != null && this.intent.hasExtra(Constants.FILE_PATH)) {
-                mVideoUri = Uri.parse(this.mediaPath!!.path)
             }
             //Set the video Uri as data source for MediaMetadataRetriever
             retriever.setDataSource(this, mVideoUri!!)
@@ -175,6 +166,7 @@ class PlayerActivity : AppCompatActivity(), PlayerViewActionsListener {
 
         } catch (ex: RuntimeException) {
             //error occurred
+            ex.printStackTrace()
             Logger.e("MediaMetadataRetriever - Failed to rotate the video")
         }
     }

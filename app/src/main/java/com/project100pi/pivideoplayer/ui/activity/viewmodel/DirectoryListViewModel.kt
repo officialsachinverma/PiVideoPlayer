@@ -224,7 +224,7 @@ class DirectoryListViewModel(private val context: Context, application: Applicat
             for(position in selectedItemPosition) {
 //                    metaDataList.add(directoryListViewModel.getVideoMetaData(videoListData[directoryListViewModel.currentSongFolderIndex].songsList[selectedItemPosition].folderId)!!)
                 for (video in foldersList.value!![position].filesList) {
-                    metaDataList.add(VideoMetaData(video._Id.toInt(), video.fileName, video.filePath))
+                    metaDataList.add(VideoMetaData(video._Id, video.fileName, video.filePath))
                 }
             }
             playerIntent.putExtra(Constants.QUEUE, metaDataList)
