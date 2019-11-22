@@ -1,4 +1,4 @@
-package com.project100pi.pivideoplayer.factory
+package com.project100pi.pivideoplayer.ui.activity.viewmodel.factory
 
 import android.app.Application
 import android.content.Context
