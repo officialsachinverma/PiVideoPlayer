@@ -2,12 +2,10 @@ package com.project100pi.library.ui
 
 import android.app.Activity
 import android.content.Context
-import android.content.pm.ActivityInfo
 import android.graphics.Point
 import android.media.AudioManager
 import android.os.Build
 import android.os.SystemClock
-import android.provider.Settings
 import android.util.AttributeSet
 import android.view.*
 import android.widget.*
@@ -30,6 +28,7 @@ import com.project100pi.library.misc.CurrentSettings
 import com.project100pi.library.misc.Logger
 import com.project100pi.library.model.VideoMetaData
 import com.project100pi.library.player.PiVideoPlayer
+
 
 class PiVideoPlayerView: FrameLayout, SRTFilePickerClickListener, OnItemClickListener {
 
@@ -72,16 +71,14 @@ class PiVideoPlayerView: FrameLayout, SRTFilePickerClickListener, OnItemClickLis
     private var systemWidth: Int = 0
     private var systemHeight: Int = 0
     private var systemSize: Point = Point()
-    private var streamVolume: Int
+    private var currentVolume = 0
+    private var currentBrightness = 0f
     private var maxSystemVolume: Int
     private var minSystemVolume: Int
-    private var screenBrightness: Int
-    private var maxSystemBrightness: Int = 255
-    private var minSystemBrightness: Int = 0
-    private var singleProgressBrightness = 255/100
-    private var singleProgressVolume = 15/100
     private var gestureListener = PiGesture()
     private var activeGesture = ""
+    private var currentBrightnessProgress = 0
+    private var currentVolumeProgress = 0
 
     private var superContext: Context
 
@@ -147,19 +144,15 @@ class PiVideoPlayerView: FrameLayout, SRTFilePickerClickListener, OnItemClickLis
             0
         }
 
-        streamVolume = am.getStreamVolume(AudioManager.STREAM_MUSIC)
+        currentVolume = am.getStreamVolume(AudioManager.STREAM_MUSIC)
+        currentVolumeProgress = (100/currentVolume)
+        progressVolume.progress = currentVolumeProgress
+
+        currentBrightness = (context as AppCompatActivity).window.attributes.screenBrightness
+        currentBrightnessProgress = currentBrightness.toInt() * 100
+        progressBrightness.progress = currentBrightnessProgress
+
         getScreenSize()
-
-        screenBrightness = Settings.System.getInt(
-            context.contentResolver,
-            Settings.System.SCREEN_BRIGHTNESS,
-            0
-        )
-
-        Settings.System.putInt(context.contentResolver, Settings.System.SCREEN_BRIGHTNESS_MODE, Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL)
-
-        progressBrightness.max = maxSystemBrightness
-        progressVolume.max = maxSystemVolume
 
         hideController()
         hideAction = Runnable { this.hide() }
@@ -472,98 +465,125 @@ class PiVideoPlayerView: FrameLayout, SRTFilePickerClickListener, OnItemClickLis
             return toggleControllerVisibility()
         }
 
-        override fun onScroll(e1: MotionEvent?, e2: MotionEvent?, p2: Float, p3: Float): Boolean {
+        override fun onScroll(e1: MotionEvent?, e2: MotionEvent?, distanceX: Float, distanceY: Float): Boolean {
             Logger.d("Gesture: onScroll")
+
             activeGesture = when {
-                (e1!!.x < (systemWidth / 2) && e2!!.x < (systemWidth / 2) && activeGesture.isEmpty()) -> "Brightness"
-                (e1!!.x > (systemWidth / 2) && e2!!.x > (systemWidth / 2) && activeGesture.isEmpty()) -> "Volume"
-                (e1!!.y > (systemHeight / 2) && e2!!.y > (systemHeight / 2) && activeGesture.isEmpty()) -> "Seek"
+                (e1!!.x < (systemWidth / 2) && e2!!.x < (systemWidth / 2)
+                        && activeGesture.isEmpty()) -> "Brightness"
+                (e1.x > (systemWidth / 2) && e2!!.x > (systemWidth / 2)
+                        //&& e1!!.y > (systemHeight / 2) && e2!!.y > (systemHeight / 2)
+                        && activeGesture.isEmpty() )-> "Volume"
+                (e1.y > (systemHeight / 2) && e2!!.y > (systemHeight / 2)
+                        && activeGesture.isEmpty()) -> "Seek"
                 else -> ""
             }
 
+            // for seek
+            if (e1.y > (systemHeight / 2) && e2!!.y > (systemHeight / 2) && activeGesture == "Seek") {
+                Logger.d("Gesture: Seek")
+                if (e1.x < e2.x){
+                    //Logger.d("Gesture: Left to Right swipe: "+ e1.x + " - " + e2.x)
+                    videoPlayer.seekTo(videoPlayer.getCurrentWindowIndex(), videoPlayer.getCurrentPosition() + videoPlayer.DEFAULT_FAST_FORWARD_TIME)
+                }
+                if (e1.x > e2.x) {
+                    //Logger.d("Gesture: Right to Left swipe: "+ e1.x + " - " + e2.x)
+                    videoPlayer.seekTo(videoPlayer.getCurrentWindowIndex(), videoPlayer.getCurrentPosition() - videoPlayer.DEFAULT_REWIND_TIME)
+                }
+                progressBrightness.visibility = View.GONE
+                progressVolume.visibility = View.GONE
+
+                activeGesture = ""
+                return true
+            }
+
             // for brightness
-            if (e1!!.x < (systemWidth / 2) && e2!!.x < (systemWidth / 2) && activeGesture == "Brightness") {
+            if (e1.x < (systemWidth / 2) && e2!!.x < (systemWidth / 2) && activeGesture == "Brightness") {
                 Logger.d("Gesture: Brightness")
-                if (e1!!.y < e2!!.y){
+                val layout: WindowManager.LayoutParams = (context as AppCompatActivity).window.attributes
+                if (e1.y < e2.y){
                     Logger.d("Gesture: Scroll Down")
-                    if (screenBrightness > minSystemBrightness) {
-                        screenBrightness -= singleProgressBrightness
-                        Settings.System.putInt(
-                            context!!.contentResolver,
-                            Settings.System.SCREEN_BRIGHTNESS,
-                            screenBrightness
-                        )
+                    if ((context as AppCompatActivity).window.attributes.screenBrightness > 0.1) {
+                        val b = (context as AppCompatActivity).window.attributes.screenBrightness - 0.05f
+                        layout.screenBrightness = b
+                        (context as AppCompatActivity).window.attributes = layout
+                        if (currentBrightnessProgress > 5)
+                            currentBrightnessProgress -= 5
+                        else
+                            currentBrightnessProgress = 0
                     }
                 }
                 if(e1.y > e2.y){
                     Logger.d("Gesture: Scroll Up")
-                    if (screenBrightness < maxSystemBrightness) {
-                        screenBrightness += singleProgressBrightness
-                        Settings.System.putInt(
-                            context!!.contentResolver,
-                            Settings.System.SCREEN_BRIGHTNESS,
-                            screenBrightness
-                        )
+                    if ((context as AppCompatActivity).window.attributes.screenBrightness < 1.0) {
+                        val b = (context as AppCompatActivity).window.attributes.screenBrightness + 0.05f
+                        layout.screenBrightness = b
+                        (context as AppCompatActivity).window.attributes = layout
+                        if (currentBrightnessProgress < 100)
+                            currentBrightnessProgress += 5
+                        else
+                            currentBrightnessProgress = 100
                     }
                 }
+
                 progressVolume.visibility = View.GONE
                 progressBrightness.visibility = View.VISIBLE
-                progressBrightness.progress = screenBrightness
+                Logger.i("sachin verma $currentBrightnessProgress")
+                progressBrightness.progress = currentBrightnessProgress
+
+                activeGesture = ""
+                return true
             }
 
             // for volume
-            if (e1!!.x > (systemWidth / 2) && e2!!.x > (systemWidth / 2) && activeGesture == "Volume") {
+            if (e1.x > (systemWidth / 2) && e2!!.x > (systemWidth / 2) && activeGesture == "Volume") {
                 Logger.d("Gesture: Volume")
-                if (e1!!.y < e2!!.y){
+                if (e1.y < e2.y){
                     Logger.d("Gesture: Scroll Down")
 
-                    if (streamVolume > minSystemVolume) {
-//                        streamVolume -= singleProgressVolume
-                        --streamVolume
-                        if (streamVolume % 3 == 0) {
+                    if (currentVolume > minSystemVolume) {
+                        --currentVolume
+                        if (currentVolume % 3 == 0) {
                             am.setStreamVolume(
                                 AudioManager.STREAM_MUSIC,
-                                streamVolume,
+                                currentVolume,
                                 0
                             )
                         }
+                        if (currentVolumeProgress > 0)
+                            currentVolumeProgress -= 7
+                        else
+                            currentVolumeProgress = 0
                     }
                 }
                 if(e1.y > e2.y){
                     Logger.d("Gesture: Scroll Up")
-                    if (streamVolume < maxSystemVolume) {
-//                        streamVolume += singleProgressVolume
-                        ++streamVolume
-                        if (streamVolume % 3 == 0) {
+                    if (currentVolume < maxSystemVolume) {
+                        ++currentVolume
+                        if (currentVolume % 3 == 0) {
                             am.setStreamVolume(
                                 AudioManager.STREAM_MUSIC,
-                                streamVolume,
+                                currentVolume,
                                 0
                             )
                         }
+                        if (currentVolumeProgress < 100)
+                            currentVolumeProgress += 7
+                        else
+                            currentVolumeProgress = 100
                     }
                 }
                 progressBrightness.visibility = View.GONE
                 progressVolume.visibility = View.VISIBLE
-                progressVolume.progress = streamVolume
-            }
+                progressVolume.progress = currentVolumeProgress
 
-            // for seek
-            if (e1!!.y > (systemHeight / 2) && e2!!.y > (systemHeight / 2) && activeGesture == "Seek") {
-                Logger.d("Gesture: Seek")
-                if (e1!!.x < e2!!.x){
-                    Logger.d("Gesture: Left to Right swipe: "+ e1.x + " - " + e2.x)
-                    videoPlayer.seekTo(videoPlayer.getCurrentWindowIndex(), videoPlayer.getCurrentPosition() + videoPlayer.DEFAULT_FAST_FORWARD_TIME)
-                }
-                if (e1.x > e2.x) {
-                    Logger.d("Gesture: Right to Left swipe: "+ e1.x + " - " + e2.x)
-                    videoPlayer.seekTo(videoPlayer.getCurrentWindowIndex(), videoPlayer.getCurrentPosition() - videoPlayer.DEFAULT_REWIND_TIME)
-                }
+                activeGesture = ""
+                return true
             }
 
             activeGesture = ""
 
-            return true
+            return false
         }
 
     }
