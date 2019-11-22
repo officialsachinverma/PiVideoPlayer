@@ -28,7 +28,7 @@ import androidx.core.app.ActivityCompat
 import butterknife.BindView
 import butterknife.ButterKnife
 import com.project100pi.pivideoplayer.ui.adapters.StorageFileAdapter
-import com.project100pi.pivideoplayer.factory.DirectoryListViewModelFactory
+import com.project100pi.pivideoplayer.ui.activity.viewmodel.factory.DirectoryListViewModelFactory
 import com.project100pi.pivideoplayer.listeners.ItemDeleteListener
 import com.project100pi.pivideoplayer.model.FolderInfo
 import com.project100pi.pivideoplayer.ui.activity.viewmodel.DirectoryListViewModel
@@ -129,7 +129,7 @@ class DirectoryListActivity : AppCompatActivity(), OnClickListener, ItemDeleteLi
     }
 
     private fun observeForFolderList() {
-        directoryListViewModel.foldersListExposed.observe(this, Observer {
+        directoryListViewModel.foldersList.observe(this, Observer {
             if (it != null) {
                 if (it.size > 0) {
                     videoListData = it
@@ -204,8 +204,8 @@ class DirectoryListActivity : AppCompatActivity(), OnClickListener, ItemDeleteLi
     private fun launchVideoListActivity(position: Int) {
         val videoListIntent = Intent(this, VideoListActivity::class.java)
 //        videoListIntent.putExtra("videoList", videoListData[position].songsList)
-        videoListIntent.putExtra("directoryName", videoListData[position].videoName)
-        videoListIntent.putExtra("directoryPath", videoListData[position].path)
+        videoListIntent.putExtra("directoryName", videoListData[position].folderName)
+        videoListIntent.putExtra("directoryPath", videoListData[position].folderPath)
         startActivity(videoListIntent)
     }
 
@@ -287,7 +287,7 @@ class DirectoryListActivity : AppCompatActivity(), OnClickListener, ItemDeleteLi
                     shareMultipleVideos()
                 }
                 R.id.multiChoiceDelete -> {
-                    directoryListViewModel.delete(adapter!!.getSelectedItems(), this@DirectoryListActivity)
+                    directoryListViewModel.deleteFolderContents(adapter!!.getSelectedItems(), this@DirectoryListActivity)
                 }
             }
             // We have to end the multi select, if the user clicks on an option other than select all

@@ -26,7 +26,7 @@ import com.project100pi.library.misc.Logger
 import com.project100pi.library.model.VideoMetaData
 import com.project100pi.pivideoplayer.R
 import com.project100pi.pivideoplayer.ui.adapters.VideoFilesAdapter
-import com.project100pi.pivideoplayer.factory.VideoListViewModelFactory
+import com.project100pi.pivideoplayer.ui.activity.viewmodel.factory.VideoListViewModelFactory
 import com.project100pi.pivideoplayer.listeners.ItemDeleteListener
 import com.project100pi.pivideoplayer.listeners.OnClickListener
 import com.project100pi.pivideoplayer.model.FileInfo
@@ -95,7 +95,7 @@ class VideoListActivity : AppCompatActivity(), OnClickListener, ItemDeleteListen
     }
 
     private fun observeForVideoList(){
-        videoListViewModel.filesListExposed.observe(this, Observer {
+        videoListViewModel.filesList.observe(this, Observer {
             videoListData = it
             setAdapter()
         })
@@ -156,16 +156,7 @@ class VideoListActivity : AppCompatActivity(), OnClickListener, ItemDeleteListen
     }
 
     private fun launchPlayerActivity(position: Int) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            if (Settings.System.canWrite(this)) {
-                playVideo(position, false)
-            } else {
-                showBrightnessPermissionDialog(this)
-            }
-        } else {
-            playVideo(position, false)
-        }
-
+        playVideo(position, false)
     }
 
     override fun onBackPressed() {
@@ -174,24 +165,7 @@ class VideoListActivity : AppCompatActivity(), OnClickListener, ItemDeleteListen
     }
 
     private fun playSelectedVideos() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            if (Settings.System.canWrite(this)) {
-                playVideo(-1, true)
-            } else {
-                showBrightnessPermissionDialog(this)
-            }
-        } else {
-            playVideo(-1, true)
-        }
-
-    }
-
-    private fun showBrightnessPermissionDialog(context: Context) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            val intent = Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS)
-            intent.data = Uri.parse("package:" + context.packageName)
-            context.startActivity(intent)
-        }
+        playVideo(-1, true)
     }
 
     private fun playVideo(position: Int, isMultiple: Boolean) {
@@ -355,7 +329,7 @@ class VideoListActivity : AppCompatActivity(), OnClickListener, ItemDeleteListen
             .setTitle("Delete")
             .setMessage("Are you sure you want to delete this ${adapter!!.getSelectedItemCount()} video(s)?")
             .setPositiveButton(android.R.string.yes) { _, _ ->
-                videoListViewModel.delete(adapter!!.getSelectedItems(), mContext)
+                videoListViewModel.deleteVideo(adapter!!.getSelectedItems(), mContext)
             }
             .setNegativeButton(android.R.string.no, null)
             .setCancelable(false)
@@ -367,7 +341,7 @@ class VideoListActivity : AppCompatActivity(), OnClickListener, ItemDeleteListen
             .setTitle("Delete")
             .setMessage("Are you sure you want to delete this video?")
             .setPositiveButton(android.R.string.yes) { _, _ ->
-                videoListViewModel.delete(listOf(position), this)
+                videoListViewModel.deleteVideo(listOf(position), this)
             }
             .setNegativeButton(android.R.string.no, null)
             .setCancelable(false)

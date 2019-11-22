@@ -29,7 +29,7 @@ import com.project100pi.library.misc.Logger
 import com.project100pi.library.model.VideoMetaData
 import com.project100pi.pivideoplayer.R
 import com.project100pi.pivideoplayer.ui.adapters.VideoFilesAdapter
-import com.project100pi.pivideoplayer.factory.SearchViewModelFactory
+import com.project100pi.pivideoplayer.ui.activity.viewmodel.factory.SearchViewModelFactory
 import com.project100pi.pivideoplayer.listeners.ItemDeleteListener
 import com.project100pi.pivideoplayer.listeners.OnClickListener
 import com.project100pi.pivideoplayer.model.FileInfo
@@ -115,7 +115,7 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
     }
 
     private fun observeForSearchResultList() {
-        searchViewModel.foldersListExposed.observe(this, Observer {
+        searchViewModel.searchResultList.observe(this, Observer {
             if (it != null) {
                 videoSearchResultData = it
                 if (it.size > 0) {
@@ -236,7 +236,7 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
                 shareVideos(position)
             }
             R.id.itemDelete -> {
-                searchViewModel.delete(listOf(position), this)
+                searchViewModel.deleteSearchedVideos(listOf(position), this)
             }
         }
     }
@@ -251,17 +251,7 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
     }
 
     private fun launchPlayerActivity(position: Int) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            if (Settings.System.canWrite(this)) {
-                //Play the video
-                playVideo(position, false)
-            } else {
-                showBrightnessPermissionDialog(this)
-            }
-        } else {
-            playVideo(position, false)
-        }
-
+        playVideo(position, false)
     }
 
     private fun playVideo(position: Int, isMultiple: Boolean) {
@@ -286,14 +276,6 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
             playerIntent.putExtra(Constants.QUEUE, metaDataList)
         }
         startActivity(playerIntent)
-    }
-
-    private fun showBrightnessPermissionDialog(context: Context) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            val intent = Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS)
-            intent.data = Uri.parse("package:" + context.packageName)
-            context.startActivity(intent)
-        }
     }
 
     private fun toggleSelection(position: Int) {
@@ -328,16 +310,7 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
     }
 
     private fun playSelectedVideos() {
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            if (Settings.System.canWrite(this)) {
-                playVideo(-1, true)
-            } else {
-                showBrightnessPermissionDialog(this)
-            }
-        } else {
-           playVideo(-1, true)
-        }
+        playVideo(-1, true)
     }
 
     private fun shareMultipleVideos() {
@@ -386,7 +359,7 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
                     shareMultipleVideos()
                 }
                 R.id.multiChoiceDelete -> {
-                    searchViewModel.delete(adapter!!.getSelectedItems(), this@SearchActivity)
+                    searchViewModel.deleteSearchedVideos(adapter!!.getSelectedItems(), this@SearchActivity)
                 }
             }
             // We have to end the multi select, if the user clicks on an option other than select all
