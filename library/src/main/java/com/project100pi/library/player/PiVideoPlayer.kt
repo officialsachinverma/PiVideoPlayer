@@ -208,6 +208,10 @@ class PiVideoPlayer(private val context: Context): MediaSessionListener {
 
     fun getCurrentWindowIndex() = player!!.currentWindowIndex
 
+    fun getPreviousWindowIndex() = player!!.previousWindowIndex
+
+    fun getNextWindowIndex() = player!!.nextWindowIndex
+
     fun getPlaybackState() = player!!.playbackState
 
     fun getPlaybackError() = player!!.playbackError!!
@@ -249,6 +253,8 @@ class PiVideoPlayer(private val context: Context): MediaSessionListener {
     fun shuffle(enable: Boolean){
         player?.shuffleModeEnabled = enable
     }
+
+    fun getDuration() = player?.duration ?: 0
 
     // Public APIs ends
 
