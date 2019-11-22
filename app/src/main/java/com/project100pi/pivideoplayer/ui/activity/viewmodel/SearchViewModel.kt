@@ -17,19 +17,19 @@ import java.io.File
 
 class SearchViewModel(private val context: Context, application: Application): AndroidViewModel(application) {
 
-    private var foldersList = MutableLiveData<ArrayList<FileInfo>>()
-    val foldersListExposed: LiveData<ArrayList<FileInfo>>
-        get() = foldersList
+    private var _searchResultList = MutableLiveData<ArrayList<FileInfo>>()
+    val searchResultList: LiveData<ArrayList<FileInfo>>
+        get() = _searchResultList
 
     private val coroutineJob = Job()
     private val coroutineScope = CoroutineScope(Dispatchers.IO + coroutineJob)
 
-    fun delete(listOfIndexes: List<Int>, listener: ItemDeleteListener) {
+    fun deleteSearchedVideos(listOfIndexes: List<Int>, listener: ItemDeleteListener) {
         coroutineScope.launch {
 
             for (position in listOfIndexes) {
                 try {
-                    val folder = foldersList.value!![position].filePath
+                    val folder = _searchResultList.value!![position].filePath
                     val file = File(folder)
                     if(file.exists()) {
                         file.delete()
@@ -67,13 +67,14 @@ class SearchViewModel(private val context: Context, application: Application): A
                     do {
                         try {
                             //To get path of song
-                            val path = cursor.getString(cursor.getColumnIndex(MediaStore.Video.Media.DATA))
+                            val videoPath = cursor.getString(cursor.getColumnIndex(MediaStore.Video.Media.DATA))
                             //To get song id
-                            val songId = cursor.getString(cursor.getColumnIndex(MediaStore.Video.Media._ID))
+                            val videoId = cursor.getInt(cursor.getColumnIndex(MediaStore.Video.Media._ID))
                             //To get song duration
-                            val songDuration = cursor.getLong(cursor.getColumnIndex(MediaStore.Video.Media.DURATION))
-                            if (FileExtension.isVideo(path)) {
-                                if (path != null) {
+                            val videoDuration = cursor.getLong(cursor.getColumnIndex(MediaStore.Video.Media.DURATION))
+
+                            if (FileExtension.isVideo(videoPath)) {
+                                if (videoPath != null) {
 
                                     //Splitting song path to list by using .split("/") to get elements from song path separated
                                     // /storage/emulated/music/abc.mp3
@@ -81,16 +82,16 @@ class SearchViewModel(private val context: Context, application: Application): A
                                     // -> emulated will be subfolder name
                                     // -> abc will be song name
 
-                                    val pathsList = path.split("/")
+                                    val pathsList = videoPath.split("/")
 
                                     val videoName = pathsList[pathsList.size - 1]
 
                                     searchResult.add(
                                         FileInfo(
-                                            songId,
+                                            videoId,
                                             videoName,
-                                            path,
-                                            songDuration))
+                                            videoPath,
+                                            videoDuration))
 
                                 } else
                                     continue
@@ -104,7 +105,7 @@ class SearchViewModel(private val context: Context, application: Application): A
                 }
                 withContext(Dispatchers.Main)
                 {
-                    foldersList.value = searchResult
+                    _searchResultList.value = searchResult
                 }
             }
         } catch (e: Exception) {
@@ -118,7 +119,7 @@ class SearchViewModel(private val context: Context, application: Application): A
     }
 
     fun removeElementAt(position: Int) {
-        foldersList.value!!.removeAt(position)
+        _searchResultList.value!!.removeAt(position)
     }
 
 }

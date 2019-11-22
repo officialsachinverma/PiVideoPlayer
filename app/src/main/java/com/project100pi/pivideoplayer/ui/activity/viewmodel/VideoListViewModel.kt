@@ -29,9 +29,9 @@ class VideoListViewModel (private val context: Context,
                           application: Application):
     AndroidViewModel(application), Observer {
 
-    private var filesList = MutableLiveData<ArrayList<FileInfo>>()
-    val filesListExposed: LiveData<ArrayList<FileInfo>>
-        get() = filesList
+    private var _filesList = MutableLiveData<ArrayList<FileInfo>>()
+    val filesList: LiveData<ArrayList<FileInfo>>
+        get() = _filesList
 
     private val videoList = arrayListOf<FileInfo>()
 
@@ -40,6 +40,8 @@ class VideoListViewModel (private val context: Context,
 
     init {
         loadAllData()
+        // When a new video is added (eg: video download finished in background) and
+        // when the app is open then this observer will get triggered
         observeForVideoChange()
     }
 
@@ -47,7 +49,7 @@ class VideoListViewModel (private val context: Context,
         VideoChangeObservable.addObserver(this)
     }
 
-    fun delete(listOfIndexes: List<Int>, listener: ItemDeleteListener) {
+    fun deleteVideo(listOfIndexes: List<Int>, listener: ItemDeleteListener) {
         coroutineScope.launch {
 
             for (position in listOfIndexes) {
@@ -78,11 +80,6 @@ class VideoListViewModel (private val context: Context,
             }
 
         }
-    }
-
-    override fun onCleared() {
-        super.onCleared()
-        coroutineJob.cancel()
     }
 
     fun removeElementAt(position: Int) {
@@ -139,16 +136,16 @@ class VideoListViewModel (private val context: Context,
                     do {
                         try {
                             //To get path of song
-                            val path = cursor.getString(cursor.getColumnIndex(MediaStore.Video.Media.DATA))
+                            val videoPath = cursor.getString(cursor.getColumnIndex(MediaStore.Video.Media.DATA))
                             //To get song id
-                            val songId = cursor.getString(cursor.getColumnIndex(MediaStore.Video.Media._ID))
+                            val videoId = cursor.getInt(cursor.getColumnIndex(MediaStore.Video.Media._ID))
                             //To get song title
-                            val songTitle = cursor.getString(cursor.getColumnIndex(MediaStore.Video.Media.TITLE))
+                            val videoTitle = cursor.getString(cursor.getColumnIndex(MediaStore.Video.Media.TITLE))
                             //To get song duration
-                            val songDuration = cursor.getLong(cursor.getColumnIndex(MediaStore.Video.Media.DURATION))
+                            val videoDuration = cursor.getLong(cursor.getColumnIndex(MediaStore.Video.Media.DURATION))
 
-                            if (FileExtension.isVideo(path)) {
-                                if (path != null) {
+                            if (FileExtension.isVideo(videoPath)) {
+                                if (videoPath != null) {
 
                                     //Splitting song path to list by using .split("/") to get elements from song path separated
                                     // /storage/emulated/music/abc.mp3
@@ -156,31 +153,16 @@ class VideoListViewModel (private val context: Context,
                                     // -> emulated will be subfolder name
                                     // -> abc will be song name
 
-                                    val pathsList = path.split("/")
-
-                                    //Getting folder name from path Example
-                                    // /storage/emulated/music/abc.mp3 -> music will be folder name
-                                    val folderName = pathsList[pathsList.size - 2]
-
-                                    //If there exists a sub folder then add its name
-                                    // /storage/emulated/music/abc.mp3 -> emulated will be subfolder name
-                                    var subFolderName = ""
-                                    if (pathsList.size > 2) {
-                                        subFolderName = pathsList[pathsList.size - 3]
-                                    }
-                                    //"key" Contains path of song excluding song name
-                                    //Complete Path length - Song Name Length
-                                    //Song Name Length = pathsList.get(pathsList.size-1).length
-                                    val key = path.substring(0, path.length - pathsList[pathsList.size - 1].length)
+                                    val pathsList = videoPath.split("/")
 
                                     val videoName = pathsList[pathsList.size - 1]
 
                                     videoList.add(
                                         FileInfo(
-                                            songId,
+                                            videoId,
                                             videoName,
-                                            path,
-                                            songDuration))
+                                            videoPath,
+                                            videoDuration))
 
                                 } else
                                     continue
@@ -194,9 +176,14 @@ class VideoListViewModel (private val context: Context,
                 }
             }
             withContext(Dispatchers.Main) {
-                filesList.value = videoList
+                _filesList.value = videoList
             }
         }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        coroutineJob.cancel()
     }
 
     override fun update(p0: Observable?, p1: Any?) {
