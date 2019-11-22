@@ -1,44 +1,12 @@
 package com.project100pi.pivideoplayer.model
 
-import android.os.Parcel
-import android.os.Parcelable
+data class FolderInfo(var folderName: String = "",
+                      var folderPath: String = ""){
 
-data class FolderInfo(var videoName: String = "",
-                      var folderId: String = "",
-                      var path: String = "",
-                      var isSong: Boolean = false,
-                      var duration: Long = 0){
+    val filesList: ArrayList<FileInfo> = ArrayList()
 
-    var songsList: ArrayList<FileInfo> = ArrayList()
-
-    constructor(parcel: Parcel) : this(
-        parcel.readString() ?: "",
-        parcel.readString() ?: "",
-        parcel.readString() ?: "",
-        parcel.readByte() != 0.toByte(),
-        parcel.readLong()
-    )
-
-    constructor(
-        folderName: String,
-        fullPath: String,
-        subFolder: String,
-        songName: String,
-        folderId: String
-    ): this(folderName, folderId, fullPath)
-
-    constructor(
-        folderName: String,
-        fullPath: String,
-        subFolder: String,
-        songName: String,
-        folderId: String,
-        isSong: Boolean,
-        duration: Long
-    ): this(folderName, folderId, fullPath, isSong, duration)
-
-    fun addSong(fileId: String, fileName: String, filePath: String, fileDuration: Long) {
-        songsList.add(FileInfo(fileId, fileName, filePath, fileDuration))
+    fun addFile(fileId: Int, fileName: String, filePath: String, fileDuration: Long) {
+        filesList.add(FileInfo(fileId, fileName, filePath, fileDuration))
 
     }
 
