@@ -26,7 +26,7 @@ class StorageFileViewHolder(private val context: Context, itemView: View, privat
     private var ivThumbnail: ImageView = itemView.findViewById(R.id.iv_directory)
     private var ivOverFlow: ImageView = itemView.findViewById(R.id.iv_overflow_menu)
 
-    fun bind(file: FolderInfo, position: Int) {
+    fun bind(folder: FolderInfo, position: Int) {
         if(adapter.isSelected(position)){
             clItemRow.setBackgroundColor(context.resources.getColor(android.R.color.holo_green_dark))
         }
@@ -44,9 +44,10 @@ class StorageFileViewHolder(private val context: Context, itemView: View, privat
         ivOverFlow.visibility = View.GONE
         tvItemCount.visibility = View.VISIBLE
         tvDuration.visibility = View.GONE
-        tvItemCount.text = "${adapter.getInternalItem(position).songsList.size} Videos"
+        tvItemCount.text = "${adapter.getInternalItem(position).filesList.size} Videos"
+//        tvItemCount.text = "${folder.fileCount} Videos"
 
-        tvTitle.text = file.videoName
+        tvTitle.text = folder.folderName
 
         clItemRow.setOnClickListener(this)
         clItemRow.setOnLongClickListener(this)
