@@ -5,7 +5,7 @@
     <string name="n_items_selected_toast"> item(s) selected</string>
     <string name="launcher_not_supporting_homescreen_shortcut">Sorry. Your launcher does not support home screen shortcuts!</string>
 
-<!--Context Menu Strings-->
+    <!--Context Menu Strings-->
 
     <string name="context_menu_subtitle">Subtitle</string>
     <string name="context_menu_settings">Settings</string>
@@ -25,5 +25,8 @@
     <string name="player_menu_play">Play</string>
     <string name="player_menu_share">Share</string>
     <string name="player_menu_delete">Delete</string>
+    <string name="sample_duration">1:50:08</string>
+    <string name="sample_video_count">7 Videos</string>
+    <string name="sample_folder_name">Folder Name</string>
 
 </resources>

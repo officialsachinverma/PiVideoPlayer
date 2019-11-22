@@ -23,7 +23,7 @@
         android:layout_margin="3dp"
         android:gravity="center_vertical"
         android:maxLines="1"
-        android:text="..."
+        android:text="@string/root_storage_path"
         android:textAppearance="?android:attr/textAppearanceMedium"
         android:textColor="@android:color/white"
         android:textSize="16sp"
