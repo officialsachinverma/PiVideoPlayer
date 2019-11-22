@@ -29,7 +29,7 @@ class StorageFileAdapter(
 
     class PlayerDiffUtil: DiffUtil.ItemCallback<FolderInfo>() {
         override fun areItemsTheSame(oldItem: FolderInfo, newItem: FolderInfo): Boolean {
-            return (oldItem.folderId == newItem.folderId) && (oldItem.songsList.size == newItem.songsList.size)
+            return (oldItem.folderPath == newItem.folderPath) && (oldItem.filesList.size == newItem.filesList.size)
         }
 
         override fun areContentsTheSame(oldItem: FolderInfo, newItem: FolderInfo): Boolean {
