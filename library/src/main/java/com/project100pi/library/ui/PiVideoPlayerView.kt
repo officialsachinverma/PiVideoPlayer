@@ -3,8 +3,6 @@ package com.project100pi.library.ui
 import android.app.Activity
 import android.content.Context
 import android.graphics.Point
-import android.media.AudioManager
-import android.os.Build
 import android.os.SystemClock
 import android.util.AttributeSet
 import android.view.*
@@ -22,6 +20,7 @@ import com.project100pi.library.dialogs.CurrentPlayingQueueDialog
 import com.project100pi.library.dialogs.SRTFilePicker
 import com.project100pi.library.dialogs.listeners.OnItemClickListener
 import com.project100pi.library.dialogs.listeners.SRTFilePickerClickListener
+import com.project100pi.library.listeners.PlaybackGestureControlListener
 import com.project100pi.library.listeners.PlayerViewActionsListener
 import com.project100pi.library.misc.CountDown
 import com.project100pi.library.misc.CurrentSettings
@@ -46,8 +45,6 @@ class PiVideoPlayerView: FrameLayout, SRTFilePickerClickListener, OnItemClickLis
     private val fullScreenButton: ImageView
     private val nextButton: View
     private val prevButton: View
-    private val progressBrightness: ProgressBar
-    private val progressVolume: ProgressBar
     private var gestureCapture: View
     private val videoResizingView: TextView
     private lateinit var videoPlayer: PiVideoPlayer
@@ -67,22 +64,17 @@ class PiVideoPlayerView: FrameLayout, SRTFilePickerClickListener, OnItemClickLis
 
     // Gestures
     private val mGestureDetector: GestureDetector
-    private val am: AudioManager
     private var systemWidth: Int = 0
     private var systemHeight: Int = 0
     private var systemSize: Point = Point()
-    private var currentVolume = 0
-    private var currentBrightness = 0f
-    private var maxSystemVolume: Int
-    private var minSystemVolume: Int
     private var gestureListener = PiGesture()
     private var activeGesture = ""
-    private var currentBrightnessProgress = 0
-    private var currentVolumeProgress = 0
+    private var mIsScrolling = false
 
     private var superContext: Context
 
     private var playerViewActionsListener: PlayerViewActionsListener? = null
+    private var playerGestureListener: PlaybackGestureControlListener? = null
 
     constructor(context: Context): this(context, null)
 
@@ -118,14 +110,6 @@ class PiVideoPlayerView: FrameLayout, SRTFilePickerClickListener, OnItemClickLis
         videoResizingView = findViewById(R.id.pi_video_resize)
         videoResizingView.visibility = View.GONE
 
-        // Progress Bar Brightness
-        progressBrightness = findViewById(R.id.pb_brightness)
-        progressBrightness.visibility = View.GONE
-
-        // Progress Bar Volume
-        progressVolume = findViewById(R.id.pb_volume)
-        progressVolume.visibility = View.GONE
-
         // controller
         controlView = playerView.findViewById(R.id.exo_controller)
         screenLockButton = this.controlView.findViewById(R.id.pi_screen_lock)
@@ -136,21 +120,6 @@ class PiVideoPlayerView: FrameLayout, SRTFilePickerClickListener, OnItemClickLis
         // Gestures
         gestureCapture = findViewById(R.id.gesture_capture)
         mGestureDetector = GestureDetector(context, gestureListener)
-        am = context.applicationContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager
-        maxSystemVolume = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC) * 3
-        minSystemVolume = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            am.getStreamMinVolume(AudioManager.STREAM_MUSIC)
-        } else {
-            0
-        }
-
-        currentVolume = am.getStreamVolume(AudioManager.STREAM_MUSIC)
-        currentVolumeProgress = (100/currentVolume)
-        progressVolume.progress = currentVolumeProgress
-
-        currentBrightness = (context as AppCompatActivity).window.attributes.screenBrightness
-        currentBrightnessProgress = currentBrightness.toInt() * 100
-        progressBrightness.progress = currentBrightnessProgress
 
         getScreenSize()
 
@@ -200,7 +169,6 @@ class PiVideoPlayerView: FrameLayout, SRTFilePickerClickListener, OnItemClickLis
         // On clicks
 
         backButton.setOnClickListener {
-//            (context as AppCompatActivity).finish()
             playerViewActionsListener?.onPlayerBackButtonPressed()
         }
 
@@ -263,10 +231,21 @@ class PiVideoPlayerView: FrameLayout, SRTFilePickerClickListener, OnItemClickLis
         gestureCapture.setOnTouchListener {
                 _: View, event: MotionEvent ->
             Logger.i("Gesture: gestureCapture.setOnTouchListener")
+
             if (!isScreenLocked) {
                 mGestureDetector.onTouchEvent(event)
                 Logger.i("Gesture: gestureCapture.onTouchEvent")
             }
+
+            if(event.action == MotionEvent.ACTION_UP) {
+                if(mIsScrolling ) {
+                    Logger.d("OnTouchListener --> onTouch ACTION_UP")
+                    mIsScrolling  = false
+//                    handleScrollFinished()
+                    playerGestureListener?.onActionUp()
+                }
+            }
+
             true
         }
 
@@ -280,6 +259,10 @@ class PiVideoPlayerView: FrameLayout, SRTFilePickerClickListener, OnItemClickLis
 
     fun setPlayerActionBarListener(playerViewActionsListener: PlayerViewActionsListener) {
         this.playerViewActionsListener = playerViewActionsListener
+    }
+
+    fun setPlayerGestureControlListener(playerGestureListener: PlaybackGestureControlListener) {
+        this.playerGestureListener = playerGestureListener
     }
 
     fun onResume() {
@@ -454,12 +437,6 @@ class PiVideoPlayerView: FrameLayout, SRTFilePickerClickListener, OnItemClickLis
 
     private inner class PiGesture: GestureDetector.SimpleOnGestureListener(), SingleTapListener {
 
-        override fun onDown(e: MotionEvent?): Boolean {
-            progressVolume.visibility = View.GONE
-            progressBrightness.visibility = View.GONE
-            return true
-        }
-
         override fun onSingleTapUp(e: MotionEvent): Boolean {
             Logger.d("Gesture: onSingleTapUp")
             return toggleControllerVisibility()
@@ -467,12 +444,12 @@ class PiVideoPlayerView: FrameLayout, SRTFilePickerClickListener, OnItemClickLis
 
         override fun onScroll(e1: MotionEvent?, e2: MotionEvent?, distanceX: Float, distanceY: Float): Boolean {
             Logger.d("Gesture: onScroll")
+            mIsScrolling = true
 
             activeGesture = when {
                 (e1!!.x < (systemWidth / 2) && e2!!.x < (systemWidth / 2)
                         && activeGesture.isEmpty()) -> "Brightness"
                 (e1.x > (systemWidth / 2) && e2!!.x > (systemWidth / 2)
-                        //&& e1!!.y > (systemHeight / 2) && e2!!.y > (systemHeight / 2)
                         && activeGesture.isEmpty() )-> "Volume"
                 (e1.y > (systemHeight / 2) && e2!!.y > (systemHeight / 2)
                         && activeGesture.isEmpty()) -> "Seek"
@@ -481,17 +458,14 @@ class PiVideoPlayerView: FrameLayout, SRTFilePickerClickListener, OnItemClickLis
 
             // for seek
             if (e1.y > (systemHeight / 2) && e2!!.y > (systemHeight / 2) && activeGesture == "Seek") {
-                Logger.d("Gesture: Seek")
                 if (e1.x < e2.x){
                     //Logger.d("Gesture: Left to Right swipe: "+ e1.x + " - " + e2.x)
-                    videoPlayer.seekTo(videoPlayer.getCurrentWindowIndex(), videoPlayer.getCurrentPosition() + videoPlayer.DEFAULT_FAST_FORWARD_TIME)
+                    playerGestureListener?.onFastForward()
                 }
                 if (e1.x > e2.x) {
                     //Logger.d("Gesture: Right to Left swipe: "+ e1.x + " - " + e2.x)
-                    videoPlayer.seekTo(videoPlayer.getCurrentWindowIndex(), videoPlayer.getCurrentPosition() - videoPlayer.DEFAULT_REWIND_TIME)
+                    playerGestureListener?.onRewind()
                 }
-                progressBrightness.visibility = View.GONE
-                progressVolume.visibility = View.GONE
 
                 activeGesture = ""
                 return true
@@ -499,37 +473,12 @@ class PiVideoPlayerView: FrameLayout, SRTFilePickerClickListener, OnItemClickLis
 
             // for brightness
             if (e1.x < (systemWidth / 2) && e2!!.x < (systemWidth / 2) && activeGesture == "Brightness") {
-                Logger.d("Gesture: Brightness")
-                val layout: WindowManager.LayoutParams = (context as AppCompatActivity).window.attributes
                 if (e1.y < e2.y){
-                    Logger.d("Gesture: Scroll Down")
-                    if ((context as AppCompatActivity).window.attributes.screenBrightness > 0.1) {
-                        val b = (context as AppCompatActivity).window.attributes.screenBrightness - 0.05f
-                        layout.screenBrightness = b
-                        (context as AppCompatActivity).window.attributes = layout
-                        if (currentBrightnessProgress > 5)
-                            currentBrightnessProgress -= 5
-                        else
-                            currentBrightnessProgress = 0
-                    }
+                    playerGestureListener?.onBrightnessDown()
                 }
                 if(e1.y > e2.y){
-                    Logger.d("Gesture: Scroll Up")
-                    if ((context as AppCompatActivity).window.attributes.screenBrightness < 1.0) {
-                        val b = (context as AppCompatActivity).window.attributes.screenBrightness + 0.05f
-                        layout.screenBrightness = b
-                        (context as AppCompatActivity).window.attributes = layout
-                        if (currentBrightnessProgress < 100)
-                            currentBrightnessProgress += 5
-                        else
-                            currentBrightnessProgress = 100
-                    }
+                    playerGestureListener?.onBrightnessUp()
                 }
-
-                progressVolume.visibility = View.GONE
-                progressBrightness.visibility = View.VISIBLE
-                Logger.i("sachin verma $currentBrightnessProgress")
-                progressBrightness.progress = currentBrightnessProgress
 
                 activeGesture = ""
                 return true
@@ -537,45 +486,12 @@ class PiVideoPlayerView: FrameLayout, SRTFilePickerClickListener, OnItemClickLis
 
             // for volume
             if (e1.x > (systemWidth / 2) && e2!!.x > (systemWidth / 2) && activeGesture == "Volume") {
-                Logger.d("Gesture: Volume")
                 if (e1.y < e2.y){
-                    Logger.d("Gesture: Scroll Down")
-
-                    if (currentVolume > minSystemVolume) {
-                        --currentVolume
-                        if (currentVolume % 3 == 0) {
-                            am.setStreamVolume(
-                                AudioManager.STREAM_MUSIC,
-                                currentVolume,
-                                0
-                            )
-                        }
-                        if (currentVolumeProgress > 0)
-                            currentVolumeProgress -= 7
-                        else
-                            currentVolumeProgress = 0
-                    }
+                    playerGestureListener?.onVolumeDown()
                 }
                 if(e1.y > e2.y){
-                    Logger.d("Gesture: Scroll Up")
-                    if (currentVolume < maxSystemVolume) {
-                        ++currentVolume
-                        if (currentVolume % 3 == 0) {
-                            am.setStreamVolume(
-                                AudioManager.STREAM_MUSIC,
-                                currentVolume,
-                                0
-                            )
-                        }
-                        if (currentVolumeProgress < 100)
-                            currentVolumeProgress += 7
-                        else
-                            currentVolumeProgress = 100
-                    }
+                    playerGestureListener?.onVolumeUp()
                 }
-                progressBrightness.visibility = View.GONE
-                progressVolume.visibility = View.VISIBLE
-                progressVolume.progress = currentVolumeProgress
 
                 activeGesture = ""
                 return true

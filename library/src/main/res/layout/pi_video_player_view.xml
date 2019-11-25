@@ -60,49 +60,11 @@
         android:textColor="@android:color/white"
         android:textSize="30sp" />
 
-    <ProgressBar
-        android:id="@+id/pb_brightness"
-        style="@android:style/Widget.ProgressBar.Horizontal"
-        android:layout_width="50dp"
-        android:layout_height="150dp"
-        android:scaleY="3"
-        android:scaleX="1.5"
-        android:progressDrawable="@drawable/progressbar_states"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toStartOf="@+id/right_vertical_guideline"
-        app:layout_constraintTop_toTopOf="parent"/>
-
-    <ProgressBar
-        android:id="@+id/pb_volume"
-        style="@android:style/Widget.ProgressBar.Horizontal"
-        android:layout_width="50dp"
-        android:layout_height="150dp"
-        android:scaleY="3"
-        android:scaleX="1.5"
-        android:progressDrawable="@drawable/progressbar_states"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="@+id/left_vertical_guideline"
-        app:layout_constraintTop_toTopOf="parent"/>
-
     <androidx.constraintlayout.widget.Guideline
         android:id="@+id/top_horizontal_guideline"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         app:layout_constraintGuide_begin="100dp" />
-
-    <androidx.constraintlayout.widget.Guideline
-        android:id="@+id/right_vertical_guideline"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        app:layout_constraintGuide_end="50dp" />
-
-    <androidx.constraintlayout.widget.Guideline
-        android:id="@+id/left_vertical_guideline"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        app:layout_constraintGuide_begin="50dp" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
