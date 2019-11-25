@@ -1,11 +1,16 @@
 package com.project100pi.pivideoplayer.ui.activity.viewmodel
 
+import android.annotation.TargetApi
 import android.app.Application
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.net.Uri
+import android.os.Build
+import android.preference.PreferenceManager
 import android.provider.MediaStore
 import android.widget.Toast
+import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
@@ -21,8 +26,10 @@ import com.project100pi.pivideoplayer.utils.ContextMenuUtil
 import com.project100pi.pivideoplayer.utils.FileExtension
 import kotlinx.coroutines.*
 import java.io.File
+import java.io.IOException
 import java.util.*
 import kotlin.collections.ArrayList
+
 
 class VideoListViewModel (private val context: Context,
                           private val folderPath: String,
@@ -34,11 +41,15 @@ class VideoListViewModel (private val context: Context,
         get() = _filesList
 
     private val videoList = arrayListOf<FileInfo>()
+    private var preferences: SharedPreferences? = null
 
     private val coroutineJob = Job()
     private val coroutineScope = CoroutineScope(Dispatchers.IO + coroutineJob)
 
     init {
+
+        preferences = context.getSharedPreferences(Constants.SHARED_PREFERENCES, Context.MODE_PRIVATE)
+
         loadAllData()
         // When a new video is added (eg: video download finished in background) and
         // when the app is open then this observer will get triggered
@@ -51,34 +62,81 @@ class VideoListViewModel (private val context: Context,
 
     fun deleteVideo(listOfIndexes: List<Int>, listener: ItemDeleteListener) {
         coroutineScope.launch {
-
             for (position in listOfIndexes) {
                 try {
-                    val folder = videoList[position]
-                    val file = File(folder.filePath)
+                    val folder = _filesList.value!![position].filePath
+                    val file = File(folder)
                     if(file.exists()) {
-                        file.delete()
-                        context.applicationContext.sendBroadcast(Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.fromFile(file)))
-                    }
-                    if (file.exists()) {
-                        file.canonicalFile.delete()
-                        if (file.exists()) {
-                            file.delete()
-                            context.applicationContext.sendBroadcast(Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.fromFile(file)))
+                        if (file.delete()) {
+                            context.applicationContext.sendBroadcast(
+                                Intent(
+                                    Intent.ACTION_MEDIA_SCANNER_SCAN_FILE,
+                                    Uri.fromFile(file)
+                                )
+                            )
+                            withContext(Dispatchers.Main) {
+                                listener.onDeleteSuccess(listOfIndexes)
+                            }
+                        } else {
+                            if (file.exists()) {
+                                // checking if file still exist in it actual true location
+                                if (file.canonicalFile.delete()) {
+                                    if (file.exists()) {
+                                        if (context.applicationContext.deleteFile(file.name)) {
+                                            context.applicationContext.sendBroadcast(
+                                                Intent(
+                                                    Intent.ACTION_MEDIA_SCANNER_SCAN_FILE,
+                                                    Uri.fromFile(file)
+                                                )
+                                            )
+                                            withContext(Dispatchers.Main) {
+                                                listener.onDeleteSuccess(listOfIndexes)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            // checking for file is in sd card and sdcard uri
+                            if (preferences?.getString("sdCardUri", "").isNullOrEmpty()) {
+                                listener.showPermissionForSdCard()
+                            } else {
+                                val sdCardUri = preferences?.getString("sdCardUri", "")
+                                var documentFile = DocumentFile.fromTreeUri(context, Uri.parse(sdCardUri))
+                                if (file.exists() && sdCardUri!!.isNotEmpty()) {
+                                    val parts: List<String> = file.path.split("/")
+                                    // findFile method will search documentFile for the first file
+                                    // with the expected `DisplayName`
+
+                                    // We skip first three items because we are already on it.(sdCardUri = /storage/extSdCard)
+                                    for (strs in parts.subList(3, parts.size)) {
+                                        if (documentFile != null) {
+                                            documentFile = documentFile.findFile(strs)
+                                        }
+                                    }
+                                    if (documentFile != null) {
+                                        if (documentFile.delete()) {
+                                            context.applicationContext.sendBroadcast(
+                                                Intent(
+                                                    Intent.ACTION_MEDIA_SCANNER_SCAN_FILE,
+                                                    Uri.fromFile(file)
+                                                )
+                                            )
+                                            withContext(Dispatchers.Main) {
+                                                listener.onDeleteSuccess(listOfIndexes)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
-                } catch (e: Exception) {
+                } catch (e: IOException) {
                     e.printStackTrace()
                     withContext(Dispatchers.Main) {
                         listener.onDeleteError()
                     }
                 }
             }
-
-            withContext(Dispatchers.Main) {
-                listener.onDeleteSuccess(listOfIndexes)
-            }
-
         }
     }
 
@@ -179,6 +237,70 @@ class VideoListViewModel (private val context: Context,
                 _filesList.value = videoList
             }
         }
+    }
+
+    /*
+     * The following method getDocumentFile will get the DocumentFile for the given File
+     * if TinyDB has the TreeURI for the root folder of the SD Card.
+     * If the TreeURI for the root folder fo the SD Card is not there, this will return NULL.
+     */
+    private fun getDocumentFile(file: File): DocumentFile? {
+        val baseFolder: String = getExtSdCardFolder(file) ?: return null
+        var relativePath: String? = null
+        relativePath = try {
+            val fullPath = file.canonicalPath
+            fullPath.substring(baseFolder.length + 1)
+        } catch (e: IOException) {
+            return null
+        }
+//        val treeUri = Uri.parse(TinyDBHelper.getInstance().getURIForSDCard()) ?: return null
+        // start with root of SD card and then parse through document tree.
+        var document = DocumentFile.fromFile(file)
+        val parts = relativePath.split("\\/").toTypedArray()
+        for (i in parts.indices) {
+            document = document.findFile(parts[i])!!
+            if (document == null) break
+        }
+        return document
+    }
+
+    private fun getExtSdCardFolder(file: File): String? {
+        val extSdPaths: Array<String> = getExtSdCardPaths()
+        try {
+            for (i in extSdPaths.indices) {
+                if (file.canonicalPath.startsWith(extSdPaths[i])) {
+                    return extSdPaths[i]
+                }
+            }
+        } catch (e: IOException) {
+            return null
+        }
+        return null
+    }
+
+    /**
+     * Get a list of external SD card paths. (Kitkat or higher.)
+     *
+     * @return A list of external SD card paths.
+     */
+    @TargetApi(Build.VERSION_CODES.KITKAT)
+    private fun getExtSdCardPaths(): Array<String> {
+        val paths = arrayListOf<String>()
+        for (file in context.getExternalFilesDirs("external")) {
+            if (file != null && file != context.getExternalFilesDir("external")) {
+                val index = file.absolutePath.lastIndexOf("/Android/data")
+                if (index < 0) { //Log.w(Application.TAG, "Unexpected external file dir: " + file.getAbsolutePath());
+                } else {
+                    var path = file.absolutePath.substring(0, index)
+                    try {
+                        path = File(path).canonicalPath
+                    } catch (e: IOException) { // Keep non-canonical path.
+                    }
+                    paths.add(path)
+                }
+            }
+        }
+        return paths.toTypedArray()
     }
 
     override fun onCleared() {

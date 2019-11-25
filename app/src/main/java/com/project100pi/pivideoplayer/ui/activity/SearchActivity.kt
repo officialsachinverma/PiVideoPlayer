@@ -1,8 +1,11 @@
 package com.project100pi.pivideoplayer.ui.activity
 
+import android.annotation.TargetApi
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextUtils
@@ -13,6 +16,7 @@ import android.view.inputmethod.InputMethodManager
 import android.widget.AutoCompleteTextView
 import android.widget.TextView
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.view.ActionMode
 import androidx.appcompat.widget.Toolbar
@@ -62,12 +66,17 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
     private var mIsMultiSelectMode: Boolean = false
     private var actionModeCallback = ActionModeCallback()
     private var actionMode: ActionMode? = null
+    private var preferences: SharedPreferences? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_search)
         ButterKnife.bind(this)
 
+        init()
+    }
+
+    private fun init() {
         val application = requireNotNull(this).application
         val viewModelFactory = SearchViewModelFactory(this , application)
         searchViewModel = ViewModelProviders.of(this, viewModelFactory).get(SearchViewModel::class.java)
@@ -82,6 +91,8 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
         searchResultsRecyclerView.visibility = View.GONE
 
         observeForObservers()
+
+        preferences = getSharedPreferences(Constants.SHARED_PREFERENCES, Context.MODE_PRIVATE)
     }
 
     override fun onStart() {
@@ -96,6 +107,27 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
                 return true
             }
             else -> super.onOptionsItemSelected(item)
+        }
+    }
+
+    @TargetApi(Build.VERSION_CODES.KITKAT)
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        when (requestCode) {
+            100 -> {
+                if (resultCode == RESULT_OK && data != null) {
+                    val sdCardUri = data.data
+                    preferences?.let {
+                        it.edit().putString("sdCardUri", sdCardUri.toString()).apply()
+                    }
+                    // Persist access permissions.
+                    val takeFlags = data.flags and (Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+                    contentResolver.takePersistableUriPermission(sdCardUri!!, takeFlags)
+
+                    Toast.makeText(this, "Please do the operation again.", Toast.LENGTH_SHORT).show()
+//                    videoListViewModel.deleteVideo()
+                }
+            }
         }
     }
 
@@ -232,9 +264,21 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
                 shareVideos(position)
             }
             R.id.itemDelete -> {
-                searchViewModel.deleteSearchedVideos(listOf(position), this)
+                showDeleteConfirmation(position)
             }
         }
+    }
+
+    private fun showDeleteConfirmation(position: Int) {
+        AlertDialog.Builder(this)
+            .setTitle("Delete")
+            .setMessage("Are you sure you want to delete this video?")
+            .setPositiveButton(android.R.string.yes) { _, _ ->
+                searchViewModel.deleteSearchedVideos(listOf(position), this)
+            }
+            .setNegativeButton(android.R.string.no, null)
+            .setCancelable(false)
+            .show()
     }
 
     private fun shareVideos(position: Int) {
@@ -285,6 +329,11 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
             actionMode!!.title = title.toString()
             actionMode!!.invalidate()
         }
+    }
+
+    override fun showPermissionForSdCard() {
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
+        startActivityForResult(intent, 100)
     }
 
     override fun onDeleteSuccess(listOfIndexes: List<Int>) {
@@ -353,7 +402,7 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
                     shareMultipleVideos()
                 }
                 R.id.multiChoiceDelete -> {
-                    searchViewModel.deleteSearchedVideos(adapter!!.getSelectedItems(), this@SearchActivity)
+                    showMultiDeleteConfirmation()
                 }
             }
             // We have to end the multi select, if the user clicks on an option other than select all
@@ -387,6 +436,18 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
         override fun afterTextChanged(s: Editable) {
 
         }
+    }
+
+    private fun showMultiDeleteConfirmation() {
+        AlertDialog.Builder(this)
+            .setTitle("Delete")
+            .setMessage("Are you sure you want to delete this ${adapter!!.getSelectedItemCount()} video(s)?")
+            .setPositiveButton(android.R.string.yes) { _, _ ->
+                searchViewModel.deleteSearchedVideos(adapter!!.getSelectedItems(), this)
+            }
+            .setNegativeButton(android.R.string.no, null)
+            .setCancelable(false)
+            .show()
     }
 
 }

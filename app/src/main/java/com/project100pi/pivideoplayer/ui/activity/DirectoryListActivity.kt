@@ -1,8 +1,10 @@
 package com.project100pi.pivideoplayer.ui.activity
 
 import android.Manifest
+import android.annotation.TargetApi
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.net.Uri
 import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
@@ -22,6 +24,7 @@ import android.view.MenuItem
 import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.view.ActionMode
 import androidx.appcompat.widget.Toolbar
 import androidx.core.app.ActivityCompat
@@ -32,6 +35,7 @@ import com.project100pi.pivideoplayer.ui.activity.viewmodel.factory.DirectoryLis
 import com.project100pi.pivideoplayer.listeners.ItemDeleteListener
 import com.project100pi.pivideoplayer.model.FolderInfo
 import com.project100pi.pivideoplayer.ui.activity.viewmodel.DirectoryListViewModel
+import java.util.logging.Logger
 import kotlin.collections.ArrayList
 
 
@@ -53,6 +57,7 @@ class DirectoryListActivity : AppCompatActivity(), OnClickListener, ItemDeleteLi
     private var videoListData: ArrayList<FolderInfo> = ArrayList()
 
     private var doubleBackToExitPressedOnce = false
+    private var preferences: SharedPreferences? = null
 
     companion object {
         var mIsMultiSelectMode: Boolean = false
@@ -79,6 +84,8 @@ class DirectoryListActivity : AppCompatActivity(), OnClickListener, ItemDeleteLi
         pgWaiting.visibility = View.VISIBLE
 
         observeForObservers()
+
+        preferences = getSharedPreferences(Constants.SHARED_PREFERENCES, Context.MODE_PRIVATE)
     }
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
@@ -95,25 +102,28 @@ class DirectoryListActivity : AppCompatActivity(), OnClickListener, ItemDeleteLi
                 openSearchActivity()
                 true
             }
-//            android.R.id.home -> {
-//                supportActionBar?.setDisplayHomeAsUpEnabled(false)
-//                supportActionBar?.title = "Pi Video Player"
-//                directoryListViewModel.listViewMode = Constants.FOLDER_VIEW
-//                setAdapter()
-//                directoryListViewModel.onBackFolderPressed()
-//                true
-//            }
             else -> false
         }
 
-    // Permissions
+    @TargetApi(Build.VERSION_CODES.KITKAT)
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        when (requestCode) {
+            100 -> {
+                if (resultCode == RESULT_OK && data != null) {
+                    val sdCardUri = data.data
+                    preferences?.let {
+                        it.edit().putString("sdCardUri", sdCardUri.toString()).apply()
+                    }
+                    // Persist access permissions.
+                    val takeFlags = data.flags and (Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+                    contentResolver.takePersistableUriPermission(sdCardUri!!, takeFlags)
 
-    private fun requestPermission() {
-        ActivityCompat.requestPermissions(this,
-            arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE,
-                Manifest.permission.READ_EXTERNAL_STORAGE,
-                Manifest.permission.INTERNET),
-            Constants.PERMISSION_REQUEST_CODE)
+                    Toast.makeText(this, "Please do the operation again.", Toast.LENGTH_SHORT).show()
+//                    videoListViewModel.deleteVideo()
+                }
+            }
+        }
     }
 
     private fun observeForObservers() {
@@ -194,11 +204,16 @@ class DirectoryListActivity : AppCompatActivity(), OnClickListener, ItemDeleteLi
     }
 
     private fun launchVideoListActivity(position: Int) {
-        val videoListIntent = Intent(this, VideoListActivity::class.java)
+        try {
+            val videoListIntent = Intent(this, VideoListActivity::class.java)
 //        videoListIntent.putExtra("videoList", videoListData[position].songsList)
-        videoListIntent.putExtra("directoryName", videoListData[position].folderName)
-        videoListIntent.putExtra("directoryPath", videoListData[position].folderPath)
-        startActivity(videoListIntent)
+            videoListIntent.putExtra("directoryName", videoListData[position].folderName)
+            videoListIntent.putExtra("directoryPath", videoListData[position].folderPath)
+            startActivity(videoListIntent)
+        } catch (e: ArrayIndexOutOfBoundsException) {
+            e.printStackTrace()
+            Toast.makeText(this, "Error Occured.", Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun playVideo() {
@@ -224,6 +239,11 @@ class DirectoryListActivity : AppCompatActivity(), OnClickListener, ItemDeleteLi
         Toast.makeText(this, "Please click BACK again to exit", Toast.LENGTH_SHORT).show()
 
         Handler().postDelayed({ doubleBackToExitPressedOnce = false }, 2000)
+    }
+
+    override fun showPermissionForSdCard() {
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
+        startActivityForResult(intent, 100)
     }
 
     override fun onDeleteSuccess(listOfIndexes: List<Int>) {
@@ -271,7 +291,7 @@ class DirectoryListActivity : AppCompatActivity(), OnClickListener, ItemDeleteLi
                     shareMultipleVideos()
                 }
                 R.id.multiChoiceDelete -> {
-                    directoryListViewModel.deleteFolderContents(adapter!!.getSelectedItems(), this@DirectoryListActivity)
+                    showMultiDeleteConfirmation()
                 }
             }
             // We have to end the multi select, if the user clicks on an option other than select all
@@ -287,5 +307,17 @@ class DirectoryListActivity : AppCompatActivity(), OnClickListener, ItemDeleteLi
             adapter!!.clearSelection()
         }
 
+    }
+
+    private fun showMultiDeleteConfirmation() {
+        AlertDialog.Builder(this)
+            .setTitle("Delete")
+            .setMessage("Are you sure you want to delete this ${adapter!!.getSelectedItemCount()} video(s)?")
+            .setPositiveButton(android.R.string.yes) { _, _ ->
+                directoryListViewModel.deleteFolderContents(adapter!!.getSelectedItems(), this)
+            }
+            .setNegativeButton(android.R.string.no, null)
+            .setCancelable(false)
+            .show()
     }
 }

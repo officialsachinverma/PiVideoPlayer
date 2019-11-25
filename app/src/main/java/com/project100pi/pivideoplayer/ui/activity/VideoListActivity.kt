@@ -1,7 +1,12 @@
 package com.project100pi.pivideoplayer.ui.activity
 
+import android.annotation.TargetApi
+import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
+import android.os.Build
 import android.os.Bundle
+import android.preference.PreferenceManager
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
@@ -21,17 +26,18 @@ import butterknife.ButterKnife
 import com.project100pi.library.misc.Logger
 import com.project100pi.library.model.VideoMetaData
 import com.project100pi.pivideoplayer.R
-import com.project100pi.pivideoplayer.ui.adapters.VideoFilesAdapter
-import com.project100pi.pivideoplayer.ui.activity.viewmodel.factory.VideoListViewModelFactory
 import com.project100pi.pivideoplayer.listeners.ItemDeleteListener
 import com.project100pi.pivideoplayer.listeners.OnClickListener
 import com.project100pi.pivideoplayer.model.FileInfo
 import com.project100pi.pivideoplayer.model.observable.VideoChangeObservable
 import com.project100pi.pivideoplayer.ui.activity.viewmodel.VideoListViewModel
+import com.project100pi.pivideoplayer.ui.activity.viewmodel.factory.VideoListViewModelFactory
+import com.project100pi.pivideoplayer.ui.adapters.VideoFilesAdapter
 import com.project100pi.pivideoplayer.utils.Constants
+import com.project100pi.pivideoplayer.utils.Constants.SHARED_PREFERENCES
 import com.project100pi.pivideoplayer.utils.ContextMenuUtil
 import java.io.File
-import java.lang.Exception
+
 
 class VideoListActivity : AppCompatActivity(), OnClickListener, ItemDeleteListener {
 
@@ -54,6 +60,7 @@ class VideoListActivity : AppCompatActivity(), OnClickListener, ItemDeleteListen
 
     private var actionModeCallback = ActionModeCallback()
     private var actionMode: ActionMode? = null
+    private var preferences: SharedPreferences? = null
 
     companion object {
         var mIsMultiSelectMode: Boolean = false
@@ -83,6 +90,8 @@ class VideoListActivity : AppCompatActivity(), OnClickListener, ItemDeleteListen
         tvEmptyList.visibility = View.GONE
         rvVideoList.visibility = View.GONE
         pgWaiting.visibility = View.VISIBLE
+
+        preferences = getSharedPreferences(SHARED_PREFERENCES, Context.MODE_PRIVATE)
     }
 
     private fun observeForObservable() {
@@ -143,6 +152,27 @@ class VideoListActivity : AppCompatActivity(), OnClickListener, ItemDeleteListen
             }
             else -> false
         }
+
+    @TargetApi(Build.VERSION_CODES.KITKAT)
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        when (requestCode) {
+            100 -> {
+                if (resultCode == RESULT_OK && data != null) {
+                    val sdCardUri = data.data
+                    preferences?.let {
+                        it.edit().putString("sdCardUri", sdCardUri.toString()).apply()
+                    }
+                    // Persist access permissions.
+                    val takeFlags = data.flags and (Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+                    contentResolver.takePersistableUriPermission(sdCardUri!!, takeFlags)
+
+                    Toast.makeText(this, "Please do the operation again.", Toast.LENGTH_SHORT).show()
+//                    videoListViewModel.deleteVideo()
+                }
+            }
+        }
+    }
 
     private fun launchSearchActivity() {
         val intent = Intent(this@VideoListActivity, SearchActivity::class.java)
@@ -297,6 +327,11 @@ class VideoListActivity : AppCompatActivity(), OnClickListener, ItemDeleteListen
         if (!mIsMultiSelectMode) {
             doActionOnOverflowItemClick(position, viewId)
         }
+    }
+
+    override fun showPermissionForSdCard() {
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
+        startActivityForResult(intent, 100)
     }
 
     override fun onDeleteSuccess(listOfIndexes: List<Int>) {

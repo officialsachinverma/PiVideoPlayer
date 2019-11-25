@@ -10,6 +10,7 @@ object Constants {
     const val QUEUE = "queue"
     const val SONG_VIEW = 1
     const val FOLDER_VIEW = 2
+    const val SHARED_PREFERENCES = "SharedPreferences"
 
     object SearchSource {
         const val SEARCH_LOCAL = "searchLocal"

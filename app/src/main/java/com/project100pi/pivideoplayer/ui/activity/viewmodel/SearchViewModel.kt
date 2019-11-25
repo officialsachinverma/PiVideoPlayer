@@ -3,17 +3,21 @@ package com.project100pi.pivideoplayer.ui.activity.viewmodel
 import android.app.Application
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.net.Uri
 import android.provider.MediaStore
+import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.project100pi.pivideoplayer.database.CursorFactory
 import com.project100pi.pivideoplayer.listeners.ItemDeleteListener
 import com.project100pi.pivideoplayer.model.FileInfo
+import com.project100pi.pivideoplayer.utils.Constants
 import com.project100pi.pivideoplayer.utils.FileExtension
 import kotlinx.coroutines.*
 import java.io.File
+import java.io.IOException
 
 class SearchViewModel(private val context: Context, application: Application): AndroidViewModel(application) {
 
@@ -21,39 +25,92 @@ class SearchViewModel(private val context: Context, application: Application): A
     val searchResultList: LiveData<ArrayList<FileInfo>>
         get() = _searchResultList
 
+    private var preferences: SharedPreferences? = null
+
     private val coroutineJob = Job()
     private val coroutineScope = CoroutineScope(Dispatchers.IO + coroutineJob)
 
+    init {
+        preferences = context.getSharedPreferences(Constants.SHARED_PREFERENCES, Context.MODE_PRIVATE)
+    }
+
     fun deleteSearchedVideos(listOfIndexes: List<Int>, listener: ItemDeleteListener) {
         coroutineScope.launch {
-
             for (position in listOfIndexes) {
                 try {
                     val folder = _searchResultList.value!![position].filePath
                     val file = File(folder)
                     if(file.exists()) {
-                        file.delete()
-                        context.applicationContext.sendBroadcast(Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.fromFile(file)))
-                    }
-                    if (file.exists()) {
-                        file.canonicalFile.delete()
-                        if (file.exists()) {
-                            file.delete()
-                            context.applicationContext.sendBroadcast(Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.fromFile(file)))
+                        if (file.delete()) {
+                            context.applicationContext.sendBroadcast(
+                                Intent(
+                                    Intent.ACTION_MEDIA_SCANNER_SCAN_FILE,
+                                    Uri.fromFile(file)
+                                )
+                            )
+                            withContext(Dispatchers.Main) {
+                                listener.onDeleteSuccess(listOfIndexes)
+                            }
+                        } else {
+                            if (file.exists()) {
+                                // checking if file still exist in it actual true location
+                                if (file.canonicalFile.delete()) {
+                                    if (file.exists()) {
+                                        if (context.applicationContext.deleteFile(file.name)) {
+                                            context.applicationContext.sendBroadcast(
+                                                Intent(
+                                                    Intent.ACTION_MEDIA_SCANNER_SCAN_FILE,
+                                                    Uri.fromFile(file)
+                                                )
+                                            )
+                                            withContext(Dispatchers.Main) {
+                                                listener.onDeleteSuccess(listOfIndexes)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            // checking for file is in sd card and sdcard uri
+                            if (preferences?.getString("sdCardUri", "").isNullOrEmpty()) {
+                                listener.showPermissionForSdCard()
+                            } else {
+                                val sdCardUri = preferences?.getString("sdCardUri", "")
+                                var documentFile = DocumentFile.fromTreeUri(context, Uri.parse(sdCardUri))
+                                if (file.exists() && sdCardUri!!.isNotEmpty()) {
+                                    val parts: List<String> = file.path.split("/")
+                                    // findFile method will search documentFile for the first file
+                                    // with the expected `DisplayName`
+
+                                    // We skip first three items because we are already on it.(sdCardUri = /storage/extSdCard)
+                                    for (strs in parts.subList(3, parts.size)) {
+                                        if (documentFile != null) {
+                                            documentFile = documentFile.findFile(strs)
+                                        }
+                                    }
+                                    if (documentFile != null) {
+                                        if (documentFile.delete()) {
+                                            context.applicationContext.sendBroadcast(
+                                                Intent(
+                                                    Intent.ACTION_MEDIA_SCANNER_SCAN_FILE,
+                                                    Uri.fromFile(file)
+                                                )
+                                            )
+                                            withContext(Dispatchers.Main) {
+                                                listener.onDeleteSuccess(listOfIndexes)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
-                } catch (e: Exception) {
+                } catch (e: IOException) {
                     e.printStackTrace()
                     withContext(Dispatchers.Main) {
                         listener.onDeleteError()
                     }
                 }
             }
-
-            withContext(Dispatchers.Main) {
-                listener.onDeleteSuccess(listOfIndexes)
-            }
-
         }
     }
 
