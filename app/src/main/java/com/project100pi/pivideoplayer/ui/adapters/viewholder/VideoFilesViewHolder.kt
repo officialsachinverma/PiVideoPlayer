@@ -38,13 +38,13 @@ class VideoFilesViewHolder(private val context: Context, itemView: View, private
         Glide
             .with(context)
             .asBitmap()
-            .load(Uri.fromFile(File(videoTrack.filePath)))
+            .load(Uri.fromFile(File(videoTrack.videoPath)))
             .thumbnail(0.1f)
             .into(ivThumbnail)
         ivOverFlow.visibility = View.VISIBLE
         tvDuration.visibility = View.VISIBLE
-        tvDuration.text = UtilFunctions.convertSecondsToHMmSs(videoTrack.fileDuration)
-        tvTitle.text = videoTrack.fileName
+        tvDuration.text = UtilFunctions.convertSecondsToHMmSs(videoTrack.durationInMs)
+        tvTitle.text = videoTrack.videoName
 
         clItemRow.setOnClickListener(this)
         clItemRow.setOnLongClickListener(this)

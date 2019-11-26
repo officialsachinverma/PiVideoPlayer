@@ -38,7 +38,7 @@ class SearchViewModel(private val context: Context, application: Application): A
         coroutineScope.launch {
             for (position in listOfIndexes) {
                 try {
-                    val folder = _searchResultList.value!![position].filePath
+                    val folder = _searchResultList.value!![position].videoPath
                     val file = File(folder)
                     if(file.exists()) {
                         if (file.delete()) {

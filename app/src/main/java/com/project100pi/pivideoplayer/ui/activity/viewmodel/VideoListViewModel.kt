@@ -63,7 +63,7 @@ class VideoListViewModel (private val context: Context,
         coroutineScope.launch {
             for (position in listOfIndexes) {
                 try {
-                    val folder = _filesList.value!![position].filePath
+                    val folder = _filesList.value!![position].videoPath
                     val file = File(folder)
                     if(file.exists()) {
                         if (file.delete()) {
@@ -148,7 +148,7 @@ class VideoListViewModel (private val context: Context,
 
             val listOfVideoUris = ArrayList<Uri?>()
             for (position in selectedItemPosition) {
-                listOfVideoUris.add(ContextMenuUtil.getVideoContentUri(context, File(videoList[position].filePath)))
+                listOfVideoUris.add(ContextMenuUtil.getVideoContentUri(context, File(videoList[position].videoPath)))
             }
 
             withContext(Dispatchers.Main) {
@@ -168,7 +168,7 @@ class VideoListViewModel (private val context: Context,
                 val metaDataList = ArrayList<VideoMetaData>()
                 for(position in selectedItemPosition) {
 //                    metaDataList.add(directoryListViewModel.getVideoMetaData(videoListData[directoryListViewModel.currentSongFolderIndex].songsList[selectedItemPosition].folderId)!!)
-                    metaDataList.add(VideoMetaData(videoList[position]._Id, videoList[position].fileName, videoList[position].filePath))
+                    metaDataList.add(VideoMetaData(videoList[position]._Id, videoList[position].videoName, videoList[position].videoPath))
                 }
                 playerIntent.putExtra(Constants.QUEUE, metaDataList)
                 withContext(Dispatchers.Main) {

@@ -1,13 +1,11 @@
 package com.project100pi.pivideoplayer.ui.activity.viewmodel
 
-import android.annotation.TargetApi
 import android.app.Application
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.database.SQLException
 import android.net.Uri
-import android.os.Build
 import android.provider.MediaStore
 import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.AndroidViewModel
@@ -222,7 +220,7 @@ class DirectoryListViewModel(private val context: Context, application: Applicat
             val listOfVideoUris = ArrayList<Uri?>()
             for (position in selectedItemPosition) {
                 for (video in foldersList.value!![position].filesList) {
-                    listOfVideoUris.add(ContextMenuUtil.getVideoContentUri(context, File(video.filePath)))
+                    listOfVideoUris.add(ContextMenuUtil.getVideoContentUri(context, File(video.videoPath)))
                 }
             }
 
@@ -242,7 +240,7 @@ class DirectoryListViewModel(private val context: Context, application: Applicat
             for(position in selectedItemPosition) {
 //                    metaDataList.add(directoryListViewModel.getVideoMetaData(videoListData[directoryListViewModel.currentSongFolderIndex].songsList[selectedItemPosition].folderId)!!)
                 for (video in foldersList.value!![position].filesList) {
-                    metaDataList.add(VideoMetaData(video._Id, video.fileName, video.filePath))
+                    metaDataList.add(VideoMetaData(video._Id, video.videoName, video.videoPath))
                 }
             }
             playerIntent.putExtra(Constants.QUEUE, metaDataList)

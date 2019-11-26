@@ -62,7 +62,7 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
     private var isSearchTriggered = false
 
     private lateinit var searchViewModel: SearchViewModel
-    private var adapter: VideoFilesAdapter? = null
+    private lateinit var adapter: VideoFilesAdapter
     private var mIsMultiSelectMode: Boolean = false
     private var actionModeCallback = ActionModeCallback()
     private var actionMode: ActionMode? = null
@@ -77,18 +77,16 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
     }
 
     private fun init() {
-        val application = requireNotNull(this).application
+
         val viewModelFactory = SearchViewModelFactory(this , application)
         searchViewModel = ViewModelProviders.of(this, viewModelFactory).get(SearchViewModel::class.java)
 
         initializeToolbar()
         initializeAutoCompleteTextView()
+        initAdapter()
 
         if(autoCompleteTextView.requestFocus())
             showKeyboard()
-
-        sorryMessageTextView.visibility = View.VISIBLE
-        searchResultsRecyclerView.visibility = View.GONE
 
         observeForObservers()
 
@@ -117,9 +115,7 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
             100 -> {
                 if (resultCode == RESULT_OK && data != null) {
                     val sdCardUri = data.data
-                    preferences?.let {
-                        it.edit().putString("sdCardUri", sdCardUri.toString()).apply()
-                    }
+                    preferences?.edit()?.putString("sdCardUri", sdCardUri.toString())?.apply()
                     // Persist access permissions.
                     val takeFlags = data.flags and (Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
                     contentResolver.takePersistableUriPermission(sdCardUri!!, takeFlags)
@@ -147,33 +143,31 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
             if (it != null) {
                 videoSearchResultData = it
                 if (it.size > 0) {
-                    sorryMessageTextView.visibility = View.GONE
-                    searchResultsRecyclerView.visibility = View.VISIBLE
-                    setAdapter()
+                    hideNoVideoFoundMsg()
+                    showSearchResultList()
+                    setDataToAdapter()
                 } else {
-                    sorryMessageTextView.visibility = View.VISIBLE
-                    searchResultsRecyclerView.visibility = View.GONE
+                    showNoVideoFoundMsg()
+                    hideSearchResultList()
                 }
             }
         })
     }
 
-    private fun setAdapter(){
-
-        if (adapter == null) {
-
-            adapter = VideoFilesAdapter(this, R.layout.row_video_item, this)
-            val linearLayout = LinearLayoutManager(this)
-            linearLayout.orientation = LinearLayoutManager.VERTICAL
-            searchResultsRecyclerView.layoutManager = linearLayout
-            searchResultsRecyclerView.adapter = adapter
-
-        }
+    private fun setDataToAdapter(){
         setSearchResult()
     }
 
+    private fun initAdapter() {
+        adapter = VideoFilesAdapter(this, R.layout.row_video_item, this)
+        val linearLayout = LinearLayoutManager(this)
+        linearLayout.orientation = LinearLayoutManager.VERTICAL
+        searchResultsRecyclerView.layoutManager = linearLayout
+        searchResultsRecyclerView.adapter = adapter
+    }
+
     private fun setSearchResult() {
-        adapter?.submitList(videoSearchResultData)
+        adapter.submitList(videoSearchResultData)
         isSearchTriggered = false
     }
 
@@ -287,7 +281,7 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
         startActivity(Intent.createChooser(Intent().setAction(Intent.ACTION_SEND)
             .setType("video/*")
             .setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            .putExtra(Intent.EXTRA_STREAM,  ContextMenuUtil.getVideoContentUri(this@SearchActivity, File(currentVideo.filePath))), "Share Video"))
+            .putExtra(Intent.EXTRA_STREAM,  ContextMenuUtil.getVideoContentUri(this@SearchActivity, File(currentVideo.videoPath))), "Share Video"))
     }
 
     private fun launchPlayerActivity(position: Int) {
@@ -299,16 +293,17 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
         val metaDataList = ArrayList<VideoMetaData>()
         if (!isMultiple) {
             val currentVideo = videoSearchResultData[position]
-            val metadata = VideoMetaData(currentVideo._Id, currentVideo.fileName, currentVideo.filePath)
+            val metadata = VideoMetaData(currentVideo._Id, currentVideo.videoName, currentVideo.videoPath)
             metaDataList.add(metadata)
             playerIntent.putExtra(Constants.Playback.WINDOW, 0)
         } else {
-            for(selectedItemPosition in adapter!!.getSelectedItems()) {
+            for(selectedItemPosition in adapter.getSelectedItems()) {
 //              metaDataList.add(directoryListViewModel.getVideoMetaData(videoListData[directoryListViewModel.currentSongFolderIndex].songsList[selectedItemPosition].folderId)!!)
                 metaDataList.add(
-                    VideoMetaData(videoSearchResultData[selectedItemPosition]._Id.toInt(),
-                        videoSearchResultData[selectedItemPosition].fileName,
-                        videoSearchResultData[selectedItemPosition].filePath)
+                    VideoMetaData(
+                        videoSearchResultData[selectedItemPosition]._Id,
+                        videoSearchResultData[selectedItemPosition].videoName,
+                        videoSearchResultData[selectedItemPosition].videoPath)
                     )
             }
         }
@@ -317,8 +312,8 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
     }
 
     private fun toggleSelection(position: Int) {
-        adapter!!.toggleSelection(position)
-        val count = adapter!!.getSelectedItemCount()
+        adapter.toggleSelection(position)
+        val count = adapter.getSelectedItemCount()
 
         if (count == 0) {
             actionMode!!.finish()
@@ -339,7 +334,7 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
     override fun onDeleteSuccess(listOfIndexes: List<Int>) {
         for(position in listOfIndexes) {
             searchViewModel.removeElementAt(position)
-            adapter!!.notifyItemRemoved(position)
+            adapter.notifyItemRemoved(position)
         }
         Toast.makeText(
             this@SearchActivity,
@@ -358,9 +353,9 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
 
     private fun shareMultipleVideos() {
         val listOfVideoUris = ArrayList<Uri?>()
-        for (position in adapter!!.getSelectedItems()) {
+        for (position in adapter.getSelectedItems()) {
             val currentVideo = videoSearchResultData[position]
-            listOfVideoUris.add(ContextMenuUtil.getVideoContentUri(this@SearchActivity, File(currentVideo.filePath)))
+            listOfVideoUris.add(ContextMenuUtil.getVideoContentUri(this@SearchActivity, File(currentVideo.videoPath)))
         }
         startActivity(Intent.createChooser(Intent().setAction(Intent.ACTION_SEND_MULTIPLE)
             .setType("video/*")
@@ -383,7 +378,7 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
 
         override fun onCreateActionMode(mode: ActionMode?, menu: Menu?): Boolean {
             mIsMultiSelectMode = true
-            mToolbar.visibility = View.GONE
+            hideToolbar()
             mode!!.menuInflater.inflate(R.menu.multi_choice_option, menu)
             return true
         }
@@ -393,7 +388,7 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
         override fun onActionItemClicked(mode: ActionMode?, item: MenuItem?): Boolean {
             when (item!!.itemId) {
                 R.id.multiChoiceSelectAll -> {
-                    adapter!!.selectAllItems()
+                    adapter.selectAllItems()
                 }
                 R.id.multiChoicePlay -> {
                     playSelectedVideos()
@@ -414,8 +409,8 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
         override fun onDestroyActionMode(mode: ActionMode?) {
             mIsMultiSelectMode = false
             actionMode = null
-            mToolbar.visibility = View.VISIBLE
-            adapter!!.clearSelection()
+            showToolbar()
+            adapter.clearSelection()
         }
 
     }
@@ -441,13 +436,37 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
     private fun showMultiDeleteConfirmation() {
         AlertDialog.Builder(this)
             .setTitle("Delete")
-            .setMessage("Are you sure you want to delete this ${adapter!!.getSelectedItemCount()} video(s)?")
+            .setMessage("Are you sure you want to delete this ${adapter.getSelectedItemCount()} video(s)?")
             .setPositiveButton(android.R.string.yes) { _, _ ->
-                searchViewModel.deleteSearchedVideos(adapter!!.getSelectedItems(), this)
+                searchViewModel.deleteSearchedVideos(adapter.getSelectedItems(), this)
             }
             .setNegativeButton(android.R.string.no, null)
             .setCancelable(false)
             .show()
+    }
+
+    private fun hideToolbar() {
+        mToolbar.visibility = View.GONE
+    }
+
+    private fun showToolbar() {
+        mToolbar.visibility = View.VISIBLE
+    }
+
+    private fun hideNoVideoFoundMsg() {
+        sorryMessageTextView.visibility = View.GONE
+    }
+
+    private fun showNoVideoFoundMsg() {
+        sorryMessageTextView.visibility = View.VISIBLE
+    }
+
+    private fun hideSearchResultList() {
+        searchResultsRecyclerView.visibility = View.GONE
+    }
+
+    private fun showSearchResultList() {
+        searchResultsRecyclerView.visibility = View.VISIBLE
     }
 
 }
