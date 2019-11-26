@@ -56,6 +56,10 @@ class DirectoryListActivity : AppCompatActivity(), OnClickListener, ItemDeleteLi
 
     companion object {
         var mIsMultiSelectMode: Boolean = false
+
+        fun start(context: Context) {
+            context.startActivity(Intent(context, DirectoryListActivity::class.java))
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -192,11 +196,7 @@ class DirectoryListActivity : AppCompatActivity(), OnClickListener, ItemDeleteLi
 
     private fun launchVideoListActivity(position: Int) {
         try {
-            val videoListIntent = Intent(this, VideoListActivity::class.java)
-//        videoListIntent.putExtra("videoList", videoListData[position].songsList)
-            videoListIntent.putExtra("directoryName", videoListData[position].folderName)
-            videoListIntent.putExtra("directoryPath", videoListData[position].folderPath)
-            startActivity(videoListIntent)
+            VideoListActivity.start(this, videoListData[position].folderName, videoListData[position].folderPath)
         } catch (e: ArrayIndexOutOfBoundsException) {
             e.printStackTrace()
             Toast.makeText(this, "Error Occured.", Toast.LENGTH_SHORT).show()
@@ -250,9 +250,7 @@ class DirectoryListActivity : AppCompatActivity(), OnClickListener, ItemDeleteLi
     }
 
     private fun openSearchActivity() {
-        val intent = Intent(this@DirectoryListActivity, SearchActivity::class.java)
-        intent.putExtra("reason", "general")
-        startActivity(intent)
+        SearchActivity.start(this)
     }
 
     inner class ActionModeCallback: ActionMode.Callback {

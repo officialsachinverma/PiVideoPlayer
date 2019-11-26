@@ -1,6 +1,7 @@
 package com.project100pi.pivideoplayer.ui.activity
 
 import android.content.Context
+import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
@@ -55,6 +56,23 @@ class PlayerActivity : AppCompatActivity(),
     private var currentVolumeProgress = 0
     private var currentBrightnessProgress = 0
     private var volumeLevel = 0
+
+    companion object {
+
+        fun start(context: Context, videoList: ArrayList<VideoMetaData>, currentWindow: Int) {
+            val playerIntent = Intent(context, PlayerActivity::class.java)
+            playerIntent.putParcelableArrayListExtra(Constants.QUEUE, videoList)
+            playerIntent.putExtra(Constants.Playback.WINDOW, currentWindow)
+            context.startActivity(playerIntent)
+        }
+
+        fun start(context: Context, videoList: ArrayList<VideoMetaData>) {
+            val playerIntent = Intent(context, PlayerActivity::class.java)
+            playerIntent.putParcelableArrayListExtra(Constants.QUEUE, videoList)
+            context.startActivity(playerIntent)
+        }
+
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

@@ -68,6 +68,14 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
     private var actionMode: ActionMode? = null
     private var preferences: SharedPreferences? = null
 
+    companion object {
+
+        fun start(context: Context) {
+            context.startActivity(Intent(context, SearchActivity::class.java))
+        }
+
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_search)

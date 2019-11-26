@@ -1,6 +1,7 @@
 package com.project100pi.pivideoplayer.ui.activity
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
@@ -66,7 +67,7 @@ class SplashActivity : AppCompatActivity(), PermissionsUtil.ShowAlertCallback {
 
     override fun permissionGranted() {
         Handler().postDelayed( {
-            startActivity(Intent(this, DirectoryListActivity::class.java))
+            DirectoryListActivity.start(context = this)
             finish()
         }, 1500)
     }

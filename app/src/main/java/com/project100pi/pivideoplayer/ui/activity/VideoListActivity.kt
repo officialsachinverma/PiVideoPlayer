@@ -64,6 +64,13 @@ class VideoListActivity : AppCompatActivity(), OnClickListener, ItemDeleteListen
 
     companion object {
         var mIsMultiSelectMode: Boolean = false
+
+        fun start(context: Context, directoryName: String, directoryPath: String) {
+            val intent = Intent(context, VideoListActivity::class.java)
+            intent.putExtra("directoryName", directoryName)
+            intent.putExtra("directoryPath", directoryPath)
+            context.startActivity(intent)
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -167,9 +174,7 @@ class VideoListActivity : AppCompatActivity(), OnClickListener, ItemDeleteListen
     }
 
     private fun launchSearchActivity() {
-        val intent = Intent(this@VideoListActivity, SearchActivity::class.java)
-        intent.putExtra("reason", "general")
-        startActivity(intent)
+        SearchActivity.start(this)
     }
 
     private fun launchPlayerActivity(position: Int) {
@@ -187,7 +192,7 @@ class VideoListActivity : AppCompatActivity(), OnClickListener, ItemDeleteListen
 
     private fun playVideo(position: Int, isMultiple: Boolean) {
         try {
-            val playerIntent = Intent(this, PlayerActivity::class.java)
+
             val metaDataList = arrayListOf<VideoMetaData>()
             if (!isMultiple) {
 //                val metadata = directoryListViewModel.getVideoMetaData(currentVideo.folderId)
@@ -197,7 +202,7 @@ class VideoListActivity : AppCompatActivity(), OnClickListener, ItemDeleteListen
                 for (folder in videoListData) {
                     metaDataList.add(VideoMetaData(folder._Id, folder.videoName, folder.videoPath))
                 }
-                playerIntent.putExtra(Constants.Playback.WINDOW, position)
+                PlayerActivity.start(this, metaDataList, position)
             } else {
                 for(selectedItemPosition in adapter.getSelectedItems()) {
 //                    metaDataList.add(directoryListViewModel.getVideoMetaData(videoListData[directoryListViewModel.currentSongFolderIndex].songsList[selectedItemPosition].folderId)!!)
@@ -208,13 +213,10 @@ class VideoListActivity : AppCompatActivity(), OnClickListener, ItemDeleteListen
                             videoListData[selectedItemPosition].videoPath)
                     )
                 }
+                PlayerActivity.start(this, metaDataList)
             }
-            playerIntent.putParcelableArrayListExtra(Constants.QUEUE, metaDataList)
-            startActivity(playerIntent)
+
         } catch (e: ArrayIndexOutOfBoundsException) {
-            Logger.i(e.toString())
-            Toast.makeText(this, "Failed to play this video.", Toast.LENGTH_SHORT).show()
-        } catch (e: NullPointerException) {
             Logger.i(e.toString())
             Toast.makeText(this, "Failed to play this video.", Toast.LENGTH_SHORT).show()
         }
