@@ -116,15 +116,6 @@ class PiVideoPlayer(private val context: Context): MediaSessionListener {
 
     // Public APIs starts
 
-    fun prepare(videoMetaData: VideoMetaData) {
-        nowPlaying.value = videoMetaData
-        val mediaSource = buildMediaSource(Uri.parse(videoMetaData.path))
-        player?.prepare(mediaSource, true, false)
-        context.registerReceiver(becomingNoisyReceiver, intentFilter)
-        noisyIntentRegistered = true
-        CurrentSettings.Playback.playing = true
-    }
-
     fun prepare(videoMetaData: VideoMetaData, subtitlePath: String, resetPosition: Boolean, resetState: Boolean) {
         nowPlaying.value = videoMetaData
         val dataSourceFactory = DefaultDataSourceFactory(
@@ -262,12 +253,6 @@ class PiVideoPlayer(private val context: Context): MediaSessionListener {
 
     internal fun getExoPlayer() = player
 
-    internal fun getApplicationLooper(): Looper = player!!.applicationLooper
-
-    internal fun getVideoComponent() = player!!.videoComponent
-
-    internal fun getTextComponent() = player!!.textComponent
-
     internal fun setVideoScalingMode(videoScalingMode: Int){
         player!!.videoScalingMode = videoScalingMode
     }
@@ -278,7 +263,20 @@ class PiVideoPlayer(private val context: Context): MediaSessionListener {
         val currentWindow = getCurrentWindowIndex()
         when {
             videoList.value!!.size > 0 -> {
-                prepare(videoList.value!![getCurrentWindowIndex()], absolutePath, resetPosition = true, resetState = true)
+//                prepare(videoList.value!![getCurrentWindowIndex()], absolutePath, resetPosition = true, resetState = true)
+                val index = getCurrentWindowIndex()
+                val position = getCurrentPosition()
+                val mediaSource = concatenatingMediaSource.getMediaSource(index)
+                val textFormat = Format.createTextSampleFormat(
+                    null, MimeTypes.TEXT_VTT,
+                    NO_VALUE, "hi"
+                )
+                val subtitleSource = SingleSampleMediaSource.Factory(dataSourceFactory).createMediaSource(Uri.parse(absolutePath), textFormat, C.TIME_UNSET)
+                concatenatingMediaSource.addMediaSource(index+1, MergingMediaSource(mediaSource, subtitleSource))
+//                seekTo(index+1, position)
+                concatenatingMediaSource.removeMediaSource(index)
+                player?.prepare(concatenatingMediaSource)
+                seekTo(index, position)
             }
             nowPlaying.value != null -> {
                 prepare(nowPlaying.value!!, absolutePath, resetPosition = true, resetState = true)
