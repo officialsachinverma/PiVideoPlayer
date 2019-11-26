@@ -2,21 +2,19 @@ package com.project100pi.library.dialogs
 
 import android.app.Dialog
 import android.content.Context
-import android.net.Uri
-import android.os.Environment
-import androidx.fragment.app.DialogFragment
-import android.view.View
 import android.os.Bundle
-import android.view.ViewGroup
+import android.os.Environment
 import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
 import android.view.Window
-import com.project100pi.library.dialogs.listeners.SRTFilePickerClickListener
-import java.util.Collections
 import android.widget.*
 import com.bumptech.glide.Glide
 import com.project100pi.library.R
+import com.project100pi.library.dialogs.listeners.SRTFilePickerClickListener
 import java.io.File
 import java.io.FilenameFilter
+import java.util.*
 
 class SRTFilePicker(private val mContext: Context,
                     private val SRTFilePickerClickListener: SRTFilePickerClickListener)
@@ -35,6 +33,14 @@ class SRTFilePicker(private val mContext: Context,
     private lateinit var srtUpIconImage: ImageView
     private lateinit var closeIconImage: ImageView
     private lateinit var toolbar: View
+
+    override fun onStart() {
+        super.onStart()
+        val d: Dialog = this
+        val width = ViewGroup.LayoutParams.MATCH_PARENT
+        val height = ViewGroup.LayoutParams.MATCH_PARENT
+        d.window!!.setLayout(width, height)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -63,11 +69,13 @@ class SRTFilePicker(private val mContext: Context,
 
             toolbar.setOnClickListener {
 
-                // srtUpText.text = mDirectory!!.name.substring(0, mDirectory!!.name.lastIndexOf("/") - 1)
-                //mDirectory = File(mDirectory!!.name.substring(0, mDirectory!!.name.lastIndexOf("/") - 1))
-                srtUpText.text = "..."
-                mDirectory = File(defaultInternalDirectory)
-                refreshFilesList()
+                if (srtUpText.text.toString() != defaultInternalDirectory) {
+                    srtUpText.text =
+                        mDirectory!!.path.substring(0, mDirectory!!.path.lastIndexOf("/"))
+                    mDirectory =
+                        File(mDirectory!!.path.substring(0, mDirectory!!.path.lastIndexOf("/")))
+                    refreshFilesList()
+                }
             }
 
             refreshFilesList()
