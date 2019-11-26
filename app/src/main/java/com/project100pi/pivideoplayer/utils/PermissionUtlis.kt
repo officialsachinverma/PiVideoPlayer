@@ -26,15 +26,12 @@ import androidx.core.app.ActivityCompat.shouldShowRequestPermissionRationale
  *
  */
 class PermissionsUtil(private var activity: Activity, private val showAlertCallback: ShowAlertCallback?) {
-    var count = 0
+
+    private var permissionDeniedCount = 0
     private var beforeClickPermissionRat = shouldShowRequestPermissionRationale(activity, Manifest.permission.WRITE_EXTERNAL_STORAGE)
 
-    private fun shouldAskPermission(): Boolean {
-        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
-    }
-
     private fun shouldAskPermission(context: Context, permission: String): Boolean {
-        if (shouldAskPermission()) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             val permissionResult = ActivityCompat.checkSelfPermission(context, permission)
             if (permissionResult != PackageManager.PERMISSION_GRANTED) {
                 return true
@@ -52,7 +49,7 @@ class PermissionsUtil(private var activity: Activity, private val showAlertCallb
     fun checkorRequestPermission(permission: String) {
         if(shouldAskPermission(activity,permission)) {
             //Check if count = 2 and permission is still not granted finish the app since app can't continue without storage permission
-            if(count == 2){
+            if(permissionDeniedCount == 2){
                 Toast.makeText(activity, "Since permission was not granted app wont be able to continue.", Toast.LENGTH_SHORT).show()
                 activity.finish()
             }
@@ -60,10 +57,10 @@ class PermissionsUtil(private var activity: Activity, private val showAlertCallb
             //1 - Dont ask again was not clicked or its clicked this time -> In this case just finish the app
             //2 - Don't ask again was checked previous time itself when the app was opened and in this case direct the user to the settings page.
 
-            if (count == 1) {
+            if (permissionDeniedCount == 1) {
                 if ((!shouldShowRequestPermissionRationale(activity,
                         Manifest.permission.WRITE_EXTERNAL_STORAGE)) && (!(beforeClickPermissionRat))) {
-                    count = 2
+                    permissionDeniedCount = 2
                     Toast.makeText(activity, "Click on permission and check storage permission for app to continue.", Toast.LENGTH_SHORT).show()
 
                     activity.startActivity(
@@ -76,8 +73,8 @@ class PermissionsUtil(private var activity: Activity, private val showAlertCallb
                 }
             }
             //If count = 0 and app hasn't been granted permission yet the app must show an alert to inform user about the permission info.
-            if (count == 0) {
-                count = 1
+            if (permissionDeniedCount == 0) {
+                permissionDeniedCount = 1
                 showAlertCallback?.showAlert()
             }
 
