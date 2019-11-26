@@ -7,7 +7,6 @@ import android.content.Intent
 import android.content.SharedPreferences
 import android.net.Uri
 import android.os.Build
-import android.preference.PreferenceManager
 import android.provider.MediaStore
 import android.widget.Toast
 import androidx.documentfile.provider.DocumentFile
@@ -18,7 +17,7 @@ import com.project100pi.library.misc.Logger
 import com.project100pi.library.model.VideoMetaData
 import com.project100pi.pivideoplayer.database.CursorFactory
 import com.project100pi.pivideoplayer.listeners.ItemDeleteListener
-import com.project100pi.pivideoplayer.model.FileInfo
+import com.project100pi.pivideoplayer.model.VideoTrackInfo
 import com.project100pi.pivideoplayer.model.observable.VideoChangeObservable
 import com.project100pi.pivideoplayer.ui.activity.PlayerActivity
 import com.project100pi.pivideoplayer.utils.Constants
@@ -36,11 +35,11 @@ class VideoListViewModel (private val context: Context,
                           application: Application):
     AndroidViewModel(application), Observer {
 
-    private var _filesList = MutableLiveData<ArrayList<FileInfo>>()
-    val filesList: LiveData<ArrayList<FileInfo>>
+    private var _filesList = MutableLiveData<ArrayList<VideoTrackInfo>>()
+    val filesList: LiveData<ArrayList<VideoTrackInfo>>
         get() = _filesList
 
-    private val videoList = arrayListOf<FileInfo>()
+    private val videoList = arrayListOf<VideoTrackInfo>()
     private var preferences: SharedPreferences? = null
 
     private val coroutineJob = Job()
@@ -216,7 +215,7 @@ class VideoListViewModel (private val context: Context,
                                     val videoName = pathsList[pathsList.size - 1]
 
                                     videoList.add(
-                                        FileInfo(
+                                        VideoTrackInfo(
                                             videoId,
                                             videoName,
                                             videoPath,

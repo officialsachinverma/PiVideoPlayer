@@ -3,10 +3,10 @@ package com.project100pi.pivideoplayer.model
 data class FolderInfo(var folderName: String = "",
                       var folderPath: String = ""){
 
-    val filesList: ArrayList<FileInfo> = ArrayList()
+    val filesList: ArrayList<VideoTrackInfo> = ArrayList()
 
     fun addFile(fileId: Int, fileName: String, filePath: String, fileDuration: Long) {
-        filesList.add(FileInfo(fileId, fileName, filePath, fileDuration))
+        filesList.add(VideoTrackInfo(fileId, fileName, filePath, fileDuration))
 
     }
 

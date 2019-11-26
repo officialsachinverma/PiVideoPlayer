@@ -6,7 +6,6 @@ import android.content.Intent
 import android.content.SharedPreferences
 import android.os.Build
 import android.os.Bundle
-import android.preference.PreferenceManager
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
@@ -28,7 +27,7 @@ import com.project100pi.library.model.VideoMetaData
 import com.project100pi.pivideoplayer.R
 import com.project100pi.pivideoplayer.listeners.ItemDeleteListener
 import com.project100pi.pivideoplayer.listeners.OnClickListener
-import com.project100pi.pivideoplayer.model.FileInfo
+import com.project100pi.pivideoplayer.model.VideoTrackInfo
 import com.project100pi.pivideoplayer.model.observable.VideoChangeObservable
 import com.project100pi.pivideoplayer.ui.activity.viewmodel.VideoListViewModel
 import com.project100pi.pivideoplayer.ui.activity.viewmodel.factory.VideoListViewModelFactory
@@ -52,7 +51,7 @@ class VideoListActivity : AppCompatActivity(), OnClickListener, ItemDeleteListen
 
     private lateinit var videoListViewModel: VideoListViewModel
 
-    private var videoListData = arrayListOf<FileInfo>()
+    private var videoListData = arrayListOf<VideoTrackInfo>()
     private var directoryName = ""
     private var directoryPath = ""
 

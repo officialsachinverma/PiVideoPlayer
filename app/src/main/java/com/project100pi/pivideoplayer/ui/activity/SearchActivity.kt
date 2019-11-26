@@ -34,7 +34,7 @@ import com.project100pi.pivideoplayer.ui.adapters.VideoFilesAdapter
 import com.project100pi.pivideoplayer.ui.activity.viewmodel.factory.SearchViewModelFactory
 import com.project100pi.pivideoplayer.listeners.ItemDeleteListener
 import com.project100pi.pivideoplayer.listeners.OnClickListener
-import com.project100pi.pivideoplayer.model.FileInfo
+import com.project100pi.pivideoplayer.model.VideoTrackInfo
 import com.project100pi.pivideoplayer.ui.activity.viewmodel.SearchViewModel
 import com.project100pi.pivideoplayer.utils.Constants
 import com.project100pi.pivideoplayer.utils.ContextMenuUtil
@@ -57,7 +57,7 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
     @BindView(R.id.sorryMessage)
     lateinit var sorryMessageTextView: TextView
 
-    private var videoSearchResultData: ArrayList<FileInfo> = ArrayList()
+    private var videoSearchResultData: ArrayList<VideoTrackInfo> = ArrayList()
 
     private var isSearchTriggered = false
 

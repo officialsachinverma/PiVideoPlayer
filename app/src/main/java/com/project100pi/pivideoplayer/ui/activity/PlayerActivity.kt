@@ -24,6 +24,7 @@ import com.project100pi.library.misc.CurrentSettings
 import com.project100pi.library.misc.Logger
 import com.project100pi.library.model.VideoMetaData
 import com.project100pi.library.ui.PiVideoPlayerView
+import kotlin.math.ceil
 
 
 class PlayerActivity : AppCompatActivity(),
@@ -46,13 +47,14 @@ class PlayerActivity : AppCompatActivity(),
     private var playbackPosition: Long = 0
 
     private var layout: WindowManager.LayoutParams? = null
-    private var currentBrightnessProgress = 0
     private var am: AudioManager? = null
     private var maxSystemVolume: Int = 0
     private var minSystemVolume: Int = 0
     private var currentVolume = 0
     private var currentBrightness = 0f
     private var currentVolumeProgress = 0
+    private var currentBrightnessProgress = 0
+    private var volumeLevel = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -73,24 +75,29 @@ class PlayerActivity : AppCompatActivity(),
         rotateScreenBasedOnVideoOrientation()
 
         am = getSystemService(Context.AUDIO_SERVICE) as AudioManager
-        maxSystemVolume = am!!.getStreamMaxVolume(AudioManager.STREAM_MUSIC) * 3
+        maxSystemVolume = am!!.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
         minSystemVolume = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             am!!.getStreamMinVolume(AudioManager.STREAM_MUSIC)
         } else {
             0
         }
 
+        volumeLevel = 100/maxSystemVolume
+
         currentVolume = am!!.getStreamVolume(AudioManager.STREAM_MUSIC)
-        currentVolumeProgress = (100/currentVolume)
+        currentVolumeProgress = if (currentVolume == 0) {
+            0
+        } else {
+//            (currentVolume * volumeLevel)
+            currentVolume
+        }
         progressVolume.progress = currentVolumeProgress
+        progressVolume.max = maxSystemVolume
 
         currentBrightness = window.attributes.screenBrightness
         currentBrightnessProgress = currentBrightness.toInt() * 100
         progressBrightness.progress = currentBrightnessProgress
-    }
-
-    override fun onBackPressed() {
-        finish()
+        progressBrightness.max = 100
     }
 
     public override fun onResume() {
@@ -250,39 +257,36 @@ class PlayerActivity : AppCompatActivity(),
     override fun onVolumeUp() {
         if (currentVolume < maxSystemVolume) {
             ++currentVolume
-            if (currentVolume % 3 == 0) {
+
                 am?.setStreamVolume(
                     AudioManager.STREAM_MUSIC,
                     currentVolume,
                     0
                 )
-            }
-            if (currentVolumeProgress < 100)
-                currentVolumeProgress += 7
-            else
-                currentVolumeProgress = 100
+                if (currentVolumeProgress < 100)
+                    currentVolumeProgress += volumeLevel
+                else
+                    currentVolumeProgress = 100
+                setVolumeProgress(currentVolume)
         }
         hideBrightnessProgress()
-        setVolumeProgress(currentVolumeProgress)
     }
 
     override fun onVolumeDown() {
         if (currentVolume > minSystemVolume) {
             --currentVolume
-            if (currentVolume % 3 == 0) {
                 am?.setStreamVolume(
                     AudioManager.STREAM_MUSIC,
                     currentVolume,
                     0
                 )
-            }
-            if (currentVolumeProgress > 0)
-                currentVolumeProgress -= 7
-            else
-                currentVolumeProgress = 0
+                if (currentVolumeProgress > 0)
+                    currentVolumeProgress -= volumeLevel
+                else
+                    currentVolumeProgress = 0
+                setVolumeProgress(currentVolume)
         }
         hideBrightnessProgress()
-        setVolumeProgress(currentVolumeProgress)
     }
 
     override fun onBrightnessUp() {

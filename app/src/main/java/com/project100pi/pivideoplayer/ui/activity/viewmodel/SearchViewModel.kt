@@ -12,7 +12,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.project100pi.pivideoplayer.database.CursorFactory
 import com.project100pi.pivideoplayer.listeners.ItemDeleteListener
-import com.project100pi.pivideoplayer.model.FileInfo
+import com.project100pi.pivideoplayer.model.VideoTrackInfo
 import com.project100pi.pivideoplayer.utils.Constants
 import com.project100pi.pivideoplayer.utils.FileExtension
 import kotlinx.coroutines.*
@@ -21,8 +21,8 @@ import java.io.IOException
 
 class SearchViewModel(private val context: Context, application: Application): AndroidViewModel(application) {
 
-    private var _searchResultList = MutableLiveData<ArrayList<FileInfo>>()
-    val searchResultList: LiveData<ArrayList<FileInfo>>
+    private var _searchResultList = MutableLiveData<ArrayList<VideoTrackInfo>>()
+    val searchResultList: LiveData<ArrayList<VideoTrackInfo>>
         get() = _searchResultList
 
     private var preferences: SharedPreferences? = null
@@ -115,7 +115,7 @@ class SearchViewModel(private val context: Context, application: Application): A
     }
 
     fun performSearch(queryText: String) {
-        val searchResult = ArrayList<FileInfo>()
+        val searchResult = ArrayList<VideoTrackInfo>()
         try {
             coroutineScope.launch  {
                 val cursor = CursorFactory.getVideoSearchData(context, queryText)
@@ -144,7 +144,7 @@ class SearchViewModel(private val context: Context, application: Application): A
                                     val videoName = pathsList[pathsList.size - 1]
 
                                     searchResult.add(
-                                        FileInfo(
+                                        VideoTrackInfo(
                                             videoId,
                                             videoName,
                                             videoPath,
