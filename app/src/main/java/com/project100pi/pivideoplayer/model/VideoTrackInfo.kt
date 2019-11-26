@@ -5,6 +5,6 @@ package com.project100pi.pivideoplayer.model
  */
 
 data class VideoTrackInfo(var _Id: Int = -1,
-                          var fileName: String = "",
-                          var filePath: String = "",
-                          var fileDuration: Long = 0)
+                          var videoName: String = "",
+                          var videoPath: String = "",
+                          var durationInMs: Long = 0)
