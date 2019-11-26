@@ -50,8 +50,9 @@ class PermissionsUtil(private var activity: Activity, private val showAlertCallb
         if(shouldAskPermission(activity,permission)) {
             //Check if count = 2 and permission is still not granted finish the app since app can't continue without storage permission
             if(permissionDeniedCount == 2){
-                Toast.makeText(activity, "Since permission was not granted app wont be able to continue.", Toast.LENGTH_SHORT).show()
-                activity.finish()
+//                Toast.makeText(activity, "Since permission was not granted app wont be able to continue.", Toast.LENGTH_SHORT).show()
+//                activity.finish()
+                showAlertCallback?.showAlert(true)
             }
             //If count = 1 two cases can occur
             //1 - Dont ask again was not clicked or its clicked this time -> In this case just finish the app
@@ -69,13 +70,13 @@ class PermissionsUtil(private var activity: Activity, private val showAlertCallb
                         Uri.parse("package:" + activity.packageName))
                     )
                 } else {
-                    activity.finish()
+                    showAlertCallback?.showAlert(true)
                 }
             }
             //If count = 0 and app hasn't been granted permission yet the app must show an alert to inform user about the permission info.
             if (permissionDeniedCount == 0) {
                 permissionDeniedCount = 1
-                showAlertCallback?.showAlert()
+                showAlertCallback?.showAlertToAskPermissionRationale()
             }
 
         }
@@ -93,7 +94,8 @@ class PermissionsUtil(private var activity: Activity, private val showAlertCallb
      *
      */
     interface ShowAlertCallback{
-        fun showAlert()
+        fun showAlertToAskPermissionRationale()
+        fun showAlert(isPermissionRationale: Boolean)
         fun permissionGranted()
     }
 

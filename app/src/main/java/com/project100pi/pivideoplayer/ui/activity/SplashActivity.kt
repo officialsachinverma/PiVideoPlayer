@@ -5,6 +5,7 @@ import android.content.Intent
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.os.Handler
+import androidx.appcompat.app.AlertDialog
 import androidx.core.app.ActivityCompat
 import com.project100pi.pivideoplayer.R
 import com.project100pi.pivideoplayer.utils.Constants
@@ -41,8 +42,26 @@ class SplashActivity : AppCompatActivity(), PermissionsUtil.ShowAlertCallback {
         }
     }
 
-    override fun showAlert() {
+    override fun showAlertToAskPermissionRationale() {
         requestPermission()
+    }
+
+    override fun showAlert(isPermissionsRationale: Boolean) {
+        AlertDialog.Builder(this)
+            .setMessage("Some permissions are needed for Pi Video Player to go further. Do you want to grant those permissions?")
+            .setPositiveButton(android.R.string.yes) { _, _ ->
+                if (isPermissionsRationale) {
+                    requestPermission()
+                } else {
+                    if (!granted)
+                        permissionUtil.checkorRequestPermission(permission)
+                }
+            }
+            .setNegativeButton(android.R.string.no) { _, _ ->
+                finish()
+            }
+            .setCancelable(false)
+            .show()
     }
 
     override fun permissionGranted() {
@@ -55,9 +74,7 @@ class SplashActivity : AppCompatActivity(), PermissionsUtil.ShowAlertCallback {
     private fun requestPermission() {
         ActivityCompat.requestPermissions(this,
             arrayOf(
-                Manifest.permission.WRITE_EXTERNAL_STORAGE,
-                Manifest.permission.READ_EXTERNAL_STORAGE,
-                Manifest.permission.INTERNET),
+                Manifest.permission.WRITE_EXTERNAL_STORAGE),
             Constants.PERMISSION_REQUEST_CODE)
     }
 }
