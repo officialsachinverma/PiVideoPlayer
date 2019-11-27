@@ -13,6 +13,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.project100pi.library.model.VideoMetaData
 import com.project100pi.pivideoplayer.database.CursorFactory
+import com.project100pi.pivideoplayer.database.TinyDB
 import com.project100pi.pivideoplayer.listeners.ItemDeleteListener
 import com.project100pi.pivideoplayer.model.FolderInfo
 import com.project100pi.pivideoplayer.model.observable.VideoChangeObservable
@@ -36,13 +37,11 @@ class DirectoryListViewModel(private val context: Context, application: Applicat
         get() = _foldersList
 
     private var foldersWithPathMap = HashMap<String, FolderInfo>()
-    private var preferences: SharedPreferences? = null
 
     private val coroutineJob = Job()
     private val coroutineScope = CoroutineScope(Dispatchers.IO + coroutineJob)
 
     init {
-        preferences = context.getSharedPreferences(Constants.SHARED_PREFERENCES, Context.MODE_PRIVATE)
         // When a new video is added (eg: video download finished in background) and
         // when the app is open then this observer will get triggered
         observeForVideoChange()
@@ -91,10 +90,10 @@ class DirectoryListViewModel(private val context: Context, application: Applicat
                                 }
                             }
                             // checking for file is in sd card and sdcard uri
-                            if (preferences?.getString("sdCardUri", "").isNullOrEmpty()) {
+                            if (TinyDB.getString(Constants.SD_CARD_URI).isNullOrEmpty()) {
                                 listener.showPermissionForSdCard()
                             } else {
-                                val sdCardUri = preferences?.getString("sdCardUri", "")
+                                val sdCardUri = TinyDB.getString(Constants.SD_CARD_URI)
                                 var documentFile = DocumentFile.fromTreeUri(context, Uri.parse(sdCardUri))
                                 if (file.exists() && sdCardUri!!.isNotEmpty()) {
                                     val parts: List<String> = file.path.split("/")

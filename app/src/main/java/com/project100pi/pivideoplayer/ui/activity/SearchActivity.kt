@@ -21,6 +21,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.view.ActionMode
 import androidx.appcompat.widget.Toolbar
 import androidx.constraintlayout.widget.ConstraintLayout
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProviders
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -30,6 +31,7 @@ import butterknife.ButterKnife
 import com.project100pi.library.misc.Logger
 import com.project100pi.library.model.VideoMetaData
 import com.project100pi.pivideoplayer.R
+import com.project100pi.pivideoplayer.database.TinyDB
 import com.project100pi.pivideoplayer.ui.adapters.VideoFilesAdapter
 import com.project100pi.pivideoplayer.ui.activity.viewmodel.factory.SearchViewModelFactory
 import com.project100pi.pivideoplayer.listeners.ItemDeleteListener
@@ -66,7 +68,6 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
     private var mIsMultiSelectMode: Boolean = false
     private var actionModeCallback = ActionModeCallback()
     private var actionMode: ActionMode? = null
-    private var preferences: SharedPreferences? = null
 
     companion object {
 
@@ -97,8 +98,6 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
             showKeyboard()
 
         observeForObservers()
-
-        preferences = getSharedPreferences(Constants.SHARED_PREFERENCES, Context.MODE_PRIVATE)
     }
 
     override fun onStart() {
@@ -123,13 +122,12 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
             100 -> {
                 if (resultCode == RESULT_OK && data != null) {
                     val sdCardUri = data.data
-                    preferences?.edit()?.putString("sdCardUri", sdCardUri.toString())?.apply()
+                    TinyDB.putString(Constants.SD_CARD_URI, sdCardUri.toString())
                     // Persist access permissions.
                     val takeFlags = data.flags and (Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
                     contentResolver.takePersistableUriPermission(sdCardUri!!, takeFlags)
 
-                    Toast.makeText(this, "Please do the operation again.", Toast.LENGTH_SHORT).show()
-//                    videoListViewModel.deleteVideo()
+                    Toast.makeText(this, R.string.do_operation_again, Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -256,7 +254,6 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
     }
 
     private fun doActionOnOverflowItemClick(position: Int, viewId: Int) {
-        //val data = videoListData[searchViewModel.currentSongFolderIndex].songsList[position]
 
         when (viewId) {
             R.id.itemPlay -> {
@@ -273,8 +270,8 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
 
     private fun showDeleteConfirmation(position: Int) {
         AlertDialog.Builder(this)
-            .setTitle("Delete")
-            .setMessage("Are you sure you want to delete this video?")
+            .setTitle(R.string.delete)
+            .setMessage(R.string.delete_confirmation_msg)
             .setPositiveButton(android.R.string.yes) { _, _ ->
                 searchViewModel.deleteSearchedVideos(listOf(position), this)
             }
@@ -289,7 +286,8 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
         startActivity(Intent.createChooser(Intent().setAction(Intent.ACTION_SEND)
             .setType("video/*")
             .setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            .putExtra(Intent.EXTRA_STREAM,  ContextMenuUtil.getVideoContentUri(this@SearchActivity, File(currentVideo.videoPath))), "Share Video"))
+            .putExtra(Intent.EXTRA_STREAM,
+                ContextMenuUtil.getVideoContentUri(this, File(currentVideo.videoPath))), resources.getString(R.string.share_video)))
     }
 
     private fun launchPlayerActivity(position: Int) {
@@ -345,14 +343,14 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
             adapter.notifyItemRemoved(position)
         }
         Toast.makeText(
-            this@SearchActivity,
+            this,
             "${listOfIndexes.size} " + getString(R.string.songs_deleted_toast),
             Toast.LENGTH_SHORT
         ).show()
     }
 
     override fun onDeleteError() {
-        Toast.makeText(this@SearchActivity, "Some error occurred while deleting video(s)", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, R.string.error_occurred_while_deleting_videos, Toast.LENGTH_SHORT).show()
     }
 
     private fun playSelectedVideos() {
@@ -363,12 +361,12 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
         val listOfVideoUris = ArrayList<Uri?>()
         for (position in adapter.getSelectedItems()) {
             val currentVideo = videoSearchResultData[position]
-            listOfVideoUris.add(ContextMenuUtil.getVideoContentUri(this@SearchActivity, File(currentVideo.videoPath)))
+            listOfVideoUris.add(ContextMenuUtil.getVideoContentUri(this, File(currentVideo.videoPath)))
         }
         startActivity(Intent.createChooser(Intent().setAction(Intent.ACTION_SEND_MULTIPLE)
             .setType("video/*")
             .setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            .putExtra(Intent.EXTRA_STREAM,  listOfVideoUris), "Share Video"))
+            .putExtra(Intent.EXTRA_STREAM,  listOfVideoUris), resources.getString(R.string.share_video)))
     }
 
     private fun showKeyboard() {
@@ -443,7 +441,7 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
 
     private fun showMultiDeleteConfirmation() {
         AlertDialog.Builder(this)
-            .setTitle("Delete")
+            .setTitle(R.string.delete)
             .setMessage("Are you sure you want to delete this ${adapter.getSelectedItemCount()} video(s)?")
             .setPositiveButton(android.R.string.yes) { _, _ ->
                 searchViewModel.deleteSearchedVideos(adapter.getSelectedItems(), this)

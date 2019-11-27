@@ -25,6 +25,7 @@ import butterknife.ButterKnife
 import com.project100pi.library.misc.Logger
 import com.project100pi.library.model.VideoMetaData
 import com.project100pi.pivideoplayer.R
+import com.project100pi.pivideoplayer.database.TinyDB
 import com.project100pi.pivideoplayer.listeners.ItemDeleteListener
 import com.project100pi.pivideoplayer.listeners.OnClickListener
 import com.project100pi.pivideoplayer.model.VideoTrackInfo
@@ -60,15 +61,14 @@ class VideoListActivity : AppCompatActivity(), OnClickListener, ItemDeleteListen
 
     private var actionModeCallback = ActionModeCallback()
     private var actionMode: ActionMode? = null
-    private var preferences: SharedPreferences? = null
 
     companion object {
         var mIsMultiSelectMode: Boolean = false
 
         fun start(context: Context, directoryName: String, directoryPath: String) {
             val intent = Intent(context, VideoListActivity::class.java)
-            intent.putExtra("directoryName", directoryName)
-            intent.putExtra("directoryPath", directoryPath)
+            intent.putExtra(Constants.Storage.DIRECTORY_NAME, directoryName)
+            intent.putExtra(Constants.Storage.DIRECTORY_PATH, directoryPath)
             context.startActivity(intent)
         }
     }
@@ -80,8 +80,8 @@ class VideoListActivity : AppCompatActivity(), OnClickListener, ItemDeleteListen
         setSupportActionBar(mToolbar)
         this.intent?.let {
             //videoListData = intent.getParcelableArrayListExtra("videoList") ?: arrayListOf()
-            directoryName = intent.getStringExtra("directoryName") ?: ""
-            directoryPath = intent.getStringExtra("directoryPath") ?: ""
+            directoryName = intent.getStringExtra(Constants.Storage.DIRECTORY_NAME) ?: ""
+            directoryPath = intent.getStringExtra(Constants.Storage.DIRECTORY_PATH) ?: ""
             init()
         }
     }
@@ -90,8 +90,6 @@ class VideoListActivity : AppCompatActivity(), OnClickListener, ItemDeleteListen
 
         val viewModelFactory = VideoListViewModelFactory(this, directoryPath, application)
         videoListViewModel = ViewModelProviders.of(this, viewModelFactory).get(VideoListViewModel::class.java)
-
-        preferences = getSharedPreferences(SHARED_PREFERENCES, Context.MODE_PRIVATE)
 
         initAdapter()
 
@@ -141,9 +139,6 @@ class VideoListActivity : AppCompatActivity(), OnClickListener, ItemDeleteListen
 
     override fun onOptionsItemSelected(item: MenuItem) =
         when (item.itemId) {
-//            R.id.itemSettings -> {
-//                true
-//            }
             R.id.itemSearch -> {
                 launchSearchActivity()
                 true
@@ -162,12 +157,12 @@ class VideoListActivity : AppCompatActivity(), OnClickListener, ItemDeleteListen
             100 -> {
                 if (resultCode == RESULT_OK && data != null) {
                     val sdCardUri = data.data
-                    preferences?.edit()?.putString("sdCardUri", sdCardUri.toString())?.apply()
+                    TinyDB.putString(Constants.SD_CARD_URI, sdCardUri.toString())
                     // Persist access permissions.
                     val takeFlags = data.flags and (Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
                     contentResolver.takePersistableUriPermission(sdCardUri!!, takeFlags)
 
-                    Toast.makeText(this, "Please do the operation again.", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, R.string.do_operation_again, Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -218,7 +213,7 @@ class VideoListActivity : AppCompatActivity(), OnClickListener, ItemDeleteListen
 
         } catch (e: ArrayIndexOutOfBoundsException) {
             Logger.i(e.toString())
-            Toast.makeText(this, "Failed to play this video.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, R.string.error_failed_to_play, Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -243,7 +238,7 @@ class VideoListActivity : AppCompatActivity(), OnClickListener, ItemDeleteListen
         startActivity(Intent.createChooser(Intent().setAction(Intent.ACTION_SEND)
             .setType("video/*")
             .setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            .putExtra(Intent.EXTRA_STREAM,  ContextMenuUtil.getVideoContentUri(this@VideoListActivity, File(currentVideo.videoPath))), "Share Video"))
+            .putExtra(Intent.EXTRA_STREAM,  ContextMenuUtil.getVideoContentUri(this, File(currentVideo.videoPath))), resources.getString(R.string.share_video)))
     }
 
     inner class ActionModeCallback: ActionMode.Callback {
@@ -331,7 +326,7 @@ class VideoListActivity : AppCompatActivity(), OnClickListener, ItemDeleteListen
             val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
             startActivityForResult(intent, 100)
         } else {
-            Toast.makeText(this, "Please do the operation again.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, R.string.do_operation_again, Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -342,19 +337,19 @@ class VideoListActivity : AppCompatActivity(), OnClickListener, ItemDeleteListen
         }
         VideoChangeObservable.setChangedOverride()
         Toast.makeText(
-            this@VideoListActivity,
+            this,
             "${listOfIndexes.size} " + getString(R.string.songs_deleted_toast),
             Toast.LENGTH_SHORT
         ).show()
     }
 
     override fun onDeleteError() {
-        Toast.makeText(this, "Some error occurred while deleting video(s)", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, R.string.error_occurred_while_deleting_videos, Toast.LENGTH_SHORT).show()
     }
 
     private fun showMultiDeleteConfirmation() {
         AlertDialog.Builder(this)
-            .setTitle("Delete")
+            .setTitle(R.string.delete)
             .setMessage("Are you sure you want to delete this ${adapter.getSelectedItemCount()} video(s)?")
             .setPositiveButton(android.R.string.yes) { _, _ ->
                 videoListViewModel.deleteVideo(adapter.getSelectedItems(), this)
@@ -366,8 +361,8 @@ class VideoListActivity : AppCompatActivity(), OnClickListener, ItemDeleteListen
 
     private fun showDeleteConfirmation(position: Int) {
         AlertDialog.Builder(this)
-            .setTitle("Delete")
-            .setMessage("Are you sure you want to delete this video?")
+            .setTitle(R.string.delete)
+            .setMessage(R.string.delete_confirmation_msg)
             .setPositiveButton(android.R.string.yes) { _, _ ->
                 videoListViewModel.deleteVideo(listOf(position), this)
             }

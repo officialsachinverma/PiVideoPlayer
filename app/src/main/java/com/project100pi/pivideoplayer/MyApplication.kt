@@ -3,6 +3,7 @@ package com.project100pi.pivideoplayer
 import android.app.Application
 import android.os.Handler
 import android.provider.MediaStore
+import com.project100pi.pivideoplayer.database.TinyDB
 import com.project100pi.pivideoplayer.model.observable.OnMediaChangeContentObserver
 
 /**
@@ -14,6 +15,8 @@ class MyApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         registerListenerForMediaProvider()
+
+        TinyDB.initPref(this)
     }
 
     private fun registerListenerForMediaProvider() {

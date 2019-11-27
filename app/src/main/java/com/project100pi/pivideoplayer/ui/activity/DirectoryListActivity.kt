@@ -26,6 +26,8 @@ import androidx.appcompat.view.ActionMode
 import androidx.appcompat.widget.Toolbar
 import butterknife.BindView
 import butterknife.ButterKnife
+import com.project100pi.library.misc.Logger
+import com.project100pi.pivideoplayer.database.TinyDB
 import com.project100pi.pivideoplayer.ui.adapters.StorageFileAdapter
 import com.project100pi.pivideoplayer.ui.activity.viewmodel.factory.DirectoryListViewModelFactory
 import com.project100pi.pivideoplayer.listeners.ItemDeleteListener
@@ -52,7 +54,6 @@ class DirectoryListActivity : AppCompatActivity(), OnClickListener, ItemDeleteLi
     private var videoListData: ArrayList<FolderInfo> = ArrayList()
 
     private var doubleBackToExitPressedOnce = false
-    private var preferences: SharedPreferences? = null
 
     companion object {
         var mIsMultiSelectMode: Boolean = false
@@ -71,16 +72,18 @@ class DirectoryListActivity : AppCompatActivity(), OnClickListener, ItemDeleteLi
         init()
     }
 
+    /**
+     * Initialises stuffs
+     */
+
     private fun init() {
 
-        val viewModelFactory = DirectoryListViewModelFactory(this , application)
+        val viewModelFactory = DirectoryListViewModelFactory(this, application)
         directoryListViewModel = ViewModelProviders.of(this, viewModelFactory).get(
             DirectoryListViewModel::class.java)
 
         initAdapter()
         observeForObservers()
-
-        preferences = getSharedPreferences(Constants.SHARED_PREFERENCES, Context.MODE_PRIVATE)
     }
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
@@ -90,11 +93,8 @@ class DirectoryListActivity : AppCompatActivity(), OnClickListener, ItemDeleteLi
 
     override fun onOptionsItemSelected(item: MenuItem) =
         when (item.itemId) {
-//            R.id.itemSettings -> {
-//                true
-//            }
             R.id.itemSearch -> {
-                openSearchActivity()
+                startSearchActivity()
                 true
             }
             else -> false
@@ -107,21 +107,29 @@ class DirectoryListActivity : AppCompatActivity(), OnClickListener, ItemDeleteLi
             100 -> {
                 if (resultCode == RESULT_OK && data != null) {
                     val sdCardUri = data.data
-                    preferences?.edit()?.putString("sdCardUri", sdCardUri.toString())?.apply()
+                    TinyDB.putString(Constants.SD_CARD_URI, sdCardUri.toString())
                     // Persist access permissions.
                     val takeFlags = data.flags and (Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
                     contentResolver.takePersistableUriPermission(sdCardUri!!, takeFlags)
 
-                    Toast.makeText(this, "Please do the operation again.", Toast.LENGTH_SHORT).show()
-//                    videoListViewModel.deleteVideo()
+                    Toast.makeText(this, R.string.do_operation_again, Toast.LENGTH_SHORT).show()
                 }
             }
         }
     }
 
+    /**
+     * This method contains all other methods
+     * who are observing to a particular thing
+     */
+
     private fun observeForObservers() {
         observeForFolderList()
     }
+
+    /**
+     * This method observes Folder List
+     */
 
     private fun observeForFolderList() {
         directoryListViewModel.foldersList.observe(this, Observer {
@@ -131,7 +139,7 @@ class DirectoryListActivity : AppCompatActivity(), OnClickListener, ItemDeleteLi
                     hideEmptyListMsg()
                     hideWaitingSign()
                     showVideoList()
-                    setDataToAdapter()
+                    submitDataToAdapter()
                 } else {
                     showEmptyListMsg()
                     hideWaitingSign()
@@ -141,12 +149,26 @@ class DirectoryListActivity : AppCompatActivity(), OnClickListener, ItemDeleteLi
         })
     }
 
-    private fun setDataToAdapter(){
+    /**
+     * This method submits list to the adapter
+     */
 
+    private fun submitDataToAdapter(){
+        // running on UI thread because video count can
+        // get updated when user is in Video List Activity
+        // either when a video gets deleted or when a new video
+        // gets added
         runOnUiThread {
             adapter.submitList(videoListData)
         }
     }
+
+    /**
+     * this method initialises the adapter
+     * WARNING : Adapter is a late init property
+     * it has to be initialised before using anywhere
+     * kotlin won't even allow you to put null check on it
+     */
 
     private fun initAdapter() {
         adapter = StorageFileAdapter(this, R.layout.row_directory_item, this)
@@ -155,6 +177,13 @@ class DirectoryListActivity : AppCompatActivity(), OnClickListener, ItemDeleteLi
         rvVideoList.layoutManager = linearLayout
         rvVideoList.adapter = adapter
     }
+
+    /**
+     * this method handles selection of an item in case of
+     * multi selection. It takes the position of item which
+     * is clicked or selected
+     * @param position Int
+     */
 
     private fun toggleSelection(position: Int) {
         adapter.toggleSelection(position)
@@ -171,9 +200,23 @@ class DirectoryListActivity : AppCompatActivity(), OnClickListener, ItemDeleteLi
         }
     }
 
+    /**
+     * This callback is called when overflow menu item is clicked
+     * NOTE: In case folder we do not have overflow menus as of now and hence, left empty
+     * @param position Int
+     * @param viewId Int
+     */
+
     override fun onOverflowItemClick(position: Int, viewId: Int) {
 
     }
+
+    /**
+     * This method triggers action mode when user long presses
+     * on a folder
+     * @param position Int
+     * @return Boolean
+     */
 
     override fun onItemLongClicked(position: Int): Boolean {
         if (actionMode == null) {
@@ -185,36 +228,58 @@ class DirectoryListActivity : AppCompatActivity(), OnClickListener, ItemDeleteLi
         return true
     }
 
+    /**
+     * This method gets called when a user clicks/selects a
+     * folder.
+     * If multi select mode is not active then, navigate user to VideoListActivity
+     * otherwise toggleSelection
+     * @param position Int
+     */
+
     override fun onDirectorySelected(position: Int) {
         if (!mIsMultiSelectMode) {
-            launchVideoListActivity(position)
+            startVideoListActivity(position)
         } else {
             toggleSelection(position)
         }
-
     }
 
-    private fun launchVideoListActivity(position: Int) {
+    /**
+     * This method starts VideoListActivity with folder name and its path
+     * @param position Int
+     */
+
+    private fun startVideoListActivity(position: Int) {
         try {
             VideoListActivity.start(this, videoListData[position].folderName, videoListData[position].folderPath)
         } catch (e: ArrayIndexOutOfBoundsException) {
             e.printStackTrace()
-            Toast.makeText(this, "Error Occured.", Toast.LENGTH_SHORT).show()
+            Logger.e(e.message.toString())
+            Toast.makeText(this, R.string.error_occurred_while_showing_videos_list, Toast.LENGTH_SHORT).show()
         }
     }
 
-    private fun playVideo() {
+    /**
+     * This method calls playMultipleVideos with list of indices of selected folders
+     */
+
+    private fun playSelectedVideos() {
         directoryListViewModel.playMultipleVideos(adapter.getSelectedItems())
     }
 
-
-    private fun playSelectedVideos() {
-        playVideo()
-    }
+    /**
+     * This method calls shareMultipleVideos with list of indices of selected folders
+     */
 
     private fun shareMultipleVideos() {
         directoryListViewModel.shareMultipleVideos(adapter.getSelectedItems())
     }
+
+    /**
+     * This method handles back button operation
+     * If user presses back button with in 2 secs then
+     * activity finishes
+     */
 
     override fun onBackPressed() {
         if (doubleBackToExitPressedOnce) {
@@ -223,15 +288,30 @@ class DirectoryListActivity : AppCompatActivity(), OnClickListener, ItemDeleteLi
         }
 
         this.doubleBackToExitPressedOnce = true
-        Toast.makeText(this, "Please click BACK again to exit", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, R.string.click_back_to_exit, Toast.LENGTH_SHORT).show()
 
         Handler().postDelayed({ doubleBackToExitPressedOnce = false }, 2000)
     }
+
+    /**
+     * This method is called when application does not
+     * have permission to read or write in external sd card
+     * It opens up a system activity where user can navigate
+     * to external sd card and click on select button on which
+     * it will callback to onActivity result with path to external sd card
+     */
 
     override fun showPermissionForSdCard() {
         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
         startActivityForResult(intent, 100)
     }
+
+    /**
+     * This method gets called when delete operation is successful
+     * it gives list of indices of item which are hard deleted and now
+     * supposed to be update on UI
+     * @param listOfIndexes List<Int>
+     */
 
     override fun onDeleteSuccess(listOfIndexes: List<Int>) {
         for(position in listOfIndexes) {
@@ -239,17 +319,26 @@ class DirectoryListActivity : AppCompatActivity(), OnClickListener, ItemDeleteLi
             adapter.notifyItemRemoved(position)
         }
         Toast.makeText(
-            this@DirectoryListActivity,
+            this,
             "${listOfIndexes.size} " + getString(R.string.songs_deleted_toast),
             Toast.LENGTH_SHORT
         ).show()
     }
 
+    /**
+     * This method is called when an error occurred while
+     * executing the delete operation
+     */
+
     override fun onDeleteError() {
-        Toast.makeText(this, "Some error occurred while deleting video(s)", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, R.string.error_occurred_while_deleting_videos, Toast.LENGTH_SHORT).show()
     }
 
-    private fun openSearchActivity() {
+    /**
+     * This method starts search activity
+     */
+
+    private fun startSearchActivity() {
         SearchActivity.start(this)
     }
 
@@ -294,10 +383,14 @@ class DirectoryListActivity : AppCompatActivity(), OnClickListener, ItemDeleteLi
 
     }
 
+    /**
+     * This method shows a confirmation dialog for deletion
+     */
+
     private fun showMultiDeleteConfirmation() {
         AlertDialog.Builder(this)
-            .setTitle("Delete")
-            .setMessage("Are you sure you want to delete this ${adapter.getSelectedItemCount()} video(s)?")
+            .setTitle(R.string.delete)
+            .setMessage("Are you sure you want to delete ${adapter.getSelectedItemCount()} video(s)?")
             .setPositiveButton(android.R.string.yes) { _, _ ->
                 directoryListViewModel.deleteFolderContents(adapter.getSelectedItems(), this)
             }
@@ -306,33 +399,65 @@ class DirectoryListActivity : AppCompatActivity(), OnClickListener, ItemDeleteLi
             .show()
     }
 
+    /**
+     * this method hides toolbar
+     */
+
     private fun hideToolbar() {
         mToolbar.visibility = View.GONE
     }
+
+    /**
+     * this method shows toolbar
+     */
 
     private fun showToolbar() {
         mToolbar.visibility = View.VISIBLE
     }
 
+    /**
+     * this method hides empty msg
+     */
+
     private fun hideEmptyListMsg() {
         tvEmptyList.visibility = View.GONE
     }
+
+    /**
+     * this method shows empty msg
+     */
 
     private fun showEmptyListMsg() {
         tvEmptyList.visibility = View.VISIBLE
     }
 
+    /**
+     * this method hides video list
+     */
+
     private fun hideVideoList() {
         rvVideoList.visibility = View.GONE
     }
+
+    /**
+     * this method shows video list
+     */
 
     private fun showVideoList() {
         rvVideoList.visibility = View.VISIBLE
     }
 
+    /**
+     * this method hides waiting sign
+     */
+
     private fun hideWaitingSign() {
         pgWaiting.visibility = View.GONE
     }
+
+    /**
+     * this method shows waiting sign
+     */
 
     private fun showWaitingSign() {
         pgWaiting.visibility = View.VISIBLE

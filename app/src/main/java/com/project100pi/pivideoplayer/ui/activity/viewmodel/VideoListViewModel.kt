@@ -4,7 +4,6 @@ import android.annotation.TargetApi
 import android.app.Application
 import android.content.Context
 import android.content.Intent
-import android.content.SharedPreferences
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
@@ -16,6 +15,7 @@ import androidx.lifecycle.MutableLiveData
 import com.project100pi.library.misc.Logger
 import com.project100pi.library.model.VideoMetaData
 import com.project100pi.pivideoplayer.database.CursorFactory
+import com.project100pi.pivideoplayer.database.TinyDB
 import com.project100pi.pivideoplayer.listeners.ItemDeleteListener
 import com.project100pi.pivideoplayer.model.VideoTrackInfo
 import com.project100pi.pivideoplayer.model.observable.VideoChangeObservable
@@ -40,14 +40,11 @@ class VideoListViewModel (private val context: Context,
         get() = _filesList
 
     private val videoList = arrayListOf<VideoTrackInfo>()
-    private var preferences: SharedPreferences? = null
 
     private val coroutineJob = Job()
     private val coroutineScope = CoroutineScope(Dispatchers.IO + coroutineJob)
 
     init {
-
-        preferences = context.getSharedPreferences(Constants.SHARED_PREFERENCES, Context.MODE_PRIVATE)
 
         loadAllData()
         // When a new video is added (eg: video download finished in background) and
@@ -96,10 +93,10 @@ class VideoListViewModel (private val context: Context,
                                 }
                             }
                             // checking for file is in sd card and sdcard uri
-                            if (preferences?.getString("sdCardUri", "").isNullOrEmpty()) {
+                            if (TinyDB.getString(Constants.SD_CARD_URI).isNullOrEmpty()) {
                                 listener.showPermissionForSdCard()
                             } else {
-                                val sdCardUri = preferences?.getString("sdCardUri", "")
+                                val sdCardUri = TinyDB.getString(Constants.SD_CARD_URI)
                                 var documentFile = DocumentFile.fromTreeUri(context, Uri.parse(sdCardUri))
                                 if (file.exists() && sdCardUri!!.isNotEmpty()) {
                                     val parts: List<String> = file.path.split("/")

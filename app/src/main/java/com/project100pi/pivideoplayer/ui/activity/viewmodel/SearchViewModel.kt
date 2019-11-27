@@ -3,7 +3,6 @@ package com.project100pi.pivideoplayer.ui.activity.viewmodel
 import android.app.Application
 import android.content.Context
 import android.content.Intent
-import android.content.SharedPreferences
 import android.net.Uri
 import android.provider.MediaStore
 import androidx.documentfile.provider.DocumentFile
@@ -11,6 +10,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.project100pi.pivideoplayer.database.CursorFactory
+import com.project100pi.pivideoplayer.database.TinyDB
 import com.project100pi.pivideoplayer.listeners.ItemDeleteListener
 import com.project100pi.pivideoplayer.model.VideoTrackInfo
 import com.project100pi.pivideoplayer.utils.Constants
@@ -25,14 +25,8 @@ class SearchViewModel(private val context: Context, application: Application): A
     val searchResultList: LiveData<ArrayList<VideoTrackInfo>>
         get() = _searchResultList
 
-    private var preferences: SharedPreferences? = null
-
     private val coroutineJob = Job()
     private val coroutineScope = CoroutineScope(Dispatchers.IO + coroutineJob)
-
-    init {
-        preferences = context.getSharedPreferences(Constants.SHARED_PREFERENCES, Context.MODE_PRIVATE)
-    }
 
     fun deleteSearchedVideos(listOfIndexes: List<Int>, listener: ItemDeleteListener) {
         coroutineScope.launch {
@@ -71,10 +65,10 @@ class SearchViewModel(private val context: Context, application: Application): A
                                 }
                             }
                             // checking for file is in sd card and sdcard uri
-                            if (preferences?.getString("sdCardUri", "").isNullOrEmpty()) {
+                            if (TinyDB.getString(Constants.SD_CARD_URI).isNullOrEmpty()) {
                                 listener.showPermissionForSdCard()
                             } else {
-                                val sdCardUri = preferences?.getString("sdCardUri", "")
+                                val sdCardUri = TinyDB.getString(Constants.SD_CARD_URI)
                                 var documentFile = DocumentFile.fromTreeUri(context, Uri.parse(sdCardUri))
                                 if (file.exists() && sdCardUri!!.isNotEmpty()) {
                                     val parts: List<String> = file.path.split("/")
