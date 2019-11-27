@@ -5,6 +5,14 @@
     <string name="n_items_selected_toast"> item(s) selected</string>
     <string name="launcher_not_supporting_homescreen_shortcut">Sorry. Your launcher does not support home screen shortcuts!</string>
 
+    <!-- Permission Strings-->
+
+    <string name="permission_settings_msg">Click on permission and check storage permission for app to continue.</string>
+    <string name="go_into_permissions">Please go into \'Permissions\',grant all the required permissions and Open the application again!</string>
+    <string name="grant_permission_toast">Please grant the permissions for Pi Video Player and Come back again soon.</string>
+    <string name="some_permissions_needed">Some permissions are needed for Pi Video Player to go further. Do you want to grant those permissions?</string>
+    <string name="grant_storage_permission">Please grant storage permission to access the videos on this device</string>
+
     <!--Context Menu Strings-->
 
     <string name="context_menu_subtitle">Subtitle</string>

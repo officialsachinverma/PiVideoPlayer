@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
 import android.provider.Settings
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
@@ -52,7 +53,7 @@ class SplashActivity : AppCompatActivity() {
                     // checking if WRITE_EXTERNAL_STORAGE permission is granted or not
                     // if yes the navigate user to DirectoryListActivity activity.
                     if (permissions[i] == Manifest.permission.WRITE_EXTERNAL_STORAGE && grantResults[i] == PackageManager.PERMISSION_GRANTED) {
-                        DirectoryListActivity.start(this)
+                        launchDirectoryListActivity()
                     }
                 }
             }
@@ -74,8 +75,16 @@ class SplashActivity : AppCompatActivity() {
                     Constants.PERMISSION_REQUEST_CODE)
             }
         } else {
-            DirectoryListActivity.start(this)
+            launchDirectoryListActivity()
         }
+    }
+
+    /**
+     * This method starts DirectoryListActivity with a delay of 1.5 secs
+     */
+
+    private fun launchDirectoryListActivity() {
+        Handler().postDelayed({DirectoryListActivity.start(this)}, 1500)
     }
 
     /**
