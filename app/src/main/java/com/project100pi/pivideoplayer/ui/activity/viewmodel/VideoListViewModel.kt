@@ -1,7 +1,6 @@
 package com.project100pi.pivideoplayer.ui.activity.viewmodel
 
 import android.annotation.TargetApi
-import android.app.Application
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -9,7 +8,6 @@ import android.os.Build
 import android.provider.MediaStore
 import android.widget.Toast
 import androidx.documentfile.provider.DocumentFile
-import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.project100pi.library.misc.Logger
@@ -182,52 +180,56 @@ class VideoListViewModel (private val context: Context,
     private fun loadAllData() {
         coroutineScope.launch {
             videoList.clear()
-            val files = File(folderPath).listFiles()
-            for (file in files) {
-                val cursor = CursorFactory.getVideoMetaDataByPath(context, file.absolutePath)
-                if (cursor != null && cursor.moveToFirst()) {
-                    // We populate something, only if the cursor is available
-                    do {
-                        try {
-                            //To get path of song
-                            val videoPath = cursor.getString(cursor.getColumnIndex(MediaStore.Video.Media.DATA))
-                            //To get song id
-                            val videoId = cursor.getInt(cursor.getColumnIndex(MediaStore.Video.Media._ID))
-                            //To get song title
-                            val videoTitle = cursor.getString(cursor.getColumnIndex(MediaStore.Video.Media.TITLE))
-                            //To get song duration
-                            val videoDuration = cursor.getLong(cursor.getColumnIndex(MediaStore.Video.Media.DURATION))
+            val cursor = CursorFactory.getVideoMetaDataByPath(context, folderPath)
+            if (cursor != null && cursor.moveToFirst()) {
+                // We populate something, only if the cursor is available
+                do {
+                    try {
+                        // To get path of song
+                        val videoPath = cursor.getString(cursor.getColumnIndex(MediaStore.Video.Media.DATA))
+                        //To get song id
+                        val videoId = cursor.getInt(cursor.getColumnIndex(MediaStore.Video.Media._ID))
+                        // To get song title
+                        // Not using title as of now because it's been observed
+                        // that for some videos title is not corresponding to the file name
+                        // Eg.: there was a video provided by udemy
+                        // title of that video was "Udemy Tutorial video"
+                        // file name was something "1. Introduction to APIs"
+                        // so as of now we are using last path segment as video title (for UI only)
+                        val videoTitle = cursor.getString(cursor.getColumnIndex(MediaStore.Video.Media.TITLE))
+                        // To get song duration
+                        val videoDuration = cursor.getLong(cursor.getColumnIndex(MediaStore.Video.Media.DURATION))
 
-                            if (FileExtension.isVideo(videoPath)) {
-                                if (videoPath != null) {
+                        if (FileExtension.isVideo(videoPath)) {
+                            if (videoPath != null) {
 
-                                    //Splitting song path to list by using .split("/") to get elements from song path separated
-                                    // /storage/emulated/music/abc.mp3
-                                    // -> music will be folder name
-                                    // -> emulated will be subfolder name
-                                    // -> abc will be song name
+                                // Splitting song path to list by using .split("/") to get elements from song path separated
+                                // /storage/emulated/music/abc.mp3
+                                // -> music will be folder name
+                                // -> emulated will be subfolder name
+                                // -> abc will be song name
 
-                                    val pathsList = videoPath.split("/")
+                                val pathsList = videoPath.split("/")
 
-                                    val videoName = pathsList[pathsList.size - 1]
+                                val videoName = pathsList[pathsList.size - 1]
 
-                                    videoList.add(
-                                        VideoTrackInfo(
-                                            videoId,
-                                            videoName,
-                                            videoPath,
-                                            videoDuration))
+                                videoList.add(
+                                    VideoTrackInfo(
+                                        videoId,
+                                        videoName,
+                                        videoPath,
+                                        videoDuration))
 
-                                } else
-                                    continue
-                            }
-
-                        } catch (e: Exception) { // catch specific exception
-                            e.printStackTrace()
+                            } else
+                                continue
                         }
-                    } while (cursor.moveToNext())
-                    cursor.close()
-                }
+
+                    } catch (e: Exception) { // catch specific exception
+                        e.printStackTrace()
+                        Logger.e(e.message.toString())
+                    }
+                } while (cursor.moveToNext())
+                cursor.close()
             }
             withContext(Dispatchers.Main) {
                 _filesList.value = videoList
