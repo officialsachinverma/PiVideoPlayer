@@ -7,7 +7,6 @@ import android.graphics.Bitmap
 import android.graphics.Bitmap.CompressFormat
 import android.graphics.BitmapFactory
 import android.os.Environment
-import android.preference.PreferenceManager
 import android.text.TextUtils
 import android.util.Log
 import com.project100pi.pivideoplayer.utils.Constants
@@ -18,6 +17,10 @@ import java.util.*
 
 /**
  * Created by Sachin Verma on 2019-11-26.
+ *
+ * This class simplifies calls to SharedPreferences in a line of code. It can also do more like:
+ * saving a list of strings, integers and saving images.
+ *
  */
 
 object TinyDB {
@@ -26,9 +29,15 @@ object TinyDB {
     private var DEFAULT_APP_IMAGEDATA_DIRECTORY = ""
     private var lastImagePath = ""
 
+    /**
+     * Initialises the preferences and does nothing if it is already initialised
+     *
+     * @param appContext Context
+     */
+
     fun initPref(appContext: Context) {
         if (preferences == null)
-            preferences = appContext.getSharedPreferences(Constants.SHARED_PREFERENCES, Context.MODE_PRIVATE)
+            preferences = appContext.getSharedPreferences(Constants.TinyDB.SHARED_PREFERENCES, Context.MODE_PRIVATE)
     }
 
     /**
