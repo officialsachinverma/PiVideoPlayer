@@ -9,6 +9,15 @@ import java.io.File
 
 object ContextMenuUtil {
 
+    /**
+     * Return the URI for a file. This URI is used for
+     * sharing of video.
+     * NOTE: You cannot share a file by file path.
+     *
+     * @param context Context
+     * @param videoFile File
+     * @return Uri?
+     */
     fun getVideoContentUri(context: Context, videoFile: File): Uri? {
         var uri: Uri? = null
         val filePath = videoFile.absolutePath
@@ -34,6 +43,11 @@ object ContextMenuUtil {
         return uri
     }
 
+    /**
+     * Closes the provided cursor
+     *
+     * @param cursor Cursor?
+     */
     private fun closeCursor(cursor: Cursor?) {
 
         if (cursor != null && !cursor.isClosed)

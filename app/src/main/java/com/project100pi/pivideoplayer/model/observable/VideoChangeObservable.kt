@@ -8,8 +8,15 @@ import java.util.*
 
 object VideoChangeObservable : Observable() {
 
+    /**
+     * Marks this object as changed.
+     */
     fun setChangedOverride() = setChanged()
 
+    /**
+     * Notifies all the observers who are
+     * observing for the change to happen
+     */
     fun notifyObserversOverride() = notifyObservers()
 
 }

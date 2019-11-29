@@ -10,11 +10,20 @@ import java.util.*
 
 object DataRefresherUtils {
 
+    /**
+     * Triggers refresh timer
+     */
     fun tryRefreshingAllData() {
         Logger.i("tryRefreshingAllData --> We are gonna refresh all the data in 5 seconds")
         startDataRefresherTimerTask()
     }
 
+    /**
+     * Starts a timer for 5 secs after that it triggers DataRefreshers
+     * Here we wait for 5 secs after any changes happen in case any other change
+     * has to happen. If not then we refresh the data, other wise timer is reset
+     * and again start wait for 5 sec
+     */
     private fun startDataRefresherTimerTask() {
         val timer = Timer()
         val execTime: Long = 5000 // Wait for 5 seconds before loading the data.
@@ -28,11 +37,17 @@ object DataRefresherUtils {
         )
     }
 
+    /**
+     * Marks the object as changed and notify it's observers
+     */
     private fun notifyObservers() {
         VideoChangeObservable.setChangedOverride()
         VideoChangeObservable.notifyObserversOverride()
     }
 
+    /**
+     * TimerTask to refresh all the data
+     */
     private class DataRefresherTimerTask : TimerTask() {
         override fun run() {
             Logger.i("DataRefresherTimerTask --> We are gonna refresh all the data NOW")

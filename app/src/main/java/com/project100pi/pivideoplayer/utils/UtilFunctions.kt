@@ -6,6 +6,12 @@ package com.project100pi.pivideoplayer.utils
 
 object UtilFunctions {
 
+    /**
+     * Converts seconds into hours, minutes and seconds
+     *
+     * @param milliseconds Long Time in milli seconds
+     * @return String Tim is HH-mm-ss format
+     */
     fun convertSecondsToHMmSs(milliseconds: Long): String {
         val seconds = (milliseconds / 1000).toInt() % 60
         val minutes = (milliseconds / (1000 * 60) % 60).toInt()
