@@ -64,7 +64,7 @@ object CursorFactory {
 
     fun getVideoMetaDataById(context: Context, _id: Int): Cursor? {
         val sortOrder = MediaStore.Video.Media.DATA + " ASC"
-        val projection = arrayOf(MediaStore.Video.Media.DATA, MediaStore.Video.Media._ID, MediaStore.Video.Media.TITLE)
+        val projection = arrayOf(MediaStore.Video.Media.DATA, MediaStore.Video.Media._ID, MediaStore.Video.Media.TITLE, MediaStore.Video.Media.DURATION)
         val selection = "${MediaStore.Video.Media._ID} = $_id"
         return context.contentResolver.query(
             MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
