@@ -3,7 +3,6 @@ package com.project100pi.pivideoplayer.ui.activity
 import android.annotation.TargetApi
 import android.content.Context
 import android.content.Intent
-import android.content.SharedPreferences
 import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
@@ -28,7 +27,7 @@ import butterknife.BindView
 import butterknife.ButterKnife
 import com.project100pi.library.misc.Logger
 import com.project100pi.pivideoplayer.database.TinyDB
-import com.project100pi.pivideoplayer.ui.adapters.StorageFileAdapter
+import com.project100pi.pivideoplayer.ui.adapters.FoldersAdapter
 import com.project100pi.pivideoplayer.ui.activity.viewmodel.factory.DirectoryListViewModelFactory
 import com.project100pi.pivideoplayer.listeners.ItemDeleteListener
 import com.project100pi.pivideoplayer.model.FolderInfo
@@ -51,7 +50,7 @@ class DirectoryListActivity : AppCompatActivity(), OnClickListener, ItemDeleteLi
     lateinit var pgWaiting: ProgressBar
 
     private lateinit var directoryListViewModel: DirectoryListViewModel
-    private lateinit var adapter: StorageFileAdapter
+    private lateinit var adapter: FoldersAdapter
     private var actionModeCallback = ActionModeCallback()
     private var actionMode: ActionMode? = null
     private var videoListData: ArrayList<FolderInfo> = ArrayList()
@@ -59,6 +58,7 @@ class DirectoryListActivity : AppCompatActivity(), OnClickListener, ItemDeleteLi
     private var doubleBackToExitPressedOnce = false
 
     companion object {
+
         var mIsMultiSelectMode: Boolean = false
 
         // starter pattern is more strict approach to starting an activity.
@@ -89,7 +89,7 @@ class DirectoryListActivity : AppCompatActivity(), OnClickListener, ItemDeleteLi
 
     private fun init() {
 
-        val viewModelFactory = DirectoryListViewModelFactory(this, application)
+        val viewModelFactory = DirectoryListViewModelFactory(this, this)
         directoryListViewModel = ViewModelProviders.of(this, viewModelFactory).get(
             DirectoryListViewModel::class.java)
 
@@ -114,8 +114,9 @@ class DirectoryListActivity : AppCompatActivity(), OnClickListener, ItemDeleteLi
     @TargetApi(Build.VERSION_CODES.KITKAT)
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
+        hideWaitingSign()
         when (requestCode) {
-            100 -> {
+            Constants.Permission.SD_CARD_WRITE_PERMISSION_REQUEST_CODE -> {
                 if (resultCode == RESULT_OK && data != null) {
                     // when user will select the external sd card we will receive it's uri in data
                     val sdCardUri = data.data
@@ -135,7 +136,6 @@ class DirectoryListActivity : AppCompatActivity(), OnClickListener, ItemDeleteLi
      * This method contains all other methods
      * who are observing to a particular thing
      */
-
     private fun observeForObservers() {
         observeForFolderList()
     }
@@ -143,7 +143,6 @@ class DirectoryListActivity : AppCompatActivity(), OnClickListener, ItemDeleteLi
     /**
      * This method observes Folder List
      */
-
     private fun observeForFolderList() {
         directoryListViewModel.foldersList.observe(this, Observer {
             if (it != null) {
@@ -184,7 +183,7 @@ class DirectoryListActivity : AppCompatActivity(), OnClickListener, ItemDeleteLi
      */
 
     private fun initAdapter() {
-        adapter = StorageFileAdapter(this, R.layout.row_directory_item, this)
+        adapter = FoldersAdapter(this, R.layout.row_directory_item, this)
         val linearLayout = LinearLayoutManager(this)
         linearLayout.orientation = LinearLayoutManager.VERTICAL
         rvVideoList.layoutManager = linearLayout
@@ -258,7 +257,7 @@ class DirectoryListActivity : AppCompatActivity(), OnClickListener, ItemDeleteLi
      * @param position Int
      */
 
-    override fun onDirectorySelected(position: Int) {
+    override fun onItemSelected(position: Int) {
         if (!mIsMultiSelectMode) {
             startVideoListActivity(position)
         } else {
@@ -328,17 +327,19 @@ class DirectoryListActivity : AppCompatActivity(), OnClickListener, ItemDeleteLi
 
     override fun showPermissionForSdCard() {
         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
-        startActivityForResult(intent, 100)
+        startActivityForResult(intent, Constants.Permission.SD_CARD_WRITE_PERMISSION_REQUEST_CODE)
     }
 
     /**
      * This method gets called when delete operation is successful
      * it gives list of indices of item which are hard deleted and now
      * supposed to be update on UI
+     *
      * @param listOfIndexes List<Int>
      */
 
     override fun onDeleteSuccess(listOfIndexes: List<Int>) {
+        hideWaitingSign()
         for(position in listOfIndexes) {
             directoryListViewModel.removeElementAt(position)
             adapter.notifyItemRemoved(position)
@@ -356,6 +357,7 @@ class DirectoryListActivity : AppCompatActivity(), OnClickListener, ItemDeleteLi
      */
 
     override fun onDeleteError() {
+        hideWaitingSign()
         Toast.makeText(this, R.string.error_occurred_while_deleting_videos, Toast.LENGTH_SHORT).show()
     }
 
@@ -390,7 +392,7 @@ class DirectoryListActivity : AppCompatActivity(), OnClickListener, ItemDeleteLi
                     shareMultipleVideos()
                 }
                 R.id.multiChoiceDelete -> {
-                    showMultiDeleteConfirmation()
+                    showMultiDeleteConfirmation(adapter.getSelectedItems())
                 }
             }
             // We have to end the multi select, if the user clicks on an option other than select all
@@ -403,8 +405,16 @@ class DirectoryListActivity : AppCompatActivity(), OnClickListener, ItemDeleteLi
             mIsMultiSelectMode = false
             actionMode = null
             showToolbar()
-            adapter.clearSelection()
+            clearAdapterSelection()
         }
+    }
+
+    /**
+     * Clears the selected items in adapter
+     */
+    private fun clearAdapterSelection() {
+        adapter.clearSelection()
+    }
 
     /**
      * This method shows a confirmation dialog for deletion
@@ -413,12 +423,13 @@ class DirectoryListActivity : AppCompatActivity(), OnClickListener, ItemDeleteLi
      * NO -> Cancels operation execution
      */
 
-    private fun showMultiDeleteConfirmation() {
+    private fun showMultiDeleteConfirmation(listOfIndexes: List<Int>) {
         AlertDialog.Builder(this)
             .setTitle(R.string.delete)
             .setMessage("Are you sure you want to delete ${adapter.getSelectedItemCount()} video(s)?")
             .setPositiveButton(android.R.string.yes) { _, _ ->
-                directoryListViewModel.deleteFolderContents(adapter.getSelectedItems(), this)
+                showWaitingSign()
+                directoryListViewModel.deleteFolderContents(listOfIndexes)
             }
             .setNegativeButton(android.R.string.no, null)
             .setCancelable(false)
