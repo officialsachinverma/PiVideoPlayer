@@ -4,13 +4,7 @@ import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.RecyclerView
 import com.project100pi.library.adapter.CurrentPlayingQueueAdapter
 
-class ItemTouchHelperCallback: ItemTouchHelper.Callback {
-
-    private var mAdapter: CurrentPlayingQueueAdapter
-
-    constructor(adapter: CurrentPlayingQueueAdapter) {
-        mAdapter = adapter
-    }
+class ItemTouchHelperCallbackImlp(private val adapter: CurrentPlayingQueueAdapter) : ItemTouchHelper.Callback() {
 
     override fun getMovementFlags(
         recyclerView: RecyclerView,
@@ -26,12 +20,12 @@ class ItemTouchHelperCallback: ItemTouchHelper.Callback {
         viewHolder: RecyclerView.ViewHolder,
         target: RecyclerView.ViewHolder
     ): Boolean {
-        mAdapter.onItemMove(viewHolder.adapterPosition, target.adapterPosition)
+        adapter.onItemMove(viewHolder.adapterPosition, target.adapterPosition)
         return true
     }
 
     override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
-        mAdapter.onItemDismiss(viewHolder.adapterPosition)
+        adapter.onItemDismiss(viewHolder.adapterPosition)
     }
 
     override fun isLongPressDragEnabled(): Boolean {
