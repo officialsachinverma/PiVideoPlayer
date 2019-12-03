@@ -14,6 +14,7 @@ import com.project100pi.library.R
 import com.project100pi.library.dialogs.listeners.SRTFilePickerClickListener
 import java.io.File
 import java.io.FilenameFilter
+import java.lang.NullPointerException
 import java.util.*
 
 class SRTFilePicker(private val mContext: Context,
@@ -22,9 +23,9 @@ class SRTFilePicker(private val mContext: Context,
 
     private val defaultInternalDirectory = Environment.getExternalStorageDirectory().absolutePath
     private var mDirectory: File? = null
-    private var mFiles = mutableListOf<File>()
+    private var mFiles = arrayListOf<File>()
     private var mShowHiddenFiles = false
-    private var acceptedFileExtensions: Array<String>? = null
+    private var acceptedFileExtensions = arrayOf("vtt", "srt")
 
     private var mAdapter: FilePickerListAdapter? = null
     private lateinit var listView: ListView
@@ -56,12 +57,10 @@ class SRTFilePicker(private val mContext: Context,
 
         try {
             mDirectory = File(defaultInternalDirectory)
-            mFiles = arrayListOf()
             mAdapter = FilePickerListAdapter(mContext, mFiles)
             listView.adapter = mAdapter
             listView.onItemClickListener = this
             listView.emptyView = empty
-            acceptedFileExtensions = arrayOf("vtt", "srt")
 
             closeIconImage.setOnClickListener {
                 dismiss()
@@ -84,6 +83,10 @@ class SRTFilePicker(private val mContext: Context,
         }
     }
 
+    /**
+     * Refreshes the list with new data when ever user selects a folder/file
+     * or user navigates previous folder
+     */
     private fun refreshFilesList() {
         mFiles.clear()
         val filter = ExtensionFilenameFilter(acceptedFileExtensions)
@@ -97,39 +100,47 @@ class SRTFilePicker(private val mContext: Context,
                 }
 
                 if (!f.toString().equals("/storage/emulated", ignoreCase = true)) {
-                    if (isFileExist(f))
-                        mFiles.add(f)
+                    mFiles.add(f)
                 }
             }
 
             Collections.sort(mFiles, FileComparator())
         }
         mAdapter!!.notifyDataSetChanged()
+
     }
 
     override fun onItemClick(adapterView: AdapterView<*>, view: View, i: Int, l: Long) {
         try {
             val newFile = mAdapter!!.getItem(i)
-            if (newFile!!.isFile) {
+            newFile?.let {
+                if (it.isFile) {
 
-                when (newFile.name.substring(newFile.name.lastIndexOf(".") + 1)) {
-                    "vtt", "srt" -> {
-                        SRTFilePickerClickListener.filePickerSuccessClickListener(newFile.absolutePath)
-                        dismiss()
+                    when (it.path.substring(it.path.lastIndexOf(".") + 1)) {
+                        "vtt", "srt" -> {
+                            SRTFilePickerClickListener.filePickerSuccessClickListener(it.absolutePath)
+                            dismiss()
+                        }
+                        else -> Toast.makeText(mContext, "Please select subtitle file", Toast.LENGTH_SHORT).show()
                     }
-                    else -> Toast.makeText(mContext, "Please select subtitle file", Toast.LENGTH_SHORT).show()
+                } else {
+                    srtUpText.text = it.path
+                    mDirectory = it
+                    refreshFilesList()
                 }
-            } else {
-                srtUpText.text = newFile.absolutePath
-                mDirectory = newFile
-                refreshFilesList()
             }
-        } catch (e: Exception) {
+        } catch (e: NullPointerException) {
             e.printStackTrace()
         }
 
     }
 
+    /**
+     * Adapter for subtitle file picker
+     *
+     * @property mObjects List<File>
+     * @constructor
+     */
     private inner class FilePickerListAdapter(context: Context, private val mObjects: List<File>) :
         ArrayAdapter<File>(context, R.layout.file_picker_list_item, android.R.id.text1, mObjects) {
 
@@ -145,22 +156,16 @@ class SRTFilePicker(private val mContext: Context,
                 convertView
             }
 
-            val `object` = mObjects[position]
+            val item = mObjects[position]
 
             val imageView = row!!.findViewById<ImageView>(R.id.file_picker_image)
             val textView = row.findViewById<TextView>(R.id.file_picker_text)
             // Set single line
             textView.isSingleLine = true
-            val fileName = `object`.name
+            val fileName = item.path.substring(item.path.lastIndexOf("/"))
 
-            val title = when {
-                fileName.contains("UsbDriveA") -> "USB Drive"
-                fileName.contains("sdcard0") -> "Internal Storage"
-                fileName.contains("extSdCard") -> "SD Card"
-                else -> fileName
-            }
-            textView.text = title
-            if (`object`.isFile) {
+            textView.text = fileName
+            if (item.isFile) {
                 // Show the file icon
                 //imageView.background = context.resources.getDrawable(R.drawable.ic_file)
                 Glide
@@ -183,6 +188,12 @@ class SRTFilePicker(private val mContext: Context,
         }
     }
 
+    /**
+     * Compares and sort files
+     * Compares with name
+     * Sort in order like show folder first then files
+     * or show files first then folders
+     */
     private inner class FileComparator : Comparator<File> {
         override fun compare(f1: File, f2: File): Int {
             if (f1 === f2) {
@@ -200,6 +211,15 @@ class SRTFilePicker(private val mContext: Context,
         }
     }
 
+    /**
+     * Takes an array for string which contains file extensions
+     * it will check whether the file has one of the extension from
+     * the array.
+     * We pass this filter while listing out the files from directories.
+     *
+     * @property mExtensions Array<String>?
+     * @constructor
+     */
     private inner class ExtensionFilenameFilter(private val mExtensions: Array<String>?) :
         FilenameFilter {
 
@@ -221,22 +241,6 @@ class SRTFilePicker(private val mContext: Context,
             // No extensions has been set. Accept all file extensions.
             return true
         }
-    }
-
-    private fun isFileExist(file: File): Boolean {
-        val name = file.absolutePath
-        if (name.contains("UsbDriveB")) {
-            return false
-        } else if (name.contains("UsbDriveC")) {
-            return false
-        } else if (name.contains("UsbDriveD")) {
-            return false
-        } else if (name.contains("UsbDriveE")) {
-            return false
-        } else if (name.contains("UsbDriveF")) {
-            return false
-        }
-        return file.exists()
     }
 
 }
