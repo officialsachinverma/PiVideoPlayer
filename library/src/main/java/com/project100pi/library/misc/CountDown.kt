@@ -3,12 +3,9 @@ package com.project100pi.library.misc
 import android.os.CountDownTimer
 import android.view.View
 
-class CountDown: CountDownTimer {
+class CountDown(millisInFuture: Long, countDownInterval: Long, val view: View) : CountDownTimer(millisInFuture, countDownInterval) {
 
-    val view: View
-
-    constructor(millisInFuture: Long, countDownInterval: Long, view: View): super(millisInFuture, countDownInterval) {
-        this.view = view
+    init {
         start()
     }
 
