@@ -40,10 +40,13 @@ class DirectoryListActivity : AppCompatActivity(), OnClickListener, ItemDeleteLi
 
     @BindView(R.id.rv_directory_file_list)
     lateinit var  rvVideoList: RecyclerView
+
     @BindView(R.id.anim_toolbar)
     lateinit var mToolbar: Toolbar
+
     @BindView(R.id.tv_no_directory_found_msg)
     lateinit var tvEmptyList: TextView
+
     @BindView(R.id.pg_directory_waiting)
     lateinit var pgWaiting: ProgressBar
 
@@ -58,6 +61,14 @@ class DirectoryListActivity : AppCompatActivity(), OnClickListener, ItemDeleteLi
     companion object {
         var mIsMultiSelectMode: Boolean = false
 
+        // starter pattern is more strict approach to starting an activity.
+        // Main purpose is to improve more readability, while at the same time
+        // decrease code complexity, maintenance costs, and coupling of your components.
+
+        // Read more: https://blog.mindorks.com/learn-to-write-good-code-in-android-starter-pattern
+        // https://www.programming-books.io/essential/android/starter-pattern-d2db17d348ca46ce8979c8af6504f018
+
+        // Using starter pattern to start this activity
         fun start(context: Context) {
             context.startActivity(Intent(context, DirectoryListActivity::class.java))
         }
@@ -106,9 +117,11 @@ class DirectoryListActivity : AppCompatActivity(), OnClickListener, ItemDeleteLi
         when (requestCode) {
             100 -> {
                 if (resultCode == RESULT_OK && data != null) {
+                    // when user will select the external sd card we will receive it's uri in data
                     val sdCardUri = data.data
-                    TinyDB.putString(Constants.SD_CARD_URI, sdCardUri.toString())
-                    // Persist access permissions.
+                    // saving the sd card uri in tiny db (shared preferences)
+                    TinyDB.putString(Constants.ExternalSDCard.SD_CARD_URI, sdCardUri.toString())
+                    // Persist access permissions
                     val takeFlags = data.flags and (Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
                     contentResolver.takePersistableUriPermission(sdCardUri!!, takeFlags)
 
@@ -182,6 +195,7 @@ class DirectoryListActivity : AppCompatActivity(), OnClickListener, ItemDeleteLi
      * this method handles selection of an item in case of
      * multi selection. It takes the position of item which
      * is clicked or selected
+     *
      * @param position Int
      */
 
@@ -202,7 +216,11 @@ class DirectoryListActivity : AppCompatActivity(), OnClickListener, ItemDeleteLi
 
     /**
      * This callback is called when overflow menu item is clicked
-     * NOTE: In case folder we do not have overflow menus as of now and hence, left empty
+     * it takes the position of selected video and the Id of view (menu item)
+     * on which user has clicked to perform that specific action only
+     * NOTE: In case of folder we do not have overflow menus
+     * as of now and hence, left empty
+     *
      * @param position Int
      * @param viewId Int
      */
@@ -214,6 +232,8 @@ class DirectoryListActivity : AppCompatActivity(), OnClickListener, ItemDeleteLi
     /**
      * This method triggers action mode when user long presses
      * on a folder
+     * it takes the position of video which user has selected
+     *
      * @param position Int
      * @return Boolean
      */
@@ -233,6 +253,8 @@ class DirectoryListActivity : AppCompatActivity(), OnClickListener, ItemDeleteLi
      * folder.
      * If multi select mode is not active then, navigate user to VideoListActivity
      * otherwise toggleSelection
+     * it takes the position of video which user has selected
+     *
      * @param position Int
      */
 
@@ -246,6 +268,8 @@ class DirectoryListActivity : AppCompatActivity(), OnClickListener, ItemDeleteLi
 
     /**
      * This method starts VideoListActivity with folder name and its path
+     * it takes the position of video which user has selected
+     *
      * @param position Int
      */
 
@@ -268,7 +292,8 @@ class DirectoryListActivity : AppCompatActivity(), OnClickListener, ItemDeleteLi
     }
 
     /**
-     * This method calls shareMultipleVideos with list of indices of selected folders
+     * This method calls shareMultipleVideos with
+     * list of indices of selected folders
      */
 
     private fun shareMultipleVideos() {
@@ -381,10 +406,11 @@ class DirectoryListActivity : AppCompatActivity(), OnClickListener, ItemDeleteLi
             adapter.clearSelection()
         }
 
-    }
-
     /**
      * This method shows a confirmation dialog for deletion
+     * it records two user responses
+     * YES -> Execute delete operation
+     * NO -> Cancels operation execution
      */
 
     private fun showMultiDeleteConfirmation() {
