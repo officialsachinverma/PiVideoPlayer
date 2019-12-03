@@ -2,7 +2,18 @@ package com.project100pi.library.adapter.viewholder
 
 import androidx.recyclerview.widget.ItemTouchHelper
 
-
+/**
+ * This interface provides two methods
+ * The caller of this interface methods
+ * should implement [AdapterView.OnItemClickListener]
+ * the implementer of this interface will get the
+ * ClickEvent
+ *
+ * @since v1
+ *
+ * [onItemSelected]
+ * [onItemClear]
+ */
 interface ItemTouchHelperViewHolder {
 
     /**
