@@ -1,9 +1,8 @@
 package com.project100pi.library.misc
 
-object CurrentSettings {
+object CurrentMediaState {
 
     object MediaButtonController {
-        //The following two variables are used for detecting double click in headset buttons.
         var lastPressTime: Long = 0
         var mHasDoubleClicked = false
         var mHasTripleClicked = false
@@ -15,8 +14,8 @@ object CurrentSettings {
 
     object Playback {
         var playing = false
-        var pause = false
-        var stopped = false
+        const val DEFAULT_REWIND_TIME = 3000 // 3 secs
+        const val DEFAULT_FAST_FORWARD_TIME = 3000 // 3 secs
     }
 
     object Video {
