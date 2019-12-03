@@ -28,23 +28,34 @@ class VideoFilesViewHolder(private val context: Context, itemView: View, private
     private var ivThumbnail: ImageView = itemView.findViewById(R.id.iv_video_thumnail)
     private var ivOverFlow: ImageView = itemView.findViewById(R.id.iv_video_overflow_menu)
 
+    /**
+     * Sets data on views
+     *
+     * @param videoTrack VideoTrackInfo contains information of video
+     * @param position Int Position of the item
+     */
     fun bind(videoTrack: VideoTrackInfo, position: Int) {
+
         if(adapter.isSelected(position)){
             clItemRow.setBackgroundColor(context.resources.getColor(android.R.color.holo_green_dark))
         }
         else{
             clItemRow.setBackgroundColor(context.resources.getColor(android.R.color.white))
         }
+
         Glide
             .with(context)
             .asBitmap()
             .load(Uri.fromFile(File(videoTrack.videoPath)))
             .thumbnail(0.1f)
             .into(ivThumbnail)
+
         ivOverFlow.visibility = View.VISIBLE
         tvDuration.visibility = View.VISIBLE
         tvDuration.text = UtilFunctions.convertSecondsToHMmSs(videoTrack.durationInMs)
         tvTitle.text = videoTrack.videoName
+
+        // Setting Listeners
 
         clItemRow.setOnClickListener(this)
         clItemRow.setOnLongClickListener(this)
@@ -53,7 +64,7 @@ class VideoFilesViewHolder(private val context: Context, itemView: View, private
 
     override fun onClick(view: View?) {
         when (view!!.id) {
-            R.id.cl_video_item_row -> listener.onDirectorySelected(adapterPosition)
+            R.id.cl_video_item_row -> listener.onItemSelected(adapterPosition)
             R.id.iv_video_overflow_menu -> if (!VideoListActivity.mIsMultiSelectMode) overflowItemClicked(view, adapterPosition)
         }
     }
@@ -64,8 +75,6 @@ class VideoFilesViewHolder(private val context: Context, itemView: View, private
         if (!VideoListActivity.mIsMultiSelectMode) {
             val popupMenu = PopupMenu(context, view)
             popupMenu.inflate(R.menu.item_overflow_menu)
-
-            //handleContextMenuOptions(popupMenu, position)
 
             popupMenu.setOnMenuItemClickListener { item ->
                 listener.onOverflowItemClick(position, item.itemId)
