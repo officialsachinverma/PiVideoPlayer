@@ -21,18 +21,16 @@ import android.view.WindowManager
 import android.widget.ProgressBar
 import com.project100pi.library.listeners.PlaybackGestureControlListener
 import com.project100pi.library.listeners.PlayerViewActionsListener
-import com.project100pi.library.misc.CurrentSettings
+import com.project100pi.library.misc.CurrentMediaState
 import com.project100pi.library.misc.Logger
 import com.project100pi.library.model.VideoMetaData
 import com.project100pi.library.ui.PiVideoPlayerView
-import kotlin.math.ceil
 
 
 class PlayerActivity : AppCompatActivity(),
     PlayerViewActionsListener,
     PlaybackGestureControlListener {
 
-    private var srtPath = ""
     private var videoList = arrayListOf<VideoMetaData>()
 
     @BindView(R.id.pv_player)
@@ -47,8 +45,8 @@ class PlayerActivity : AppCompatActivity(),
     private var currentWindow = 0
     private var playbackPosition: Long = 0
 
-    private var layout: WindowManager.LayoutParams? = null
-    private var am: AudioManager? = null
+    private var layoutParams: WindowManager.LayoutParams? = null
+    private var audioManager: AudioManager? = null
     private var maxSystemVolume: Int = 0
     private var minSystemVolume: Int = 0
     private var currentVolume = 0
@@ -59,16 +57,25 @@ class PlayerActivity : AppCompatActivity(),
 
     companion object {
 
+        // starter pattern is more strict approach to starting an activity.
+        // Main purpose is to improve more readability, while at the same time
+        // decrease code complexity, maintenance costs, and coupling of your components.
+
+        // Read more: https://blog.mindorks.com/learn-to-write-good-code-in-android-starter-pattern
+        // https://www.programming-books.io/essential/android/starter-pattern-d2db17d348ca46ce8979c8af6504f018
+
+        // Using starter pattern to start this activity
         fun start(context: Context, videoList: ArrayList<VideoMetaData>, currentWindow: Int) {
             val playerIntent = Intent(context, PlayerActivity::class.java)
-            playerIntent.putParcelableArrayListExtra(Constants.QUEUE, videoList)
+            playerIntent.putParcelableArrayListExtra(Constants.Playback.PLAYBACK_QUEUE, videoList)
             playerIntent.putExtra(Constants.Playback.WINDOW, currentWindow)
             context.startActivity(playerIntent)
         }
 
+        // Using starter pattern to start this activity
         fun start(context: Context, videoList: ArrayList<VideoMetaData>) {
             val playerIntent = Intent(context, PlayerActivity::class.java)
-            playerIntent.putParcelableArrayListExtra(Constants.QUEUE, videoList)
+            playerIntent.putParcelableArrayListExtra(Constants.Playback.PLAYBACK_QUEUE, videoList)
             context.startActivity(playerIntent)
         }
 
@@ -79,43 +86,82 @@ class PlayerActivity : AppCompatActivity(),
         setContentView(R.layout.activity_player)
         ButterKnife.bind(this)
 
-        layout = window.attributes
+        layoutParams = window.attributes
 
-        if (this.intent != null) {
-            if (this.intent.hasExtra(Constants.QUEUE))
-                this.videoList = this.intent.getParcelableArrayListExtra(Constants.QUEUE) ?: arrayListOf()
-            if (this.intent.hasExtra(Constants.Playback.WINDOW))
-                this.currentWindow = this.intent.getIntExtra(Constants.Playback.WINDOW, 0)
-        }
+        getDataFromIntent()
 
-        playerView.requestFocus()
-
+        // rotating the screen based on video orientation
         rotateScreenBasedOnVideoOrientation()
 
-        am = getSystemService(Context.AUDIO_SERVICE) as AudioManager
-        maxSystemVolume = am!!.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+        setAudioParamForGestureControl()
+
+        setBrightnessParamForGestureControl()
+    }
+
+    /**
+     * Fetches dat from intent
+     */
+    private fun getDataFromIntent() {
+        this.intent?.let {
+            if (it.hasExtra(Constants.Playback.PLAYBACK_QUEUE))
+                this.videoList = it.getParcelableArrayListExtra(Constants.Playback.PLAYBACK_QUEUE) ?: arrayListOf()
+            if (it.hasExtra(Constants.Playback.WINDOW))
+                this.currentWindow = it.getIntExtra(Constants.Playback.WINDOW, 0)
+        }
+    }
+
+    /**
+     * This method sets currentBrightness and
+     * based on that decides what should be the
+     * current progress on brightness progress bar
+     */
+    private fun setBrightnessParamForGestureControl() {
+        // getting current activity brightness
+        currentBrightness = window.attributes.screenBrightness
+        // activity max brightness is 1.0 min is 0.1
+        // getting the current brightness and calculating corresponding progress on bar
+        // Eg.: if current brightness is 0.7 so the progress will be 0.7*100=70
+        currentBrightnessProgress = currentBrightness.toInt() * 100
+        // setting the current brightness on progress bar
+        progressBrightness.progress = currentBrightnessProgress
+        // settings max progress as 100
+        progressBrightness.max = 100
+    }
+
+    /**
+     * This method initialises audio manager
+     * It sets maxSystemVolume and minSystemVolume,
+     * based on that decides what should be the
+     * current progress on volume progress bar
+     */
+    private fun setAudioParamForGestureControl() {
+        // initialising audio manager
+        audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        // getting the maximum system volume
+        maxSystemVolume = audioManager!!.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+        // getting the minimum system volume - default is 0
         minSystemVolume = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            am!!.getStreamMinVolume(AudioManager.STREAM_MUSIC)
+            audioManager!!.getStreamMinVolume(AudioManager.STREAM_MUSIC)
         } else {
             0
         }
 
+        // considering 100 as max progress we are dividing 100 by max volume
+        // so that we can set progress on volume progress bar with each volume increase accordingly
         volumeLevel = 100/maxSystemVolume
 
-        currentVolume = am!!.getStreamVolume(AudioManager.STREAM_MUSIC)
+        // getting the current system volume
+        currentVolume = audioManager!!.getStreamVolume(AudioManager.STREAM_MUSIC)
+        // calculating progress based on current system volume
         currentVolumeProgress = if (currentVolume == 0) {
             0
         } else {
 //            (currentVolume * volumeLevel)
             currentVolume
         }
+        // setting the volume progress based on current system volume
         progressVolume.progress = currentVolumeProgress
         progressVolume.max = maxSystemVolume
-
-        currentBrightness = window.attributes.screenBrightness
-        currentBrightnessProgress = currentBrightness.toInt() * 100
-        progressBrightness.progress = currentBrightnessProgress
-        progressBrightness.max = 100
     }
 
     public override fun onResume() {
@@ -123,14 +169,16 @@ class PlayerActivity : AppCompatActivity(),
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && null == videoPlayer) {
             initializePlayer()
         } else {
-            videoPlayer?.play()
+            if (null == videoPlayer) {
+                initializePlayer()
+            } else {
+                // playing the video again when user opens the app again after minimizing it
+                videoPlayer?.play()
+            }
         }
         playerView.onResume()
         playerView.setPlayerActionBarListener(this)
         playerView.setPlayerGestureControlListener(this)
-
-        hideBrightnessProgress()
-        hideVolumeProgress()
     }
 
     override fun onPause() {
@@ -144,32 +192,103 @@ class PlayerActivity : AppCompatActivity(),
         releasePlayer()
     }
 
+    /**
+     * this method initialises player
+     * sets player in player view
+     * prepares the player with list of videos
+     * seeks to the video position which was
+     * selected by user
+     * and hides the controller for the first time
+     */
+
     private fun initializePlayer() {
 
         if (null == videoPlayer) {
             videoPlayer = PiPlayerFactory.newPiPlayer(this)
-            playerView.setPlayer(videoPlayer!!)
+            setPlayerToPlayerView()
         }
 
         when {
-            videoList.size > 0 && srtPath.isEmpty() -> videoPlayer?.prepare(videoList, resetPosition = false, resetState = false)
+            videoList.size > 0 -> preparePlayerWithVideos()
         }
-        videoPlayer?.seekTo(currentWindow, playbackPosition)
+        // seeking to the user selected video
+        // user can select any video from a folder to play
+        // player is prepared by all the videos present in the folder
+        // by default player will start playing from first video
+        // but if user has selected 3rd video from folder to player
+        // so we have to seek to the 3rd video
+        seekTo(currentWindow, playbackPosition)
+
+        // hiding controllers as we dont want to show
+        // them as soon as video is started playing
+        // user can invoke the controllers any time by single tap on
+        // screen any where
+        hideController()
+    }
+
+    /**
+     * sets player to playerView
+     */
+
+    private fun setPlayerToPlayerView() {
+        playerView.setPlayer(videoPlayer!!)
+    }
+
+    /**
+     * prepare player with list of videos
+     */
+
+    private fun preparePlayerWithVideos() {
+        videoPlayer?.prepare(videoList, resetPosition = false, resetState = false)
+    }
+
+    /**
+     * seeks to selected videos (windowIndex)
+     * and position (playbackPosition) in milliseconds
+     *
+     * @param windowIndex Int
+     * @param positionMs Long
+     */
+
+    private fun seekTo(windowIndex: Int, positionMs: Long) {
+        videoPlayer?.seekTo(windowIndex, positionMs)
+    }
+
+    /**
+     * this method checks if controller is visible
+     * or not if it is visible then it hides it
+     */
+
+    private fun hideController() {
         if (playerView.isControllerVisible())
             playerView.hideController()
-
-//       Handler().postDelayed({
-//            Logger.i("exe from activity: player.seekTo()")
-//            videoPlayer?.seekTo(4, 0)
-//        },  10000)
     }
+
+    /**
+     * Releases the player. This method must be called when the player is no longer required. The
+     * player must not be used after calling this method.
+     */
 
     private fun releasePlayer() {
-        videoPlayer?.let {
-            it.release()
-            videoPlayer = null
-        }
+        // If video player is already null then ?. operator won't do release operation
+        // since it is already null
+        videoPlayer?.release()
+        // making video player null to be sure
+        videoPlayer = null
     }
+
+    /**
+     * Saves data like current window which is being played
+     * and current play back position when ever activity destroys
+     * Useful when screen orientations changes
+     * when ever screen orientation changes an activity destroys
+     * and gets recreated in new orientation
+     * before activity destroys we save data and restore it when
+     * it gets recreated
+     * we save the data in a bundle
+     *
+     * @param outState Bundle
+     */
 
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
@@ -179,17 +298,24 @@ class PlayerActivity : AppCompatActivity(),
             currentWindow = it.getCurrentWindowIndex()
         }
 
-        outState.putLong("playbackPosition", playbackPosition)
-        outState.putInt("currentWindow", currentWindow)
-        outState.putParcelableArrayList("videoList", videoList)
+        outState.putLong(Constants.Playback.PLAYBACK_POSITION, playbackPosition)
+        outState.putInt(Constants.Playback.CURRENT_POSITION, currentWindow)
+        outState.putParcelableArrayList(Constants.Playback.VIDEO_LIST, videoList)
     }
+
+    /**
+     * restoring the data when activity gets recreated
+     * saved data comes in bundle which we saved in onSaveInstanceState
+     *
+     * @param savedInstanceState Bundle
+     */
 
     override fun onRestoreInstanceState(savedInstanceState: Bundle) {
         super.onRestoreInstanceState(savedInstanceState)
 
-        playbackPosition = savedInstanceState.getLong("playbackPosition")
-        currentWindow = savedInstanceState.getInt("currentWindow")
-        videoList = savedInstanceState.getParcelableArrayList<VideoMetaData>("videoList") as ArrayList<VideoMetaData>
+        playbackPosition = savedInstanceState.getLong(Constants.Playback.PLAYBACK_POSITION)
+        currentWindow = savedInstanceState.getInt(Constants.Playback.CURRENT_POSITION)
+        videoList = savedInstanceState.getParcelableArrayList<VideoMetaData>(Constants.Playback.VIDEO_LIST) as ArrayList<VideoMetaData>
     }
 
 //    private fun getSystemNavigationParams(): Int {
@@ -201,6 +327,13 @@ class PlayerActivity : AppCompatActivity(),
 //        return 0
 //    }
 
+    /**
+     * this method calculates the orientation of video
+     * and changes the orientation accordingly
+     * NOTE: By default the orientation of this activity is
+     * landscape
+     */
+
     private fun rotateScreenBasedOnVideoOrientation() {
         try {
             //Create a new instance of MediaMetadataRetriever
@@ -209,7 +342,7 @@ class PlayerActivity : AppCompatActivity(),
             val bmp: Bitmap
 
             var mVideoUri: Uri? = null
-            if (this.intent.hasExtra(Constants.QUEUE)) {
+            if (this.intent.hasExtra(Constants.Playback.PLAYBACK_QUEUE)) {
                 mVideoUri = Uri.parse(this.videoList[this.currentWindow].path)
             }
             //Set the video Uri as data source for MediaMetadataRetriever
@@ -239,32 +372,54 @@ class PlayerActivity : AppCompatActivity(),
         }
     }
 
+    /**
+     * Method changes the orientation of screen based on
+     * user's action
+     */
+
     private fun rotateScreenOnPlayerViewAction() {
         try {
 
-            if (CurrentSettings.Video.orientation === "portrait") {
+            if (CurrentMediaState.Video.orientation === Constants.Orientation.PORTRAIT) {
                 //Set orientation to landscape
                 requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
-                CurrentSettings.Video.orientation = "landscape"
-            } else if (CurrentSettings.Video.orientation === "landscape") {
+                CurrentMediaState.Video.orientation = Constants.Orientation.LANDSCAPE
+            } else if (CurrentMediaState.Video.orientation === Constants.Orientation.LANDSCAPE) {
                 //Set orientation to portrait
                 requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-                CurrentSettings.Video.orientation = "portrait"
+                CurrentMediaState.Video.orientation = Constants.Orientation.PORTRAIT
             }
 
         } catch (ex: RuntimeException) {
             //error occurred
+            ex.printStackTrace()
             Logger.e("MediaMetadataRetriever - Failed to rotate the video")
         }
     }
+
+    /**
+     * this callback will be called when user
+     * clicks on back button in player view
+     */
 
     override fun onPlayerBackButtonPressed() {
         finish()
     }
 
+    /**
+     * this callback will be called when user clicks
+     * on show current queue menu option
+     * NOTE: currently not available hence, left empty
+     */
+
     override fun onPlayerCurrentQueuePressed() {
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
+
+    /**
+     * this callback will be called when user explicitly
+     * wants to change the screen orientation
+     */
 
     override fun onScreenRotatePressed() {
         rotateScreenOnPlayerViewAction()
@@ -272,11 +427,16 @@ class PlayerActivity : AppCompatActivity(),
 
     // player gesture control
 
+    /**
+     * This method will be called when volume up gesture will
+     * be detected in player view
+     */
+
     override fun onVolumeUp() {
         if (currentVolume < maxSystemVolume) {
             ++currentVolume
 
-                am?.setStreamVolume(
+                audioManager?.setStreamVolume(
                     AudioManager.STREAM_MUSIC,
                     currentVolume,
                     0
@@ -290,10 +450,15 @@ class PlayerActivity : AppCompatActivity(),
         hideBrightnessProgress()
     }
 
+    /**
+     * This method will be called when volume down gesture will
+     * be detected in player view
+     */
+
     override fun onVolumeDown() {
         if (currentVolume > minSystemVolume) {
             --currentVolume
-                am?.setStreamVolume(
+                audioManager?.setStreamVolume(
                     AudioManager.STREAM_MUSIC,
                     currentVolume,
                     0
@@ -307,11 +472,16 @@ class PlayerActivity : AppCompatActivity(),
         hideBrightnessProgress()
     }
 
+    /**
+     * This method will be called when brightness up gesture will
+     * be detected in player view
+     */
+
     override fun onBrightnessUp() {
         if (window.attributes.screenBrightness < 1.0) {
             val b = window.attributes.screenBrightness + 0.05f
-            layout?.screenBrightness = b
-            window.attributes = layout
+            layoutParams?.screenBrightness = b
+            window.attributes = layoutParams
             if (currentBrightnessProgress < 100)
                 currentBrightnessProgress += 5
             else
@@ -321,11 +491,16 @@ class PlayerActivity : AppCompatActivity(),
         setBrightnessProgress(currentBrightnessProgress)
     }
 
+    /**
+     * This method will be called when brightness down gesture will
+     * be detected in player view
+     */
+
     override fun onBrightnessDown() {
         if (window.attributes.screenBrightness > 0.1) {
             val b = window.attributes.screenBrightness - 0.05f
-            layout?.screenBrightness = b
-            window.attributes = layout
+            layoutParams?.screenBrightness = b
+            window.attributes = layoutParams
             if (currentBrightnessProgress > 5)
                 currentBrightnessProgress -= 5
             else
@@ -335,6 +510,11 @@ class PlayerActivity : AppCompatActivity(),
         setBrightnessProgress(currentBrightnessProgress)
     }
 
+    /**
+     * This method will be called when fast forward gesture will
+     * be detected in player view
+     */
+
     override fun onFastForward() {
         videoPlayer?.let {
             it.seekTo(it.getCurrentWindowIndex(), it.getCurrentPosition() + it.DEFAULT_FAST_FORWARD_TIME)
@@ -342,6 +522,11 @@ class PlayerActivity : AppCompatActivity(),
         hideBrightnessProgress()
         hideVolumeProgress()
     }
+
+    /**
+     * This method will be called when rewind gesture will
+     * be detected in player view
+     */
 
     override fun onRewind() {
         videoPlayer?.let {
@@ -351,23 +536,48 @@ class PlayerActivity : AppCompatActivity(),
         hideVolumeProgress()
     }
 
+    /**
+     * This method will be called when user
+     * has ended the gesture
+     */
+
     override fun onActionUp() {
         hideVolumeProgress()
         hideBrightnessProgress()
     }
 
+    /**
+     * hides brightness progress bar
+     */
+
     private fun hideBrightnessProgress(){
         progressBrightness.visibility = View.GONE
     }
+
+    /**
+     * hides volume progress bar
+     */
 
     private fun hideVolumeProgress(){
         progressVolume.visibility = View.GONE
     }
 
+    /**
+     * shows and sets brightness progress bar
+     *
+     * @param progress Int
+     */
+
     private fun setBrightnessProgress(progress: Int){
         progressBrightness.visibility = View.VISIBLE
         progressBrightness.progress = progress
     }
+
+    /**
+     * shows and sets volume progress bar
+     *
+     * @param progress Int
+     */
 
     private fun setVolumeProgress(progress: Int){
         progressVolume.visibility = View.VISIBLE
