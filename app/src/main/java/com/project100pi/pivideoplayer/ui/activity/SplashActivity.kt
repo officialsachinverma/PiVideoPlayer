@@ -31,7 +31,7 @@ class SplashActivity : AppCompatActivity() {
         grantResults: IntArray
     ) {
         when (requestCode) {
-            Constants.PERMISSION_REQUEST_CODE -> {
+            Constants.Permission.WRITE_PERMISSION_REQUEST_CODE -> {
 
                 // Checking in results in case user has denied the permission
                 for (res in grantResults) {
@@ -72,7 +72,7 @@ class SplashActivity : AppCompatActivity() {
             } else {
                 ActivityCompat.requestPermissions(this,
                     arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE),
-                    Constants.PERMISSION_REQUEST_CODE)
+                    Constants.Permission.WRITE_PERMISSION_REQUEST_CODE)
             }
         } else {
             launchDirectoryListActivity()
@@ -114,7 +114,7 @@ class SplashActivity : AppCompatActivity() {
             .setPositiveButton(android.R.string.yes) { _, _ ->
                 ActivityCompat.requestPermissions(this,
                     arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE),
-                    Constants.PERMISSION_REQUEST_CODE)
+                    Constants.Permission.WRITE_PERMISSION_REQUEST_CODE)
             }
             .setNegativeButton(android.R.string.no) { _, _ ->
                 Toast.makeText(
