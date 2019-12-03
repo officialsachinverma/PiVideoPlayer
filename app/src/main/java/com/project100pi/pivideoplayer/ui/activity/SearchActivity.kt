@@ -3,7 +3,6 @@ package com.project100pi.pivideoplayer.ui.activity
 import android.annotation.TargetApi
 import android.content.Context
 import android.content.Intent
-import android.content.SharedPreferences
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -21,7 +20,6 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.view.ActionMode
 import androidx.appcompat.widget.Toolbar
 import androidx.constraintlayout.widget.ConstraintLayout
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProviders
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -32,12 +30,12 @@ import com.project100pi.library.misc.Logger
 import com.project100pi.library.model.VideoMetaData
 import com.project100pi.pivideoplayer.R
 import com.project100pi.pivideoplayer.database.TinyDB
-import com.project100pi.pivideoplayer.ui.adapters.VideoFilesAdapter
 import com.project100pi.pivideoplayer.ui.activity.viewmodel.factory.SearchViewModelFactory
 import com.project100pi.pivideoplayer.listeners.ItemDeleteListener
 import com.project100pi.pivideoplayer.listeners.OnClickListener
 import com.project100pi.pivideoplayer.model.VideoTrackInfo
 import com.project100pi.pivideoplayer.ui.activity.viewmodel.SearchViewModel
+import com.project100pi.pivideoplayer.ui.adapters.SearchResultAdapter
 import com.project100pi.pivideoplayer.utils.Constants
 import com.project100pi.pivideoplayer.utils.ContextMenuUtil
 import java.io.File
@@ -64,13 +62,22 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
     private var isSearchTriggered = false
 
     private lateinit var searchViewModel: SearchViewModel
-    private lateinit var adapter: VideoFilesAdapter
-    private var mIsMultiSelectMode: Boolean = false
+    private lateinit var adapter: SearchResultAdapter
     private var actionModeCallback = ActionModeCallback()
     private var actionMode: ActionMode? = null
 
     companion object {
 
+        var mIsMultiSelectMode: Boolean = false
+
+        // starter pattern is more strict approach to starting an activity.
+        // Main purpose is to improve more readability, while at the same time
+        // decrease code complexity, maintenance costs, and coupling of your components.
+
+        // Read more: https://blog.mindorks.com/learn-to-write-good-code-in-android-starter-pattern
+        // https://www.programming-books.io/essential/android/starter-pattern-d2db17d348ca46ce8979c8af6504f018
+
+        // Using starter pattern to start this activity
         fun start(context: Context) {
             context.startActivity(Intent(context, SearchActivity::class.java))
         }
@@ -85,9 +92,12 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
         init()
     }
 
+    /**
+     * Initialises stuffs
+     */
     private fun init() {
 
-        val viewModelFactory = SearchViewModelFactory(this , application)
+        val viewModelFactory = SearchViewModelFactory(this, this)
         searchViewModel = ViewModelProviders.of(this, viewModelFactory).get(SearchViewModel::class.java)
 
         initializeToolbar()
@@ -119,11 +129,13 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         when (requestCode) {
-            100 -> {
+            Constants.Permission.SD_CARD_WRITE_PERMISSION_REQUEST_CODE -> {
                 if (resultCode == RESULT_OK && data != null) {
+                    // when user will select the external sd card we will receive it's uri in data
                     val sdCardUri = data.data
-                    TinyDB.putString(Constants.SD_CARD_URI, sdCardUri.toString())
-                    // Persist access permissions.
+                    // saving the sd card uri in tiny db (shared preferences)
+                    TinyDB.putString(Constants.ExternalSDCard.SD_CARD_URI, sdCardUri.toString())
+                    // Persist access permissions
                     val takeFlags = data.flags and (Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
                     contentResolver.takePersistableUriPermission(sdCardUri!!, takeFlags)
 
@@ -133,6 +145,10 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
         }
     }
 
+    /**
+     * Sets toolbar as support action bar
+     * and enabled back home button
+     */
     private fun initializeToolbar() {
         setSupportActionBar(mToolbar)
         if (supportActionBar != null) {
@@ -140,10 +156,19 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
         }
     }
 
+    /**
+     * This method contains all other methods
+     * who are observing to a particular thing
+     */
     private fun observeForObservers() {
        observeForSearchResultList()
     }
 
+    /**
+     * This method observes Search Result List
+     * whenever data is available we have to set
+     * that data on the adapter
+     */
     private fun observeForSearchResultList() {
         searchViewModel.searchResultList.observe(this, Observer {
             if (it != null) {
@@ -151,7 +176,7 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
                 if (it.size > 0) {
                     hideNoVideoFoundMsg()
                     showSearchResultList()
-                    setDataToAdapter()
+                    setSearchResult()
                 } else {
                     showNoVideoFoundMsg()
                     hideSearchResultList()
@@ -160,25 +185,38 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
         })
     }
 
-    private fun setDataToAdapter(){
-        setSearchResult()
-    }
-
+    /**
+     * this method initialises the adapter
+     * WARNING : Adapter is a late init property
+     * it has to be initialised before using anywhere
+     * kotlin won't even allow you to put null check on it
+     */
     private fun initAdapter() {
-        adapter = VideoFilesAdapter(this, R.layout.row_video_item, this)
+        adapter = SearchResultAdapter(
+            this,
+            R.layout.row_video_item,
+            this
+        )
         val linearLayout = LinearLayoutManager(this)
         linearLayout.orientation = LinearLayoutManager.VERTICAL
         searchResultsRecyclerView.layoutManager = linearLayout
         searchResultsRecyclerView.adapter = adapter
     }
 
+    /**
+     * This method submits list to the adapter
+     */
     private fun setSearchResult() {
         adapter.submitList(videoSearchResultData)
         isSearchTriggered = false
     }
 
+    /**
+     * settings a threshold value for search field
+     * value 2 mean search will happen when user
+     * will enter at least 2 chars
+     */
     private fun initializeAutoCompleteTextView() {
-        autoCompleteTextView.dropDownWidth = resources.displayMetrics.widthPixels
         //Only when 2 or more characters is typed we will trigger the search.
         autoCompleteTextView.threshold = 2
 
@@ -190,10 +228,31 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
         )
     }
 
+    /**
+     * sets listeners
+     */
     private fun setListeners() {
-        Logger.i("setListeners() :: setting listeners for auto complete textview and viewpager.")
+        Logger.i("setListeners() :: setting listeners for auto complete text view and viewpager.")
         setOnEditorActionListener()
+        setTextChangeListener()
+        setOnFocusChangeListener()
+    }
+
+    /**
+     * sets TextChangeListener on search field
+     */
+    private fun setTextChangeListener() {
         autoCompleteTextView.addTextChangedListener(AutoCompleteTextWatcher())
+    }
+
+    /**
+     * sets setOnFocusChangeListener on search field
+     *
+     * It handles that ever autoCompleteTextView losses
+     * focus the keyboard should hide and when it gains
+     * focus keyboard should come up
+     */
+    private fun setOnFocusChangeListener() {
         autoCompleteTextView.setOnFocusChangeListener { _: View, hasFocus: Boolean ->
             if (hasFocus) {
                 if (!isSearchTriggered) {
@@ -205,6 +264,12 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
         }
     }
 
+    /**
+     * sets setOnEditorActionListener on search field
+     *
+     * It handles that when ever user will press on search
+     * icon on soft keyboard, the search should get triggered
+     */
     private fun setOnEditorActionListener() {
         /*
          onEditorActionListener is needed to get the Keyevent when search icon is pressed in the keyboard.
@@ -221,6 +286,14 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
         }
     }
 
+    /**
+     * This method is responsible for executing
+     * db queried to get the search result based on
+     * user input
+     * it takes string (entered by user) which is being searched in db
+     *
+     * @param searchSource String
+     */
     private fun triggerSearch(searchSource: String) {
         val queryText = autoCompleteTextView.text.toString()
         when (searchSource) {
@@ -229,6 +302,14 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
         isSearchTriggered = true
     }
 
+    /**
+     * This method triggers action mode when user long presses
+     * on a video
+     * it takes the position of video which user has selected
+     *
+     * @param position Int
+     * @return Boolean
+     */
     override fun onItemLongClicked(position: Int): Boolean {
         if (actionMode == null) {
             actionMode = startSupportActionMode(actionModeCallback)
@@ -239,7 +320,16 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
         return true
     }
 
-    override fun onDirectorySelected(position: Int) {
+    /**
+     * This method gets called when a user clicks/selects a
+     * video.
+     * If multi select mode is not active then, navigate user to player activity
+     * where it will start playing the video, otherwise toggleSelection
+     * it takes the position of video which user has selected
+     *
+     * @param position Int
+     */
+    override fun onItemSelected(position: Int) {
         if (!mIsMultiSelectMode) {
             launchPlayerActivity(position)
         } else {
@@ -247,12 +337,32 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
         }
     }
 
+    /**
+     * This callback is called when overflow menu item is clicked
+     * it takes the position of selected video and the Id of view (menu item)
+     * on which user has clicked to perform that specific action only
+     * NOTE: In case of folder we do not have overflow menus
+     * as of now and hence, left empty
+     *
+     * @param position Int
+     * @param viewId Int
+     */
     override fun onOverflowItemClick(position: Int, viewId: Int) {
         if (!mIsMultiSelectMode) {
             doActionOnOverflowItemClick(position, viewId)
         }
     }
 
+    /**
+     * This callback is called when overflow menu item is clicked
+     * it takes the position of selected video and the Id of view (menu item)
+     * on which user has clicked to perform that specific action only
+     * NOTE: In case of folder we do not have overflow menus
+     * as of now and hence, left empty
+     *
+     * @param position Int
+     * @param viewId Int
+     */
     private fun doActionOnOverflowItemClick(position: Int, viewId: Int) {
 
         when (viewId) {
@@ -268,18 +378,35 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
         }
     }
 
+    /**
+     * This method shows a confirmation dialog for deletion
+     * it takes the position of video which user has selected
+     * Dialog records two user responses
+     * YES -> Execute delete operation
+     * NO -> Cancel the operation
+     *
+     * @param position Int
+     */
     private fun showDeleteConfirmation(position: Int) {
         AlertDialog.Builder(this)
             .setTitle(R.string.delete)
             .setMessage(R.string.delete_confirmation_msg)
             .setPositiveButton(android.R.string.yes) { _, _ ->
-                searchViewModel.deleteSearchedVideos(listOf(position), this)
+                searchViewModel.deleteSearchedVideos(listOf(position))
             }
             .setNegativeButton(android.R.string.no, null)
             .setCancelable(false)
             .show()
     }
 
+    /**
+     * this method creates an intent chooser
+     * to display all the apps through which
+     * user can share the videos
+     * it takes position of video which is selected by user
+     *
+     * @param position Int
+     */
     private fun shareVideos(position: Int) {
         val currentVideo = videoSearchResultData[position]
 
@@ -290,21 +417,40 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
                 ContextMenuUtil.getVideoContentUri(this, File(currentVideo.videoPath))), resources.getString(R.string.share_video)))
     }
 
+    /**
+     * calls playVideo method which will generate data
+     * and pass it to player activity
+     * it takes position of video which is selected by user
+     *
+     * @param position Int
+     */
     private fun launchPlayerActivity(position: Int) {
         playVideo(position, false)
     }
 
+    /**
+     * This method generates data and starts player activity
+     * it takes the position of selected video in case user
+     * has selected a single video
+     * it also takes a param isMultiple which shows whether the
+     * selection is of multiple videos or not
+     *
+     * @param position Int
+     * @param isMultiple Boolean
+     */
     private fun playVideo(position: Int, isMultiple: Boolean) {
-        val playerIntent = Intent(this, PlayerActivity::class.java)
         val metaDataList = ArrayList<VideoMetaData>()
         if (!isMultiple) {
             val currentVideo = videoSearchResultData[position]
             val metadata = VideoMetaData(currentVideo._Id, currentVideo.videoName, currentVideo.videoPath)
             metaDataList.add(metadata)
-            playerIntent.putExtra(Constants.Playback.WINDOW, 0)
+
+            PlayerActivity.start(this, metaDataList, 0)
         } else {
             for(selectedItemPosition in adapter.getSelectedItems()) {
-//              metaDataList.add(directoryListViewModel.getVideoMetaData(videoListData[directoryListViewModel.currentSongFolderIndex].songsList[selectedItemPosition].folderId)!!)
+//              metaDataList.add(directoryListViewModel
+//              .getVideoMetaData(videoListData[directoryListViewModel
+//              .currentSongFolderIndex].songsList[selectedItemPosition].folderId)!!)
                 metaDataList.add(
                     VideoMetaData(
                         videoSearchResultData[selectedItemPosition]._Id,
@@ -312,11 +458,17 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
                         videoSearchResultData[selectedItemPosition].videoPath)
                     )
             }
+            PlayerActivity.start(this, metaDataList)
         }
-        playerIntent.putExtra(Constants.QUEUE, metaDataList)
-        startActivity(playerIntent)
     }
 
+    /**
+     * this method handles selection of an item in case of
+     * multi selection. It takes the position of item which
+     * is clicked or selected by user
+     *
+     * @param position Int
+     */
     private fun toggleSelection(position: Int) {
         adapter.toggleSelection(position)
         val count = adapter.getSelectedItemCount()
@@ -332,11 +484,25 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
         }
     }
 
+    /**
+     * This method is called when application does not
+     * have permission to read or write in external sd card
+     * It opens up a system activity where user can navigate
+     * to external sd card and click on select button on which
+     * it will callback to onActivity result with path to external sd card
+     */
     override fun showPermissionForSdCard() {
         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
-        startActivityForResult(intent, 100)
+        startActivityForResult(intent, Constants.Permission.SD_CARD_WRITE_PERMISSION_REQUEST_CODE)
     }
 
+    /**
+     * This method gets called when delete operation is successful
+     * it gives list of indices of item which are hard deleted and now
+     * supposed to be update on UI
+     *
+     * @param listOfIndexes List<Int>
+     */
     override fun onDeleteSuccess(listOfIndexes: List<Int>) {
         for(position in listOfIndexes) {
             searchViewModel.removeElementAt(position)
@@ -349,14 +515,26 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
         ).show()
     }
 
+    /**
+     * This method is called when an error occurred while
+     * executing the delete operation
+     */
     override fun onDeleteError() {
         Toast.makeText(this, R.string.error_occurred_while_deleting_videos, Toast.LENGTH_SHORT).show()
     }
 
+    /**
+     * This method calls playVideo which will generates
+     * data and launches player activity
+     */
     private fun playSelectedVideos() {
         playVideo(-1, true)
     }
 
+    /**
+     * This method creates an intent chooser to show
+     * user through apps he can share the videos
+     */
     private fun shareMultipleVideos() {
         val listOfVideoUris = ArrayList<Uri?>()
         for (position in adapter.getSelectedItems()) {
@@ -369,12 +547,18 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
             .putExtra(Intent.EXTRA_STREAM,  listOfVideoUris), resources.getString(R.string.share_video)))
     }
 
+    /**
+     * shows soft keyboard
+     */
     private fun showKeyboard() {
         window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE)
         val `in` = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
         `in`.showSoftInput(autoCompleteTextView, InputMethodManager.SHOW_IMPLICIT)
     }
 
+    /**
+     * hides soft keyboard
+     */
     private fun hideKeyboard() {
         val `in` = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
         `in`.hideSoftInputFromWindow(autoCompleteTextView.windowToken, 0)
@@ -403,7 +587,7 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
                     shareMultipleVideos()
                 }
                 R.id.multiChoiceDelete -> {
-                    showMultiDeleteConfirmation()
+                    showMultiDeleteConfirmation(adapter.getSelectedItems())
                 }
             }
             // We have to end the multi select, if the user clicks on an option other than select all
@@ -416,9 +600,16 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
             mIsMultiSelectMode = false
             actionMode = null
             showToolbar()
-            adapter.clearSelection()
+            clearAdapterSelection()
         }
 
+    }
+
+    /**
+     * Clears the selected items in adapter
+     */
+    private fun clearAdapterSelection() {
+        adapter.clearSelection()
     }
 
     inner class AutoCompleteTextWatcher: TextWatcher {
@@ -439,38 +630,62 @@ class SearchActivity: AppCompatActivity(), OnClickListener, ItemDeleteListener {
         }
     }
 
-    private fun showMultiDeleteConfirmation() {
+    /**
+     * This method shows a confirmation dialog for deletion
+     * it records two user responses
+     * YES -> Execute delete operation
+     * NO -> Cancels operation execution
+     */
+    private fun showMultiDeleteConfirmation(listOfIndices: List<Int>) {
         AlertDialog.Builder(this)
             .setTitle(R.string.delete)
             .setMessage("Are you sure you want to delete this ${adapter.getSelectedItemCount()} video(s)?")
             .setPositiveButton(android.R.string.yes) { _, _ ->
-                searchViewModel.deleteSearchedVideos(adapter.getSelectedItems(), this)
+                searchViewModel.deleteSearchedVideos(listOfIndices)
             }
             .setNegativeButton(android.R.string.no, null)
             .setCancelable(false)
             .show()
     }
 
+    /**
+     * hides toolbar
+     */
     private fun hideToolbar() {
         mToolbar.visibility = View.GONE
     }
 
+    /**
+     * shows toolbar
+     */
     private fun showToolbar() {
         mToolbar.visibility = View.VISIBLE
     }
 
+    /**
+     * hides no videos found msg
+     */
     private fun hideNoVideoFoundMsg() {
         sorryMessageTextView.visibility = View.GONE
     }
 
+    /**
+     * shows no video found msg
+     */
     private fun showNoVideoFoundMsg() {
         sorryMessageTextView.visibility = View.VISIBLE
     }
 
+    /**
+     * hides search result list
+     */
     private fun hideSearchResultList() {
         searchResultsRecyclerView.visibility = View.GONE
     }
 
+    /**
+     * shows search result list
+     */
     private fun showSearchResultList() {
         searchResultsRecyclerView.visibility = View.VISIBLE
     }
