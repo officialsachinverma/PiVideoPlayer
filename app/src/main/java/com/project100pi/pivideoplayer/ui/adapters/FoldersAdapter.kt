@@ -14,7 +14,7 @@ import com.project100pi.pivideoplayer.model.FolderInfo
 class FoldersAdapter(
     private val context: Context,
     var view: Int,
-    var listener: OnClickListener): ListAdapter<FolderInfo, FoldersViewHolder>(PlayerDiffUtil()) {
+    private var listener: OnClickListener): ListAdapter<FolderInfo, FoldersViewHolder>(PlayerDiffUtil()) {
 
     private var selectedItems = SparseBooleanArray()
 
