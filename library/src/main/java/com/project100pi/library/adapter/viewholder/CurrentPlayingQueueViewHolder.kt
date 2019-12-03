@@ -18,12 +18,10 @@ import java.io.File
 class CurrentPlayingQueueViewHolder(private val context: Context,
                                     itemView: View,
                                     private val listener: OnItemClickListener,
-                                    private val adapter: CurrentPlayingQueueAdapter):
-                                        RecyclerView.ViewHolder(itemView),
-                                        View.OnClickListener,
-                                        ItemTouchHelperViewHolder{
+                                    private val adapter: CurrentPlayingQueueAdapter): RecyclerView.ViewHolder(itemView), View.OnClickListener,
+    ItemTouchHelperViewHolder {
 
-    val clItemRow: ConstraintLayout = itemView.findViewById(R.id.cl_current_playing)
+    private val clItemRow: ConstraintLayout = itemView.findViewById(R.id.cl_current_playing)
     val ivRearrange: ImageView = itemView.findViewById(R.id.rearrange_image_view)
     private var ivThumbNail: ImageView = itemView.findViewById(R.id.thumbnail_image_view)
     private var tvVideoName: TextView = itemView.findViewById(R.id.tv_video_name)
@@ -34,6 +32,7 @@ class CurrentPlayingQueueViewHolder(private val context: Context,
         } else {
             clItemRow.background = ContextCompat.getDrawable(context, R.color.blackTransparent)
         }
+
         Glide
             .with(context)
             .asBitmap()
