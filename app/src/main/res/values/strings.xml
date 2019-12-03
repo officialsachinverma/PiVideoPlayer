@@ -16,6 +16,7 @@
     <string name="error_occurred_while_deleting_videos">Some error occurred while deleting video(s).</string>
     <string name="error_occurred_while_showing_videos_list">Some error occurred while showing the list of videos under this folder.</string>
     <string name="error_failed_to_play">Failed to play this video.</string>
+    <string name="failed_to_rotate_screen">Failed to rotate the screen.</string>
 
     <!-- Permission Strings -->
 
