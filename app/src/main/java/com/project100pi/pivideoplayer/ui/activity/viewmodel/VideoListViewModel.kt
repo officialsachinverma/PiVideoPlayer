@@ -1,15 +1,14 @@
 package com.project100pi.pivideoplayer.ui.activity.viewmodel
 
-import android.annotation.TargetApi
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.os.Build
 import android.provider.MediaStore
 import android.widget.Toast
 import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.ViewModel
 import com.project100pi.library.misc.Logger
 import com.project100pi.library.model.VideoMetaData
 import com.project100pi.pivideoplayer.database.CursorFactory
@@ -20,18 +19,18 @@ import com.project100pi.pivideoplayer.model.observable.VideoChangeObservable
 import com.project100pi.pivideoplayer.ui.activity.PlayerActivity
 import com.project100pi.pivideoplayer.utils.Constants
 import com.project100pi.pivideoplayer.utils.ContextMenuUtil
-import com.project100pi.pivideoplayer.utils.FileExtension
 import kotlinx.coroutines.*
 import java.io.File
 import java.io.IOException
 import java.util.*
 import kotlin.collections.ArrayList
+import kotlin.system.measureTimeMillis
 
 
 class VideoListViewModel (private val context: Context,
                           private val folderPath: String,
-                          application: Application):
-    AndroidViewModel(application), Observer {
+                          private val folderName: String,
+                          private val itemDeleteListener: ItemDeleteListener): ViewModel(), Observer {
 
     private var _filesList = MutableLiveData<ArrayList<VideoTrackInfo>>()
     val filesList: LiveData<ArrayList<VideoTrackInfo>>
@@ -39,104 +38,296 @@ class VideoListViewModel (private val context: Context,
 
     private val videoList = arrayListOf<VideoTrackInfo>()
 
+    /**
+     * Allows to cancel all assigned jobs for this ViewModel
+     */
     private val coroutineJob = Job()
+    /**
+     * we are pass [viewModelJob], any coroutine started in this coroutineScope can be cancelled
+     * by calling viewModelJob.cancel()
+     */
     private val coroutineScope = CoroutineScope(Dispatchers.IO + coroutineJob)
 
-    init {
+    /**
+     * init block sets observer for video change which
+     * will get fired when a new video is added when app is active
+     * it also loads folder data
+     */
 
-        loadAllData()
+    init {
         // When a new video is added (eg: video download finished in background) and
         // when the app is open then this observer will get triggered
         observeForVideoChange()
+        loadAllVideoData()
     }
+
+    /**
+     * This method observe for video change
+     * Eg.: if a new video gets added when app is running
+     * like user downloaded a new video and download gets
+     * completed when the application is open
+     */
 
     private fun observeForVideoChange() {
         VideoChangeObservable.addObserver(this)
     }
 
-    fun deleteVideo(listOfIndexes: List<Int>, listener: ItemDeleteListener) {
-        coroutineScope.launch {
-            for (position in listOfIndexes) {
-                try {
-                    val folder = _filesList.value!![position].videoPath
-                    val file = File(folder)
-                    if(file.exists()) {
-                        if (file.delete()) {
-                            context.applicationContext.sendBroadcast(
-                                Intent(
-                                    Intent.ACTION_MEDIA_SCANNER_SCAN_FILE,
-                                    Uri.fromFile(file)
-                                )
-                            )
-                            withContext(Dispatchers.Main) {
-                                listener.onDeleteSuccess(listOfIndexes)
-                            }
-                        } else {
-                            if (file.exists()) {
-                                // checking if file still exist in it actual true location
-                                if (file.canonicalFile.delete()) {
-                                    if (file.exists()) {
-                                        if (context.applicationContext.deleteFile(file.name)) {
-                                            context.applicationContext.sendBroadcast(
-                                                Intent(
-                                                    Intent.ACTION_MEDIA_SCANNER_SCAN_FILE,
-                                                    Uri.fromFile(file)
-                                                )
-                                            )
-                                            withContext(Dispatchers.Main) {
-                                                listener.onDeleteSuccess(listOfIndexes)
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            // checking for file is in sd card and sdcard uri
-                            if (TinyDB.getString(Constants.SD_CARD_URI).isNullOrEmpty()) {
-                                listener.showPermissionForSdCard()
-                            } else {
-                                val sdCardUri = TinyDB.getString(Constants.SD_CARD_URI)
-                                var documentFile = DocumentFile.fromTreeUri(context, Uri.parse(sdCardUri))
-                                if (file.exists() && sdCardUri!!.isNotEmpty()) {
-                                    val parts: List<String> = file.path.split("/")
-                                    // findFile method will search documentFile for the first file
-                                    // with the expected `DisplayName`
+    /**
+     * This method takes list of indices which are supposed to be deleted
+     * and it takes ItemDeleteListener which will be called when either
+     * the operation is successful or not
+     *
+     * @param listOfIndexes List<Int>
+     */
 
-                                    // We skip first three items because we are already on it.(sdCardUri = /storage/extSdCard)
-                                    for (strs in parts.subList(3, parts.size)) {
-                                        if (documentFile != null) {
-                                            documentFile = documentFile.findFile(strs)
-                                        }
-                                    }
-                                    if (documentFile != null) {
-                                        if (documentFile.delete()) {
-                                            context.applicationContext.sendBroadcast(
-                                                Intent(
-                                                    Intent.ACTION_MEDIA_SCANNER_SCAN_FILE,
-                                                    Uri.fromFile(file)
-                                                )
-                                            )
-                                            withContext(Dispatchers.Main) {
-                                                listener.onDeleteSuccess(listOfIndexes)
-                                            }
-                                        }
-                                    }
+    fun deleteVideo(listOfIndexes: List<Int>) {
+
+        coroutineScope.launch {
+
+            when (delete(listOfIndexes)) {
+                Constants.Delete.SUCCESS -> {
+                    onDeleteSuccess(listOfIndexes)
+                    Logger.i("Delete --> SUCCESS")
+                }
+                Constants.Delete.FAILURE -> {
+                    onDeleteError()
+                    Logger.i("Delete --> FAILURE")
+                }
+                Constants.Delete.SD_CARD_PERMISSION_REQUIRED -> {
+                    // Ask for SD card permission
+                    itemDeleteListener.showPermissionForSdCard()
+                    Logger.i("Delete --> SD_CARD_PERMISSION_REQUIRED")
+                }
+            }
+        }
+
+    }
+
+    /**
+     * This method called when deletion operation
+     * executes successfully for provided list
+     * of indices
+     *
+     * @param listOfIndexes List<Int>
+     */
+    private suspend fun onDeleteSuccess(listOfIndexes: List<Int>) {
+        withContext(Dispatchers.Main) {
+            itemDeleteListener.onDeleteSuccess(listOfIndexes)
+        }
+    }
+
+    /**
+     * This method called when any error occurs
+     * while executing the delete operation
+     */
+    private suspend fun onDeleteError() {
+        withContext(Dispatchers.Main) {
+            itemDeleteListener.onDeleteError()
+        }
+    }
+
+    /**
+     * This method called when delete operation is
+     * successful and we need to tell android system
+     * to scan for media files and update the media db
+     *
+     * @param fileUri Uri
+     */
+    private fun sendDeleteBroadcast(fileUri: Uri) {
+        context.applicationContext.sendBroadcast(
+            Intent(
+                Intent.ACTION_MEDIA_SCANNER_SCAN_FILE,
+                fileUri
+            )
+        )
+    }
+
+    /**
+     * This method executes delete operation
+     *
+     * @param listOfIndexes List<Int>
+     *
+     * @return Int The status of delete operation (Success/Failure/Need SD Card Permission)
+     */
+    private fun delete(listOfIndexes: List<Int>): Int {
+        for (position in listOfIndexes) {
+
+            try {
+
+                val folder = _filesList.value!![position].videoPath
+
+                val file = File(folder)
+
+                if(file.exists()) {
+
+                    if (file.delete()) {
+
+                        // If file is deleted successfully then we
+                        // have to tell android system to re scan all media files
+                        // tp update it's database. After scanning android will get
+                        // get to know that some files are missing/deleted/moved/added
+                        // then it will accordingly add or remove media files records
+                        sendDeleteBroadcast(Uri.fromFile(file))
+                        Logger.i("Delete --> sendDeleteBroadcast")
+
+                    } else {
+
+                        // If still file exists then file is in external sd card
+                        if (file.exists()) {
+                            // checking for file is in sd card and sdcard uri
+                            if (TinyDB.getString(Constants.ExternalSDCard.SD_CARD_URI).isNullOrEmpty()) {
+
+                                return Constants.Delete.SD_CARD_PERMISSION_REQUIRED
+
+                            } else {
+
+                                if (!deleteForSdCard(file)){
+                                    Logger.i("Delete --> FAILURE")
+                                    return Constants.Delete.FAILURE
                                 }
                             }
                         }
                     }
-                } catch (e: IOException) {
-                    e.printStackTrace()
-                    withContext(Dispatchers.Main) {
-                        listener.onDeleteError()
-                    }
+                }
+            } catch (e: IOException) {
+
+                e.printStackTrace()
+
+                Logger.e("Delete --> " + e.message.toString())
+
+                return Constants.Delete.FAILURE
+
+            }
+        }
+
+        return Constants.Delete.SUCCESS
+    }
+
+    private fun deleteForSdCard(file: File): Boolean {
+        val sdCardUri = TinyDB.getString(Constants.ExternalSDCard.SD_CARD_URI)
+
+        var documentFile = DocumentFile.fromTreeUri(context, Uri.parse(sdCardUri))
+
+        if (file.exists() && sdCardUri!!.isNotEmpty()) {
+
+            val parts: List<String> = file.path.split("/")
+
+            // findFile method will search documentFile for the first file
+            // with the expected `DisplayName`
+
+            // We skip first three items because we are already on it.(sdCardUri = /storage/extSdCard)
+            for (strs in parts.subList(3, parts.size)) {
+
+                if (documentFile != null)
+                    documentFile = documentFile.findFile(strs)
+
+            }
+            if (documentFile != null) {
+
+                if (documentFile.delete()) {
+
+                    // If file is deleted successfully then we
+                    // have to tell android system to re scan all media files
+                    // tp update it's database. After scanning android will get
+                    // get to know that some files are missing/deleted/moved/added
+                    // then it will accordingly add or remove media files records
+                    sendDeleteBroadcast(Uri.fromFile(file))
+                    Logger.i("Delete --> sendDeleteBroadcast")
+
+                } else
+                    return false
+
+            } else
+                return false
+        }
+        return true
+    }
+
+    /**
+     * This method loads all videos available in device from media
+     * database and forms a list of folder which again have a list
+     * of videos
+     */
+
+    private fun loadAllVideoData() {
+        coroutineScope.launch {
+            videoList.clear()
+            val timeTaken = measureTimeMillis {
+                val cursor = CursorFactory.getVideoMetaDataByPath(context, folderName)
+                if (cursor != null && cursor.moveToFirst()) {
+                    // We populate something, only if the cursor is available
+                    do {
+                        try {
+                            // To get path of song
+                            val videoPath = cursor.getString(cursor.getColumnIndex(MediaStore.Video.Media.DATA))
+                            //To get song id
+                            val videoId = cursor.getInt(cursor.getColumnIndex(MediaStore.Video.Media._ID))
+                            // To get song title
+                            // Not using title as of now because it's been observed
+                            // that for some videos title is not corresponding to the file name
+                            // Eg.: there was a video provided by udemy
+                            // title of that video was "Udemy Tutorial video"
+                            // file name was something "1. Introduction to APIs"
+                            // so as of now we are using last path segment as video title (for UI only)
+//                            val videoTitle = cursor.getString(cursor.getColumnIndex(MediaStore.Video.Media.TITLE))
+                            // To get song duration
+                            val videoDuration = cursor.getLong(cursor.getColumnIndex(MediaStore.Video.Media.DURATION))
+
+                            if (videoPath != null) {
+
+                                // Splitting song path to list by using .split("/") to get elements from song path separated
+                                // /storage/emulated/video/abc.wav
+                                // -> music will be folder name
+                                // -> emulated will be subfolder name
+                                // -> abc will be song name
+
+                                val pathsList = videoPath.split("/")
+
+                                val folderPath = folderPath.split("/")
+
+                                val videoName = pathsList[pathsList.size - 1]
+
+                                // checking if sub-folder of the folder on which user has clicked
+                                // and sub-folder of the current cursor position item is same
+//                                 Eg.: /storage/emulated/video/downloaded/abc.wav and
+//                                 /storage/emulated/video/xyz.wav now the folder in which abc.wav is,
+//                                 is a sub folder of video and xyz.wav is in folder video
+//                                 which is a sub folder of emulated
+//                                 so cursor will give both files but we want the one which is in folder video
+//                                 but not in the subfolder of folder video
+                                if (pathsList[pathsList.size - 3] == folderPath[folderPath.size - 3]) {
+                                    videoList.add(
+                                        VideoTrackInfo(
+                                            videoId,
+                                            videoName,
+                                            videoPath,
+                                            videoDuration))
+                                }
+
+                            } else
+                                continue
+
+                        } catch (e: Exception) { // catch specific exception
+                            e.printStackTrace()
+                            Logger.e(e.message.toString())
+                        }
+                    } while (cursor.moveToNext())
+                    cursor.close()
+                }
+                withContext(Dispatchers.Main) {
+                    _filesList.value = videoList
                 }
             }
+            Logger.i("Time taken for listing videos: $timeTaken millis")
         }
     }
 
-    fun removeElementAt(position: Int) {
-        videoList.removeAt(position)
-    }
+    /**
+     * This method creates an intent chooser to share
+     * the selected videos
+     *
+     * @param selectedItemPosition List<Int>
+     */
 
     fun shareMultipleVideos(selectedItemPosition: List<Int>) {
         coroutineScope.launch {
@@ -155,6 +346,12 @@ class VideoListViewModel (private val context: Context,
         }
     }
 
+    /**
+     * This method plays the selected videos
+     *
+     * @param selectedItemPosition List<Int>
+     */
+
     fun playMultipleVideos(selectedItemPosition: List<Int>) {
         try {
 
@@ -162,10 +359,12 @@ class VideoListViewModel (private val context: Context,
                 val playerIntent = Intent(context, PlayerActivity::class.java)
                 val metaDataList = ArrayList<VideoMetaData>()
                 for(position in selectedItemPosition) {
-//                    metaDataList.add(directoryListViewModel.getVideoMetaData(videoListData[directoryListViewModel.currentSongFolderIndex].songsList[selectedItemPosition].folderId)!!)
+//                  metaDataList.add(directoryListViewModel
+//                  .getVideoMetaData(videoListData[directoryListViewModel
+//                  .currentSongFolderIndex].songsList[selectedItemPosition].folderId)!!)
                     metaDataList.add(VideoMetaData(videoList[position]._Id, videoList[position].videoName, videoList[position].videoPath))
                 }
-                playerIntent.putExtra(Constants.QUEUE, metaDataList)
+                playerIntent.putExtra(Constants.Playback.PLAYBACK_QUEUE, metaDataList)
                 withContext(Dispatchers.Main) {
                     context.startActivity(playerIntent)
                 }
@@ -177,137 +376,38 @@ class VideoListViewModel (private val context: Context,
         }
     }
 
-    private fun loadAllData() {
-        coroutineScope.launch {
-            videoList.clear()
-            val cursor = CursorFactory.getVideoMetaDataByPath(context, folderPath)
-            if (cursor != null && cursor.moveToFirst()) {
-                // We populate something, only if the cursor is available
-                do {
-                    try {
-                        // To get path of song
-                        val videoPath = cursor.getString(cursor.getColumnIndex(MediaStore.Video.Media.DATA))
-                        //To get song id
-                        val videoId = cursor.getInt(cursor.getColumnIndex(MediaStore.Video.Media._ID))
-                        // To get song title
-                        // Not using title as of now because it's been observed
-                        // that for some videos title is not corresponding to the file name
-                        // Eg.: there was a video provided by udemy
-                        // title of that video was "Udemy Tutorial video"
-                        // file name was something "1. Introduction to APIs"
-                        // so as of now we are using last path segment as video title (for UI only)
-                        val videoTitle = cursor.getString(cursor.getColumnIndex(MediaStore.Video.Media.TITLE))
-                        // To get song duration
-                        val videoDuration = cursor.getLong(cursor.getColumnIndex(MediaStore.Video.Media.DURATION))
-
-                        if (FileExtension.isVideo(videoPath)) {
-                            if (videoPath != null) {
-
-                                // Splitting song path to list by using .split("/") to get elements from song path separated
-                                // /storage/emulated/music/abc.mp3
-                                // -> music will be folder name
-                                // -> emulated will be subfolder name
-                                // -> abc will be song name
-
-                                val pathsList = videoPath.split("/")
-
-                                val videoName = pathsList[pathsList.size - 1]
-
-                                videoList.add(
-                                    VideoTrackInfo(
-                                        videoId,
-                                        videoName,
-                                        videoPath,
-                                        videoDuration))
-
-                            } else
-                                continue
-                        }
-
-                    } catch (e: Exception) { // catch specific exception
-                        e.printStackTrace()
-                        Logger.e(e.message.toString())
-                    }
-                } while (cursor.moveToNext())
-                cursor.close()
-            }
-            withContext(Dispatchers.Main) {
-                _filesList.value = videoList
-            }
-        }
-    }
-
-    /*
-     * The following method getDocumentFile will get the DocumentFile for the given File
-     * if TinyDB has the TreeURI for the root folder of the SD Card.
-     * If the TreeURI for the root folder fo the SD Card is not there, this will return NULL.
+    /**
+     * removes items from internal list
+     *
+     * @param position Int
      */
-    private fun getDocumentFile(file: File): DocumentFile? {
-        val baseFolder: String = getExtSdCardFolder(file) ?: return null
-        var relativePath: String? = null
-        relativePath = try {
-            val fullPath = file.canonicalPath
-            fullPath.substring(baseFolder.length + 1)
-        } catch (e: IOException) {
-            return null
-        }
-//        val treeUri = Uri.parse(TinyDBHelper.getInstance().getURIForSDCard()) ?: return null
-        // start with root of SD card and then parse through document tree.
-        var document = DocumentFile.fromFile(file)
-        val parts = relativePath.split("\\/").toTypedArray()
-        for (i in parts.indices) {
-            document = document.findFile(parts[i])!!
-            if (document == null) break
-        }
-        return document
-    }
 
-    private fun getExtSdCardFolder(file: File): String? {
-        val extSdPaths: Array<String> = getExtSdCardPaths()
-        try {
-            for (i in extSdPaths.indices) {
-                if (file.canonicalPath.startsWith(extSdPaths[i])) {
-                    return extSdPaths[i]
-                }
-            }
-        } catch (e: IOException) {
-            return null
-        }
-        return null
+    fun removeElementAt(position: Int) {
+        videoList.removeAt(position)
     }
 
     /**
-     * Get a list of external SD card paths. (Kitkat or higher.)
-     *
-     * @return A list of external SD card paths.
+     * Canceling all the jobs when view model
+     * is not active anymore
      */
-    @TargetApi(Build.VERSION_CODES.KITKAT)
-    private fun getExtSdCardPaths(): Array<String> {
-        val paths = arrayListOf<String>()
-        for (file in context.getExternalFilesDirs("external")) {
-            if (file != null && file != context.getExternalFilesDir("external")) {
-                val index = file.absolutePath.lastIndexOf("/Android/data")
-                if (index < 0) { //Log.w(Application.TAG, "Unexpected external file dir: " + file.getAbsolutePath());
-                } else {
-                    var path = file.absolutePath.substring(0, index)
-                    try {
-                        path = File(path).canonicalPath
-                    } catch (e: IOException) { // Keep non-canonical path.
-                    }
-                    paths.add(path)
-                }
-            }
-        }
-        return paths.toTypedArray()
-    }
 
     override fun onCleared() {
         super.onCleared()
         coroutineJob.cancel()
     }
 
+    /**
+     * When ever Video change observable gets
+     * changed then this method will be called
+     * If data is changed then we have to load
+     * all data again
+     *
+     * @param p0 Observable
+     * @param p1 Any
+     */
+
     override fun update(p0: Observable?, p1: Any?) {
-        loadAllData()
+        loadAllVideoData()
     }
 
 }
