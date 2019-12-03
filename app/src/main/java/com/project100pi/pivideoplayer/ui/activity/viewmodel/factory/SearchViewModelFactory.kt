@@ -1,20 +1,20 @@
 package com.project100pi.pivideoplayer.ui.activity.viewmodel.factory
 
-import android.app.Application
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import com.project100pi.pivideoplayer.listeners.ItemDeleteListener
 import com.project100pi.pivideoplayer.ui.activity.viewmodel.SearchViewModel
 
 class SearchViewModelFactory(private val context: Context,
-                                private val application: Application
-) : ViewModelProvider.Factory {
+                             private val itemDeleteListener: ItemDeleteListener) : ViewModelProvider.Factory {
+
     override fun <T : ViewModel?> create(modelClass: Class<T>): T {
+
         if (modelClass.isAssignableFrom(SearchViewModel::class.java)) {
-            return SearchViewModel(
-                context,
-                application
-            ) as T
+
+            return SearchViewModel(context, itemDeleteListener) as T
+
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }
