@@ -7,7 +7,7 @@ import android.os.Handler
 import android.os.Message
 import android.view.KeyEvent
 import android.view.KeyEvent.*
-import com.project100pi.library.misc.CurrentSettings
+import com.project100pi.library.misc.CurrentMediaState
 import com.project100pi.library.misc.Logger
 
 
@@ -32,6 +32,15 @@ object MediaReceiver: BroadcastReceiver() {
 
     }
 
+    /**
+     * Handles media button actions
+     * Single Tap -> Play/Pause
+     * Double Tap -> Skip to next
+     * Triple Tap -> Skip to previous
+     *
+     * @param appContext Context
+     * @param intent Intent
+     */
     fun handleMediaButtonIntent(appContext: Context, intent: Intent) {
         if (intent.extras == null)
             return
@@ -46,18 +55,18 @@ object MediaReceiver: BroadcastReceiver() {
                 // Get current time in nano seconds.
                 val pressTime = System.currentTimeMillis()
 
-                if (pressTime - CurrentSettings.MediaButtonController.lastPressTime <= DOUBLE_PRESS_INTERVAL) {
-                    if (CurrentSettings.MediaButtonController.mHasDoubleClicked) {
+                if (pressTime - CurrentMediaState.MediaButtonController.lastPressTime <= DOUBLE_PRESS_INTERVAL) {
+                    if (CurrentMediaState.MediaButtonController.mHasDoubleClicked) {
                         //If we had clicked twice already, if we come here, it means we have clicked another time. Go to previous song.
-                        CurrentSettings.MediaButtonController.mHasDoubleClicked = false
-                        CurrentSettings.MediaButtonController.mHasTripleClicked = true
+                        CurrentMediaState.MediaButtonController.mHasDoubleClicked = false
+                        CurrentMediaState.MediaButtonController.mHasTripleClicked = true
                         MediaCommandHandlerUtil.handlePrevious(appContext)
                         Logger.i(" KEYCODE : KEYCODE_HEADSET_HOOK ---> Triple Click")
                     } else {
-                        CurrentSettings.MediaButtonController.mHasDoubleClicked = true
+                        CurrentMediaState.MediaButtonController.mHasDoubleClicked = true
                         val mySecondHandler = object : Handler() {
                             override fun handleMessage(m: Message) {
-                                if (CurrentSettings.MediaButtonController.mHasDoubleClicked && !CurrentSettings.MediaButtonController.mHasTripleClicked) {
+                                if (CurrentMediaState.MediaButtonController.mHasDoubleClicked && !CurrentMediaState.MediaButtonController.mHasTripleClicked) {
                                     MediaCommandHandlerUtil.handleNext(appContext)
                                     Logger.i(" KEYCODE : KEYCODE_HEADSET_HOOK ---> Double Click")
                                 }
@@ -68,12 +77,12 @@ object MediaReceiver: BroadcastReceiver() {
                     }
                 } else {
                     // If not double click or triple click....
-                    CurrentSettings.MediaButtonController.mHasDoubleClicked = false
-                    CurrentSettings.MediaButtonController.mHasTripleClicked = false
+                    CurrentMediaState.MediaButtonController.mHasDoubleClicked = false
+                    CurrentMediaState.MediaButtonController.mHasTripleClicked = false
                     val myHandler = object : Handler() {
                         override fun handleMessage(m: Message) {
-                            if (!CurrentSettings.MediaButtonController.mHasDoubleClicked && !CurrentSettings.MediaButtonController.mHasTripleClicked) {
-                                if (CurrentSettings.Playback.playing) {
+                            if (!CurrentMediaState.MediaButtonController.mHasDoubleClicked && !CurrentMediaState.MediaButtonController.mHasTripleClicked) {
+                                if (CurrentMediaState.Playback.playing) {
                                     MediaCommandHandlerUtil.handlePause(appContext)
                                 } else {
                                     MediaCommandHandlerUtil.handlePlay(appContext)
@@ -86,14 +95,14 @@ object MediaReceiver: BroadcastReceiver() {
                     myHandler.sendMessageDelayed(m, DOUBLE_PRESS_INTERVAL)
                 }
                 // record the last time the menu button was pressed.
-                CurrentSettings.MediaButtonController.lastPressTime = pressTime
+                CurrentMediaState.MediaButtonController.lastPressTime = pressTime
             }
             KEYCODE_MEDIA_PLAY, KEYCODE_MEDIA_PAUSE, KEYCODE_MEDIA_PLAY_PAUSE -> {
                 Logger.i(" Keycode : KEYCODE_MEDIA_PLAY")
                 Logger.i(" Keycode : KEYCODE_MEDIA PAUSE")
                 Logger.i(" Keycode: KEYCODE_MEDIA_PLAY_PAUSE")
 
-                if (CurrentSettings.Playback.playing) {
+                if (CurrentMediaState.Playback.playing) {
                     MediaCommandHandlerUtil.handlePause(appContext)
                 } else {
                     MediaCommandHandlerUtil.handlePlay(appContext)
