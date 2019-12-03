@@ -20,14 +20,14 @@ import com.project100pi.library.dialogs.CurrentPlayingQueueDialog
 import com.project100pi.library.dialogs.SRTFilePicker
 import com.project100pi.library.dialogs.listeners.OnItemClickListener
 import com.project100pi.library.dialogs.listeners.SRTFilePickerClickListener
+import com.project100pi.library.listeners.PlaybackControllerVisibilityListener
 import com.project100pi.library.listeners.PlaybackGestureControlListener
 import com.project100pi.library.listeners.PlayerViewActionsListener
 import com.project100pi.library.misc.CountDown
-import com.project100pi.library.misc.CurrentSettings
+import com.project100pi.library.misc.CurrentMediaState
 import com.project100pi.library.misc.Logger
 import com.project100pi.library.model.VideoMetaData
 import com.project100pi.library.player.PiVideoPlayer
-
 
 class PiVideoPlayerView: FrameLayout, SRTFilePickerClickListener, OnItemClickListener {
 
@@ -46,7 +46,8 @@ class PiVideoPlayerView: FrameLayout, SRTFilePickerClickListener, OnItemClickLis
     private val nextButton: View
     private val prevButton: View
     private var gestureCapture: View
-    private val videoResizingView: TextView
+    private val messageView: TextView
+    private val popupMenu: PopupMenu
     private lateinit var videoPlayer: PiVideoPlayer
 
     private var isScreenLocked: Boolean = false
@@ -60,21 +61,23 @@ class PiVideoPlayerView: FrameLayout, SRTFilePickerClickListener, OnItemClickLis
 
     private var currentPlayingList = arrayListOf<VideoMetaData>()
     private lateinit var currentPlaying: VideoMetaData
-//    private val currentPlayingQueueDialog: CurrentPlayingQueueDialog
 
     // Gestures
-    private val mGestureDetector: GestureDetector
+    private val gestureDetector: GestureDetector
     private var systemWidth: Int = 0
     private var systemHeight: Int = 0
     private var systemSize: Point = Point()
     private var gestureListener = PiGesture()
     private var activeGesture = ""
-    private var mIsScrolling = false
+    private var isScrolling = false
 
     private var superContext: Context
 
     private var playerViewActionsListener: PlayerViewActionsListener? = null
     private var playerGestureListener: PlaybackGestureControlListener? = null
+    private var playbackControllerVisibilityListener: PlaybackControllerVisibilityListener? = null
+
+    private val layoutParams = ConstraintLayout.LayoutParams(ConstraintLayout.LayoutParams.MATCH_PARENT, ConstraintLayout.LayoutParams.MATCH_PARENT)
 
     constructor(context: Context): this(context, null)
 
@@ -86,12 +89,12 @@ class PiVideoPlayerView: FrameLayout, SRTFilePickerClickListener, OnItemClickLis
 
         val playerLayoutId = R.layout.pi_video_player_view
         LayoutInflater.from(context).inflate(playerLayoutId, this)
-        descendantFocusability = ViewGroup.FOCUS_AFTER_DESCENDANTS
 
         playerView = findViewById(R.id.exo_player_view)
 
         controlView = playerView.findViewById(R.id.exo_controller)
 
+        // Toolbar
         toolbar = findViewById(R.id.pi_toolbar)
         backButton = findViewById(R.id.back_button)
         toolbarTitle = findViewById(R.id.toolbar_title)
@@ -107,8 +110,8 @@ class PiVideoPlayerView: FrameLayout, SRTFilePickerClickListener, OnItemClickLis
         screenRotation = findViewById(R.id.pi_screen_rotation)
 
         // Video Resize Text
-        videoResizingView = findViewById(R.id.pi_video_resize)
-        videoResizingView.visibility = View.GONE
+        messageView = findViewById(R.id.pi_video_resize)
+        messageView.visibility = View.GONE
 
         // controller
         controlView = playerView.findViewById(R.id.exo_controller)
@@ -119,7 +122,7 @@ class PiVideoPlayerView: FrameLayout, SRTFilePickerClickListener, OnItemClickLis
 
         // Gestures
         gestureCapture = findViewById(R.id.gesture_capture)
-        mGestureDetector = GestureDetector(context, gestureListener)
+        gestureDetector = GestureDetector(context, gestureListener)
 
         getScreenSize()
 
@@ -127,7 +130,7 @@ class PiVideoPlayerView: FrameLayout, SRTFilePickerClickListener, OnItemClickLis
         hideAction = Runnable { this.hide() }
 
         // Pop Menu
-        val popupMenu = PopupMenu(context, toolbarMenu)
+        popupMenu = PopupMenu(context, toolbarMenu)
         popupMenu.inflate(R.menu.player_menu)
         popupMenu.setOnMenuItemClickListener { item ->
             when(item.itemId) {
@@ -135,47 +138,68 @@ class PiVideoPlayerView: FrameLayout, SRTFilePickerClickListener, OnItemClickLis
                     videoPlayer.shuffle(!item.isChecked)
                     item.isChecked = !item.isChecked
                     if (item.isChecked)
-                        videoResizingView.text = "Shuffle Enabled"
+                        messageView.text = resources.getString(R.string.shuffle_enabled)
                     else
-                        videoResizingView.text = "Shuffle Disabled"
-                    videoResizingView.visibility = View.VISIBLE
-                    CountDown(2000, 1000, videoResizingView)
+                        messageView.text = resources.getString(R.string.shuffle_disabled)
+                    messageView.visibility = View.VISIBLE
+                    CountDown(2000, 1000, messageView)
                 }
                 R.id.repeat_off -> {
                     videoPlayer.repeatOff()
-                    videoResizingView.visibility = View.VISIBLE
-                    videoResizingView.text = "Repeat Off"
-                    CountDown(2000, 1000, videoResizingView)
+                    messageView.visibility = View.VISIBLE
+                    messageView.text = resources.getString(R.string.repeat_off)
+                    CountDown(2000, 1000, messageView)
                     item.isChecked = true
                 }
                 R.id.repeat_one -> {
                     videoPlayer.repeatOne()
-                    videoResizingView.visibility = View.VISIBLE
-                    videoResizingView.text = "Repeat One"
-                    CountDown(2000, 1000, videoResizingView)
+                    messageView.visibility = View.VISIBLE
+                    messageView.text = resources.getString(R.string.repeat_one)
+                    CountDown(2000, 1000, messageView)
                     item.isChecked = true
                 }
                 R.id.repeat_all -> {
                     videoPlayer.repeatAll()
-                    videoResizingView.visibility = View.VISIBLE
-                    videoResizingView.text = "Repeat All"
-                    CountDown(2000, 1000, videoResizingView)
+                    messageView.visibility = View.VISIBLE
+                    messageView.text = resources.getString(R.string.repeat_all)
+                    CountDown(2000, 1000, messageView)
                     item.isChecked = true
                 }
             }
             true
         }
 
-        // On clicks
+        setListeners()
+    }
 
+    /**
+     * Sets listeners
+     */
+    private fun setListeners() {
+
+        setOnClickListener()
+
+        setOnLongClickListener()
+
+        setOnTouchListener()
+    }
+
+    /**
+     * Registers on click listeners
+     */
+    private fun setOnClickListener(){
+
+        // Back Button
         backButton.setOnClickListener {
             playerViewActionsListener?.onPlayerBackButtonPressed()
         }
 
+        // Toolbar subtitle icon
         toolbarSubtitle.setOnClickListener {
             SRTFilePicker(context, this@PiVideoPlayerView).show()
         }
 
+        // Toolbar queue icon
         toolbarQueue.setOnClickListener {
             val queueDialog = CurrentPlayingQueueDialog(context, currentPlayingList, currentPlaying, this)
             queueDialog.setCanceledOnTouchOutside(false)
@@ -183,29 +207,27 @@ class PiVideoPlayerView: FrameLayout, SRTFilePickerClickListener, OnItemClickLis
             playerViewActionsListener?.onPlayerCurrentQueuePressed()
         }
 
+        // Toolbar menu icon
         toolbarMenu.setOnClickListener {
             popupMenu.show()
         }
 
-        screenUnlock.setOnLongClickListener {
-            isScreenLocked = false
-            screenUnlock.visibility = View.GONE
-            showController()
-            false
-        }
-
+        // Controller lock button
         screenLockButton.setOnClickListener {
             lockScreen()
         }
 
+        // Screen rotation image
         screenRotation.setOnClickListener {
             playerViewActionsListener?.onScreenRotatePressed()
         }
 
+        // Controller fullscreen button
         fullScreenButton.setOnClickListener {
             videoResize()
         }
 
+        // Controller next button
         nextButton.setOnClickListener {
             if (videoPlayer.hasNext())
                 videoPlayer.seekTo(videoPlayer.getNextWindowIndex(), 0)
@@ -213,6 +235,7 @@ class PiVideoPlayerView: FrameLayout, SRTFilePickerClickListener, OnItemClickLis
                 videoPlayer.seekTo(0, 0)
         }
 
+        // Controller previous button
         prevButton.setOnClickListener {
             if ((videoPlayer.getCurrentPosition()/1000) > 10) {
                 videoPlayer.seekTo(videoPlayer.getCurrentWindowIndex(), 0)
@@ -227,20 +250,39 @@ class PiVideoPlayerView: FrameLayout, SRTFilePickerClickListener, OnItemClickLis
                 }
             }
         }
+    }
 
+    /**
+     * Registers on long listeners
+     */
+    private fun setOnLongClickListener() {
+        // Screen unlock image
+        screenUnlock.setOnLongClickListener {
+            isScreenLocked = false
+            screenUnlock.visibility = View.GONE
+            showController()
+            false
+        }
+    }
+
+    /**
+     * Registers on long listeners
+     */
+    private fun setOnTouchListener(){
+        // Gesture Detection
         gestureCapture.setOnTouchListener {
                 _: View, event: MotionEvent ->
             Logger.i("Gesture: gestureCapture.setOnTouchListener")
 
             if (!isScreenLocked) {
-                mGestureDetector.onTouchEvent(event)
+                gestureDetector.onTouchEvent(event)
                 Logger.i("Gesture: gestureCapture.onTouchEvent")
             }
 
             if(event.action == MotionEvent.ACTION_UP) {
-                if(mIsScrolling ) {
+                if(isScrolling ) {
                     Logger.d("OnTouchListener --> onTouch ACTION_UP")
-                    mIsScrolling  = false
+                    isScrolling  = false
 //                    handleScrollFinished()
                     playerGestureListener?.onActionUp()
                 }
@@ -248,96 +290,158 @@ class PiVideoPlayerView: FrameLayout, SRTFilePickerClickListener, OnItemClickLis
 
             true
         }
-
     }
 
+    /**
+     * Sets exo player to exo player's player view
+     *
+     * @param videoPlayer PiVideoPlayer
+     */
     fun setPlayer(videoPlayer: PiVideoPlayer) {
         this.videoPlayer = videoPlayer
         playerView.player = videoPlayer.getExoPlayer()
         observeForObserver()
     }
 
+    /**
+     * Registers PlayerViewActionsListener
+     *
+     * @param playerViewActionsListener PlayerViewActionsListener
+     */
     fun setPlayerActionBarListener(playerViewActionsListener: PlayerViewActionsListener) {
         this.playerViewActionsListener = playerViewActionsListener
     }
 
+    /**
+     * Registers PlaybackGestureControlListener
+     *
+     * @param playerGestureListener PlaybackGestureControlListener
+     */
     fun setPlayerGestureControlListener(playerGestureListener: PlaybackGestureControlListener) {
         this.playerGestureListener = playerGestureListener
     }
 
+    /**
+     * Registers PlaybackControllerVisibilityListener
+     *
+     * @param playbackControllerVisibilityListener PlaybackControllerVisibilityListener
+     */
+    fun setPlaybackControllerVisibilityListener(playbackControllerVisibilityListener: PlaybackControllerVisibilityListener) {
+        this.playbackControllerVisibilityListener = playbackControllerVisibilityListener
+    }
+
+    /**
+     * Should be called when the player is visible to the user.
+     *
+     * This method should typically be called in {@link Activity#onStart()}, or {@link
+     * Activity#onResume()} for API versions <= 23.
+     */
     fun onResume() {
         playerView.onResume()
     }
 
+    /**
+     * Should be called when the player is no longer visible to the user.
+     *
+     * <p>This method should typically be called in {@link Activity#onStop()}, or {@link
+     * Activity#onPause()} for API versions &lt;= 23.
+     */
     fun onPause() {
         playerView.onPause()
     }
 
+    /**
+     * Returns whether the controller is currently visible.
+     * */
     fun isControllerVisible() = playerView.isControllerVisible
 
+    /**
+     * Hides the playback controls. Does nothing if playback controls are disabled.
+     * */
     fun hideController() {
         playerView.hideController()
         hideSystemUI()
 
-        val layoutParams = ConstraintLayout.LayoutParams(ConstraintLayout.LayoutParams.MATCH_PARENT, ConstraintLayout.LayoutParams.MATCH_PARENT)
-        layoutParams.bottomMargin = 0
-        gestureCapture.layoutParams = layoutParams
+        setMargin(false)
     }
 
+    /**
+     * Shows the playback controls. Does nothing if playback controls are disabled.
+     *
+     * The playback controls are automatically hidden during playback after 5 secs.
+     * They are shown indefinitely when playback has not started yet,
+     * is paused, has ended or failed.
+     */
     fun showController() {
         playerView.showController()
         hideAfterTimeout()
         showSystemUI()
 
-        val layoutParams = ConstraintLayout.LayoutParams(ConstraintLayout.LayoutParams.MATCH_PARENT, ConstraintLayout.LayoutParams.MATCH_PARENT)
-        layoutParams.bottomMargin = 200
+        setMargin(true)
+    }
+
+    /**
+     * Sets bottom margin to the view which is responsible for
+     * detecting gestures.
+     * When ever controllers comes up it decreases the area of gesture
+     * and gesture view always comes over the controller view, results in preventing
+     * from passing the touch events. So to avoid the overlap we set the margin
+     * of similar to the height of controller view. so basically it shriks the area for
+     * gestures
+     *
+     * @param show Boolean whether to show or not
+     */
+    private fun setMargin(show: Boolean){
+        if (show)
+            layoutParams.bottomMargin = 200
+        else
+            layoutParams.bottomMargin = 0
+
         gestureCapture.layoutParams = layoutParams
     }
 
+    /**
+     * Sends a msg after 5 secs to hide controller and system UI
+     */
     private fun hideAfterTimeout() {
         removeCallbacks(hideAction)
         if (showTimeoutMillis > 0) {
             hideAtMs = SystemClock.uptimeMillis() + showTimeoutMillis
             postDelayed(hideAction, showTimeoutMillis.toLong())
         } else {
+            // provides smallest positive number
             hideAtMs = C.TIME_UNSET
         }
     }
 
+    /**
+     * Hides system UI and controller
+     */
     private fun hide(){
         if (!hideSystemUI) {
             hideController()
             removeCallbacks(hideAction)
+            // provides smallest positive number
             hideAtMs = C.TIME_UNSET
         }
     }
 
-    // Shows the system bars by removing all the flags
-    // except for the ones that make the content appear under the system bars.
-
+    /**
+     * Shows system UI such as status bar
+     */
     private fun showSystemUI() {
-        (context as AppCompatActivity).window.decorView.systemUiVisibility = (View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN)
+        playbackControllerVisibilityListener?.showSystemUI()
         toolbar.visibility = View.VISIBLE
         screenRotation.visibility = View.VISIBLE
         hideSystemUI = false
     }
 
+    /**
+     * Hides system UI such as status bar
+     */
     private fun hideSystemUI() {
         if (!hideSystemUI) {
-            // Enables regular immersive mode.
-            // For "lean back" mode, remove SYSTEM_UI_FLAG_IMMERSIVE.
-            // Or for "sticky immersive," replace it with SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-            (context as AppCompatActivity).window.decorView.systemUiVisibility = (View.SYSTEM_UI_FLAG_IMMERSIVE
-                    // Set the content to appear under the system bars so that the
-                    // content doesn't resize when the system bars hide and show.
-                    or View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                    or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                    or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                    // Hide the nav bar and status bar
-                    or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                    or View.SYSTEM_UI_FLAG_FULLSCREEN)
+            playbackControllerVisibilityListener?.hideSystemUI()
             toolbar.visibility = View.GONE
             screenRotation.visibility = View.GONE
             hideSystemUI = true
@@ -348,13 +452,31 @@ class PiVideoPlayerView: FrameLayout, SRTFilePickerClickListener, OnItemClickLis
         videoPlayer.addSubtitle(absolutePath)
     }
 
+    /**
+     * This method contains all other methods
+     * who are observing to a particular thing
+     */
     private fun observeForObserver() {
+        observeNowPlaying()
+        observePlaylist()
+    }
+
+    /**
+     * Observes currently playing item
+     */
+    private fun observeNowPlaying() {
         videoPlayer.nowPlayingExposed.observe(superContext as AppCompatActivity, Observer {
             currentPlaying = it
             toolbarTitle.text = it.title
             if (currentPlayingList.size == 0)
                 toolbarQueue.visibility = View.GONE
         })
+    }
+
+    /**
+     * Observes video playlist
+     */
+    private fun observePlaylist() {
         videoPlayer.videoListExposed.observe(superContext as AppCompatActivity, Observer {
             currentPlayingList = it
             if (currentPlayingList.size > 1)
@@ -374,48 +496,60 @@ class PiVideoPlayerView: FrameLayout, SRTFilePickerClickListener, OnItemClickLis
         videoPlayer.concatenatingMediaSource.addMediaSource(toPosition, mediaSource)
     }
 
+    /**
+     * Locks the screen
+     * Hides system UI and controller
+     * and disables touch event on screen
+     *
+     * User has to long press on unlock button to
+     * enable touch event and gestures
+     */
     private fun lockScreen() {
         isScreenLocked = true
         hideController()
         screenUnlock.visibility = View.VISIBLE
     }
 
+    /**
+     * Resize the video frame playing on screen
+     * 0 -> Fit to screen
+     * 1 -> Stretch
+     * 2 -> Crop
+     */
     private fun videoResize() {
-        CurrentSettings.Video.mode++
+        CurrentMediaState.Video.mode++
 
-        if (CurrentSettings.Video.mode > 2)
-            CurrentSettings.Video.mode = 0
+        if (CurrentMediaState.Video.mode > 2)
+            CurrentMediaState.Video.mode = 0
 
-        videoResizingView.visibility = View.VISIBLE
+        messageView.visibility = View.VISIBLE
         fullScreenButton.setImageResource(android.R.color.transparent)
-        when (CurrentSettings.Video.mode) {
-//            0 -> {
-//                setResizeMode(AspectRatioFrameLayout.RESIZE_MODE_FILL)
-//                player?.setVideoScalingMode(C.VIDEO_SCALING_MODE_DEFAULT)
-//                videoResizingView.text = "DEFAULT"
-//            }
+        when (CurrentMediaState.Video.mode) {
             0 -> {
                 playerView.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
                 videoPlayer.setVideoScalingMode(C.VIDEO_SCALING_MODE_SCALE_TO_FIT)
-                videoResizingView.text = "FIT TO SCREEN"
+                messageView.text = resources.getString(R.string.fit_to_screen_upper_case)
                 fullScreenButton.setImageResource(R.drawable.ic_fullscreen_exit_black_24dp)
             }
             1 -> {
                 playerView.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FILL
                 videoPlayer.setVideoScalingMode(C.VIDEO_SCALING_MODE_SCALE_TO_FIT)
-                videoResizingView.text = "STRETCH"
+                messageView.text = resources.getString(R.string.stretch_upper_case)
                 fullScreenButton.setImageResource(R.drawable.ic_crop_black_24dp)
             }
             2 -> {
                 playerView.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
                 videoPlayer.setVideoScalingMode(C.VIDEO_SCALING_MODE_SCALE_TO_FIT)
-                videoResizingView.text = "CROP"
+                messageView.text = resources.getString(R.string.crop_upper_case)
                 fullScreenButton.setImageResource(R.drawable.ic_fullscreen_black_24dp)
             }
         }
-        CountDown(2000, 1000, videoResizingView)
+        CountDown(2000, 1000, messageView)
     }
 
+    /**
+     * Gets system screen size
+     */
     private fun getScreenSize() {
         val display = (context as Activity).windowManager.defaultDisplay
         display.getSize(systemSize)
@@ -423,6 +557,11 @@ class PiVideoPlayerView: FrameLayout, SRTFilePickerClickListener, OnItemClickLis
         systemHeight = systemSize.y
     }
 
+    /***
+     * Handles controller visibility
+     * Hides controller if visible
+     * @return Boolean
+     */
     private fun toggleControllerVisibility(): Boolean {
         if (!playerView.useController) {
             return false
@@ -435,6 +574,9 @@ class PiVideoPlayerView: FrameLayout, SRTFilePickerClickListener, OnItemClickLis
         return true
     }
 
+    /**
+     * Gesture Implementation
+     */
     private inner class PiGesture: GestureDetector.SimpleOnGestureListener(), SingleTapListener {
 
         override fun onSingleTapUp(e: MotionEvent): Boolean {
@@ -444,8 +586,12 @@ class PiVideoPlayerView: FrameLayout, SRTFilePickerClickListener, OnItemClickLis
 
         override fun onScroll(e1: MotionEvent?, e2: MotionEvent?, distanceX: Float, distanceY: Float): Boolean {
             Logger.d("Gesture: onScroll")
-            mIsScrolling = true
+            isScrolling = true
 
+            // Calculating screen left, right and bottom
+            // Left half of the screen for Brightness
+            // Right half of the screen for Volume
+            // Bottom half of the screen for seek
             activeGesture = when {
                 (e1!!.x < (systemWidth / 2) && e2!!.x < (systemWidth / 2)
                         && activeGesture.isEmpty()) -> "Brightness"
@@ -457,11 +603,14 @@ class PiVideoPlayerView: FrameLayout, SRTFilePickerClickListener, OnItemClickLis
             }
 
             // for seek
+            // if start and end point is below bottom half of the screen
             if (e1.y > (systemHeight / 2) && e2!!.y > (systemHeight / 2) && activeGesture == "Seek") {
+                // if scroll was from left to right
                 if (e1.x < e2.x){
                     //Logger.d("Gesture: Left to Right swipe: "+ e1.x + " - " + e2.x)
                     playerGestureListener?.onFastForward()
                 }
+                // if scroll was from right to left
                 if (e1.x > e2.x) {
                     //Logger.d("Gesture: Right to Left swipe: "+ e1.x + " - " + e2.x)
                     playerGestureListener?.onRewind()
@@ -472,10 +621,13 @@ class PiVideoPlayerView: FrameLayout, SRTFilePickerClickListener, OnItemClickLis
             }
 
             // for brightness
+            // if start and end point on the left side of the screen
             if (e1.x < (systemWidth / 2) && e2!!.x < (systemWidth / 2) && activeGesture == "Brightness") {
+                // if scroll is from top to bottom
                 if (e1.y < e2.y){
                     playerGestureListener?.onBrightnessDown()
                 }
+                // if scroll is from bottom to top
                 if(e1.y > e2.y){
                     playerGestureListener?.onBrightnessUp()
                 }
@@ -485,10 +637,13 @@ class PiVideoPlayerView: FrameLayout, SRTFilePickerClickListener, OnItemClickLis
             }
 
             // for volume
+            // if start and end point on the right side of the screen
             if (e1.x > (systemWidth / 2) && e2!!.x > (systemWidth / 2) && activeGesture == "Volume") {
+                // if scroll is from top to bottom
                 if (e1.y < e2.y){
                     playerGestureListener?.onVolumeDown()
                 }
+                // if scroll is from bottom to top
                 if(e1.y > e2.y){
                     playerGestureListener?.onVolumeUp()
                 }
