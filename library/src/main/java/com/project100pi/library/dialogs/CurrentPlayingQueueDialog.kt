@@ -13,7 +13,7 @@ import com.project100pi.library.adapter.CurrentPlayingQueueAdapter
 import com.project100pi.library.dialogs.listeners.OnItemClickListener
 import com.project100pi.library.model.VideoMetaData
 import androidx.recyclerview.widget.ItemTouchHelper
-import com.project100pi.library.listeners.ItemTouchHelperCallback
+import com.project100pi.library.listeners.ItemTouchHelperCallbackImlp
 
 class CurrentPlayingQueueDialog(context: Context,
                                 private val currentPlayingList: ArrayList<VideoMetaData>,
@@ -42,7 +42,7 @@ class CurrentPlayingQueueDialog(context: Context,
         rvCurrentPlaying.adapter = adapter
         //adapter.submitList(currentPlayingList)
 
-        val callback = ItemTouchHelperCallback(adapter)
+        val callback = ItemTouchHelperCallbackImlp(adapter)
         val touchHelper = ItemTouchHelper(callback)
         touchHelper.attachToRecyclerView(rvCurrentPlaying)
 
