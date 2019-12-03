@@ -35,6 +35,7 @@
         android:background="#CC000000"
         android:hapticFeedbackEnabled="true"
         android:src="@drawable/ic_lock_black_24dp"
+        android:visibility="gone"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="@+id/top_horizontal_guideline" />
 
@@ -57,6 +58,7 @@
         android:layout_gravity="center"
         android:gravity="center"
         tool:text="FIT"
+        android:visibility="gone"
         android:textColor="@android:color/white"
         android:textSize="30sp" />
 

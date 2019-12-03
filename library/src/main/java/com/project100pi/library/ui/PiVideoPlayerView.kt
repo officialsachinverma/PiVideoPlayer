@@ -104,14 +104,12 @@ class PiVideoPlayerView: FrameLayout, SRTFilePickerClickListener, OnItemClickLis
 
         // Screen Lock
         screenUnlock = findViewById(R.id.pi_screen_unlock)
-        screenUnlock.visibility = View.GONE
 
         // Screen Rotation
         screenRotation = findViewById(R.id.pi_screen_rotation)
 
         // Video Resize Text
         messageView = findViewById(R.id.pi_video_resize)
-        messageView.visibility = View.GONE
 
         // controller
         controlView = playerView.findViewById(R.id.exo_controller)
