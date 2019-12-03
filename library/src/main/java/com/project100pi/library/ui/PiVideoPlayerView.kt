@@ -463,7 +463,7 @@ class PiVideoPlayerView: FrameLayout, SRTFilePickerClickListener, OnItemClickLis
      * Observes currently playing item
      */
     private fun observeNowPlaying() {
-        videoPlayer.nowPlayingExposed.observe(superContext as AppCompatActivity, Observer {
+        videoPlayer.nowPlaying.observe(superContext as AppCompatActivity, Observer {
             currentPlaying = it
             toolbarTitle.text = it.title
             if (currentPlayingList.size == 0)
@@ -475,7 +475,7 @@ class PiVideoPlayerView: FrameLayout, SRTFilePickerClickListener, OnItemClickLis
      * Observes video playlist
      */
     private fun observePlaylist() {
-        videoPlayer.videoListExposed.observe(superContext as AppCompatActivity, Observer {
+        videoPlayer.videoList.observe(superContext as AppCompatActivity, Observer {
             currentPlayingList = it
             if (currentPlayingList.size > 1)
                 toolbarQueue.visibility = View.GONE
