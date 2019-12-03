@@ -453,16 +453,21 @@ class PiVideoPlayer(private val context: Context): MediaSessionListener {
 
                     val index = getCurrentWindowIndex()
                     val position = getCurrentPosition()
+
                     val mediaSource = concatenatingMediaSource.getMediaSource(getCurrentWindowIndex())
-                    val textFormat = Format.createTextSampleFormat(
-                        null, MimeTypes.TEXT_VTT,
-                        NO_VALUE, "hi"
-                    )
+
+                    val textFormat = Format.createTextSampleFormat(null, MimeTypes.TEXT_VTT, NO_VALUE, "hi")
+
                     val subtitleSource = SingleSampleMediaSource.Factory(dataSourceFactory).createMediaSource(Uri.parse(absolutePath), textFormat, C.TIME_UNSET)
+
                     concatenatingMediaSource.addMediaSource(index+1, MergingMediaSource(mediaSource, subtitleSource))
+
 //                seekTo(index+1, position)
+
                     concatenatingMediaSource.removeMediaSource(index)
+
                     player?.prepare(concatenatingMediaSource)
+
                     seekTo(index, position)
                 }
                 _nowPlaying.value != null -> {
