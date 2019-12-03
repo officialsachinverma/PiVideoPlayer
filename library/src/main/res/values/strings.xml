@@ -2,5 +2,17 @@
     <string name="app_name">Library</string>
     <string name="pi_controls_screen_lock_description">Screen Lock</string>
     <string name="empty">Empty</string>
-    <string name="root_storage_path">...</string>
+    <string name="root_storage_path">…</string>
+
+    <string name="shuffle_enabled">Shuffle Enabled</string>
+    <string name="shuffle_disabled">Shuffle Disabled</string>
+
+    <string name="repeat_off">Repeat Off</string>
+    <string name="repeat_one">Repeat One</string>
+    <string name="repeat_all">Repeat All</string>
+
+    <string name="fit_to_screen_upper_case">FIT TO SCREEN</string>
+    <string name="stretch_upper_case">STRETCH</string>
+    <string name="crop_upper_case">CROP</string>
+
 </resources>
