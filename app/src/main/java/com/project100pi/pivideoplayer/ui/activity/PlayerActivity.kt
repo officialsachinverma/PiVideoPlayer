@@ -24,6 +24,8 @@ import com.project100pi.library.listeners.PlaybackControllerVisibilityListener
 import com.project100pi.library.listeners.PlaybackGestureControlListener
 import com.project100pi.library.listeners.PlayerViewActionsListener
 import com.project100pi.library.misc.CurrentMediaState
+import com.project100pi.library.misc.CurrentMediaState.Playback.DEFAULT_FAST_FORWARD_TIME
+import com.project100pi.library.misc.CurrentMediaState.Playback.DEFAULT_REWIND_TIME
 import com.project100pi.library.misc.Logger
 import com.project100pi.library.model.VideoMetaData
 import com.project100pi.library.ui.PiVideoPlayerView
@@ -515,7 +517,7 @@ class PlayerActivity : AppCompatActivity(), PlayerViewActionsListener, PlaybackG
      */
     override fun onFastForward() {
         videoPlayer?.let {
-            it.seekTo(it.getCurrentWindowIndex(), it.getCurrentPosition() + it.DEFAULT_FAST_FORWARD_TIME)
+            it.seekTo(it.getCurrentWindowIndex(), it.getCurrentPosition() + DEFAULT_FAST_FORWARD_TIME)
         }
         hideBrightnessProgress()
         hideVolumeProgress()
@@ -527,7 +529,7 @@ class PlayerActivity : AppCompatActivity(), PlayerViewActionsListener, PlaybackG
      */
     override fun onRewind() {
         videoPlayer?.let {
-            it.seekTo(it.getCurrentWindowIndex(), it.getCurrentPosition() - it.DEFAULT_REWIND_TIME)
+            it.seekTo(it.getCurrentWindowIndex(), it.getCurrentPosition() - DEFAULT_REWIND_TIME)
         }
         hideBrightnessProgress()
         hideVolumeProgress()
