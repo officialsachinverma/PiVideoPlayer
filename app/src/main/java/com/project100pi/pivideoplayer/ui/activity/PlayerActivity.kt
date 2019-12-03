@@ -19,6 +19,8 @@ import android.net.Uri
 import android.view.View
 import android.view.WindowManager
 import android.widget.ProgressBar
+import android.widget.Toast
+import com.project100pi.library.listeners.PlaybackControllerVisibilityListener
 import com.project100pi.library.listeners.PlaybackGestureControlListener
 import com.project100pi.library.listeners.PlayerViewActionsListener
 import com.project100pi.library.misc.CurrentMediaState
@@ -27,7 +29,7 @@ import com.project100pi.library.model.VideoMetaData
 import com.project100pi.library.ui.PiVideoPlayerView
 
 
-class PlayerActivity : AppCompatActivity(), PlayerViewActionsListener, PlaybackGestureControlListener {
+class PlayerActivity : AppCompatActivity(), PlayerViewActionsListener, PlaybackGestureControlListener, PlaybackControllerVisibilityListener {
 
     private var videoList = arrayListOf<VideoMetaData>()
 
@@ -160,14 +162,38 @@ class PlayerActivity : AppCompatActivity(), PlayerViewActionsListener, PlaybackG
     public override fun onResume() {
         super.onResume()
         if (null == videoPlayer) {
+
             initializePlayer()
+
+            preparePlayerWithVideos()
+            // seeking to the user selected video
+            // user can select any video from a folder to play
+            // player is prepared by all the videos present in the folder
+            // by default player will start playing from first video
+            // but if user has selected 3rd video from folder to player
+            // so we have to seek to the 3rd video
+            seekTo(currentWindow, playbackPosition)
+
+            // hiding controllers as we dont want to show
+            // them as soon as video is started playing
+            // user can invoke the controllers any time by single tap on
+            // screen any where
+            hideController()
         } else {
-            videoPlayer?.play()
+            play()
         }
 
         playerView.onResume()
+        setPlayerViewListeners()
+    }
+
+    /**
+     * Registers listeners
+     */
+    private fun setPlayerViewListeners(){
         playerView.setPlayerActionBarListener(this)
         playerView.setPlayerGestureControlListener(this)
+        playerView.setPlaybackControllerVisibilityListener(this)
     }
 
     override fun onPause() {
@@ -195,25 +221,6 @@ class PlayerActivity : AppCompatActivity(), PlayerViewActionsListener, PlaybackG
             videoPlayer = PiPlayerFactory.newPiPlayer(this)
             setPlayerToPlayerView()
         }
-
-        // check if there are any videos or not in videoList
-        // if yes then prepare player with those list of videos
-        if (videoList.size > 0) {
-            preparePlayerWithVideos()
-            // seeking to the user selected video
-            // user can select any video from a folder to play
-            // player is prepared by all the videos present in the folder
-            // by default player will start playing from first video
-            // but if user has selected 3rd video from folder to player
-            // so we have to seek to the 3rd video
-            seekTo(currentWindow, playbackPosition)
-
-            // hiding controllers as we dont want to show
-            // them as soon as video is started playing
-            // user can invoke the controllers any time by single tap on
-            // screen any where
-            hideController()
-        }
     }
 
     /**
@@ -227,7 +234,17 @@ class PlayerActivity : AppCompatActivity(), PlayerViewActionsListener, PlaybackG
      * prepare player with list of videos
      */
     private fun preparePlayerWithVideos() {
-        videoPlayer?.prepare(videoList, resetPosition = false, resetState = false)
+        // check if there are any videos or not in videoList
+        // if yes then prepare player with those list of videos
+        if (videoList.size > 0)
+            videoPlayer?.prepare(videoList, resetPosition = false, resetState = false)
+    }
+
+    /**
+     * Continue playing the available or selected track
+     */
+    private fun play() {
+        videoPlayer?.play()
     }
 
     /**
@@ -248,6 +265,7 @@ class PlayerActivity : AppCompatActivity(), PlayerViewActionsListener, PlaybackG
     private fun hideController() {
         if (playerView.isControllerVisible())
             playerView.hideController()
+        hideSystemUI()
     }
 
     /**
@@ -276,6 +294,10 @@ class PlayerActivity : AppCompatActivity(), PlayerViewActionsListener, PlaybackG
      */
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
+
+        // Resetting playback position and window index
+        playbackPosition = 0
+        currentWindow = 0
 
         videoPlayer?.let {
             playbackPosition = it.getCurrentPosition()
@@ -318,39 +340,41 @@ class PlayerActivity : AppCompatActivity(), PlayerViewActionsListener, PlaybackG
      */
     private fun rotateScreenBasedOnVideoOrientation() {
         try {
-            //Create a new instance of MediaMetadataRetriever
-            val retriever = MediaMetadataRetriever()
-            //Declare the Bitmap
-            val bmp: Bitmap
+            if (videoList.size > 0) {
 
-            var mVideoUri: Uri? = null
-            if (this.intent.hasExtra(Constants.Playback.PLAYBACK_QUEUE)) {
-                mVideoUri = Uri.parse(this.videoList[this.currentWindow].path)
-            }
-            //Set the video Uri as data source for MediaMetadataRetriever
-            retriever.setDataSource(this, mVideoUri!!)
-            //Get one "frame"/bitmap - * NOTE - no time was set, so the first available frame will be used
-            bmp = retriever.frameAtTime
+                //Create a new instance of MediaMetadataRetriever
+                val retriever = MediaMetadataRetriever()
+                //Declare the Bitmap
+                val bmp: Bitmap
 
-            //Get the bitmap width and height
-            val videoWidth = bmp.width
-            val videoHeight = bmp.height
+                val mVideoUri: Uri? = Uri.parse(this.videoList[this.currentWindow].path)
 
-            //If the width is bigger then the height then it means that the video was taken in landscape mode and we should set the orientation to landscape
-            if (videoWidth > videoHeight) {
-                //Set orientation to landscape
-                this.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
-            }
-            //If the width is smaller then the height then it means that the video was taken in portrait mode and we should set the orientation to portrait
-            if (videoWidth < videoHeight) {
-                //Set orientation to portrait
-                this.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+                //Set the video Uri as data source for MediaMetadataRetriever
+                retriever.setDataSource(this, mVideoUri!!)
+                //Get one "frame"/bitmap - * NOTE - no time was set, so the first available frame will be used
+                bmp = retriever.frameAtTime
+
+                //Get the bitmap width and height
+                val videoWidth = bmp.width
+                val videoHeight = bmp.height
+
+                //If the width is bigger then the height then it means that the video was taken in landscape mode and we should set the orientation to landscape
+                if (videoWidth > videoHeight) {
+                    //Set orientation to landscape
+                    this.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+                }
+                //If the width is smaller then the height then it means that the video was taken in portrait mode and we should set the orientation to portrait
+                if (videoWidth < videoHeight) {
+                    //Set orientation to portrait
+                    this.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+                }
             }
 
         } catch (ex: RuntimeException) {
             //error occurred
             ex.printStackTrace()
             Logger.e("MediaMetadataRetriever - Failed to rotate the video")
+            Toast.makeText(this, R.string.error_failed_to_play, Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -375,6 +399,7 @@ class PlayerActivity : AppCompatActivity(), PlayerViewActionsListener, PlaybackG
             //error occurred
             ex.printStackTrace()
             Logger.e("MediaMetadataRetriever - Failed to rotate the video")
+            Toast.makeText(this, R.string.failed_to_rotate_screen, Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -549,5 +574,30 @@ class PlayerActivity : AppCompatActivity(), PlayerViewActionsListener, PlaybackG
     private fun setVolumeProgress(progress: Int){
         progressVolume.visibility = View.VISIBLE
         progressVolume.progress = progress
+    }
+
+    override fun showSystemUI() {
+        // Shows the system bars by removing all the flags
+        // except for the ones that make the content appear under the system bars.
+        window.decorView.systemUiVisibility = (View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN)
+    }
+
+    override fun hideSystemUI() {
+        // Enables regular immersive mode.
+        // For "lean back" mode, remove SYSTEM_UI_FLAG_IMMERSIVE.
+        // Or for "sticky immersive," replace it with SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            window.decorView.systemUiVisibility = (View.SYSTEM_UI_FLAG_IMMERSIVE
+                    // Set the content to appear under the system bars so that the
+                    // content doesn't resize when the system bars hide and show.
+                    or View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                    or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                    or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                    // Hide the nav bar and status bar
+                    or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                    or View.SYSTEM_UI_FLAG_FULLSCREEN)
+        }
     }
 }
