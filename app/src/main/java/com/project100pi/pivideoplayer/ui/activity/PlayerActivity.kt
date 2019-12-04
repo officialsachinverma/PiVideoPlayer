@@ -2,24 +2,22 @@ package com.project100pi.pivideoplayer.ui.activity
 
 import android.content.Context
 import android.content.Intent
-import android.os.Build
-import android.os.Bundle
-import androidx.appcompat.app.AppCompatActivity
-import butterknife.BindView
-import butterknife.ButterKnife
-import com.project100pi.library.factory.PiPlayerFactory
-import com.project100pi.library.player.PiVideoPlayer
-import com.project100pi.pivideoplayer.R
-import com.project100pi.pivideoplayer.utils.Constants
 import android.content.pm.ActivityInfo
 import android.graphics.Bitmap
 import android.media.AudioManager
 import android.media.MediaMetadataRetriever
 import android.net.Uri
+import android.os.Build
+import android.os.Bundle
+import android.provider.MediaStore
 import android.view.View
 import android.view.WindowManager
 import android.widget.ProgressBar
 import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
+import butterknife.BindView
+import butterknife.ButterKnife
+import com.project100pi.library.factory.PiPlayerFactory
 import com.project100pi.library.listeners.PlaybackControllerVisibilityListener
 import com.project100pi.library.listeners.PlaybackGestureControlListener
 import com.project100pi.library.listeners.PlayerViewActionsListener
@@ -28,12 +26,19 @@ import com.project100pi.library.misc.CurrentMediaState.Playback.DEFAULT_FAST_FOR
 import com.project100pi.library.misc.CurrentMediaState.Playback.DEFAULT_REWIND_TIME
 import com.project100pi.library.misc.Logger
 import com.project100pi.library.model.VideoMetaData
+import com.project100pi.library.player.PiVideoPlayer
 import com.project100pi.library.ui.PiVideoPlayerView
+import com.project100pi.pivideoplayer.R
+import com.project100pi.pivideoplayer.database.CursorFactory
+import com.project100pi.pivideoplayer.utils.Constants
+import java.util.*
+import kotlin.collections.ArrayList
 
 
 class PlayerActivity : AppCompatActivity(), PlayerViewActionsListener, PlaybackGestureControlListener, PlaybackControllerVisibilityListener {
 
     private var videoList = arrayListOf<VideoMetaData>()
+    private var externalVideoUri: Uri? = null
 
     @BindView(R.id.pv_player)
     lateinit var playerView: PiVideoPlayerView
@@ -101,6 +106,10 @@ class PlayerActivity : AppCompatActivity(), PlayerViewActionsListener, PlaybackG
         setAudioParamForGestureControl()
 
         setBrightnessParamForGestureControl()
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            window.statusBarColor = resources.getColor(R.color.statusBarColor)
+        }
     }
 
     /**
@@ -110,6 +119,8 @@ class PlayerActivity : AppCompatActivity(), PlayerViewActionsListener, PlaybackG
         this.intent?.let {
             if (it.hasExtra(Constants.Playback.PLAYBACK_QUEUE))
                 this.videoList = it.getParcelableArrayListExtra(Constants.Playback.PLAYBACK_QUEUE) ?: arrayListOf()
+            else if (it.data != null)
+                externalVideoUri = it.data
             if (it.hasExtra(Constants.Playback.WINDOW))
                 this.currentWindow = it.getIntExtra(Constants.Playback.WINDOW, 0)
         }
@@ -207,6 +218,9 @@ class PlayerActivity : AppCompatActivity(), PlayerViewActionsListener, PlaybackG
     public override fun onDestroy() {
         super.onDestroy()
         releasePlayer()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            window.statusBarColor = resources.getColor(R.color.colorPrimaryDark)
+        }
     }
 
     /**
@@ -240,6 +254,52 @@ class PlayerActivity : AppCompatActivity(), PlayerViewActionsListener, PlaybackG
         // if yes then prepare player with those list of videos
         if (videoList.size > 0)
             videoPlayer?.prepare(videoList, resetPosition = false, resetState = false)
+        else if (externalVideoUri != null) {
+            val videoMetaData = generateExternalVideoMetaData()
+            if (videoMetaData == null) {
+                Toast.makeText(this, R.string.error_failed_to_play, Toast.LENGTH_SHORT).show()
+            } else {
+                videoPlayer?.prepare(videoMetaData, resetPosition = true, resetState = true)
+            }
+        }
+    }
+
+    /**
+     * This method generates an instance of [VideoMetaData]
+     * when ever user selects a video outside our app
+     *
+     * @return VideoMetaData?
+     */
+    private fun generateExternalVideoMetaData(): VideoMetaData? {
+        val cursor = CursorFactory.getVideoMetaDataByUri(this, externalVideoUri!!)
+        var videoMetaData: VideoMetaData? = null
+        if (cursor != null && cursor.moveToFirst()) {
+            // To get path of song
+            val videoPath = cursor.getString(cursor.getColumnIndex(MediaStore.Video.Media.DATA))
+            //To get song id
+            val videoId = cursor.getInt(cursor.getColumnIndex(MediaStore.Video.Media._ID))
+            // To get song title
+            // Not using title as of now because it's been observed
+            // that for some videos title is not corresponding to the file name
+            // Eg.: there was a video provided by udemy
+            // title of that video was "Udemy Tutorial video"
+            // file name was something "1. Introduction to APIs"
+            // so as of now we are using last path segment as video title (for UI only)
+//            val videoTitle = cursor.getString(cursor.getColumnIndex(MediaStore.Video.Media.TITLE))
+
+            // Splitting song path to list by using .split("/") to get elements from song path separated
+            // /storage/emulated/video/abc.wav
+            // -> music will be folder name
+            // -> emulated will be subfolder name
+            // -> abc will be song name
+
+            val pathsList = videoPath.split("/")
+
+            val videoName = pathsList[pathsList.size - 1]
+
+            videoMetaData = VideoMetaData(videoId, videoName, videoPath)
+        }
+        return videoMetaData
     }
 
     /**
@@ -391,10 +451,20 @@ class PlayerActivity : AppCompatActivity(), PlayerViewActionsListener, PlaybackG
                 //Set orientation to landscape
                 requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
                 CurrentMediaState.Video.orientation = Constants.Orientation.LANDSCAPE
+
             } else if (CurrentMediaState.Video.orientation === Constants.Orientation.LANDSCAPE) {
                 //Set orientation to portrait
                 requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
                 CurrentMediaState.Video.orientation = Constants.Orientation.PORTRAIT
+
+                // navigation bar height
+//                var navigationBarHeight = 0
+//                val resourceId =
+//                    resources.getIdentifier("navigation_bar_height", "dimen", "android")
+//                if (resourceId > 0) {
+//                    navigationBarHeight = resources.getDimensionPixelSize(resourceId)
+//                }
+//                layoutParams?.verticalMargin = navigationBarHeight.toFloat()
             }
 
         } catch (ex: RuntimeException) {

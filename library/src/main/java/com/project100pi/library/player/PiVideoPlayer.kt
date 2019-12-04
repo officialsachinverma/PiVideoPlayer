@@ -135,6 +135,35 @@ class PiVideoPlayer(private val context: Context): MediaSessionListener {
 
     /**
      * This method prepared the player with media and subtitle
+     * It takes [VideoMetaData] and prepares the player with that media source
+     * this method is available as public api to the application and hence provided with option
+     * for reset position and reset state, so that user can pass these values as required
+     *
+     * @param videoMetaData Video meta data
+     * @param resetPosition Whether the playback position should be reset to the default position in
+     *     the first window. If false, playback will start from the position defined
+     *     by getCurrentWindowIndex() and getCurrentPosition().
+     * @param resetState Whether the timeline, tracks and track selections should be reset.
+     *     Should be true unless the player is being prepared to play the same media as it was playing
+     *     previously.
+     */
+    fun prepare(videoMetaData: VideoMetaData, resetPosition: Boolean, resetState: Boolean) {
+
+        _nowPlaying.value = videoMetaData
+
+        val mediaSource = buildMediaSource(Uri.parse(videoMetaData.path))
+
+        player?.prepare(mediaSource, resetPosition, resetState)
+
+        context.registerReceiver(becomingNoisyReceiver, intentFilter)
+
+        noisyIntentRegistered = true
+
+        CurrentMediaState.Playback.playing = true
+    }
+
+    /**
+     * This method prepared the player with media and subtitle
      * It takes [VideoMetaData] and path of subtitle files and create a merging media source
      * and prepares the player with that media source
      * this method is available as public api to the application and hence provided with option
