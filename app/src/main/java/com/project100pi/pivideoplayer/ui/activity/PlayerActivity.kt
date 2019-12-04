@@ -592,7 +592,10 @@ class PlayerActivity : AppCompatActivity(),
      */
     override fun onFastForward() {
         videoPlayer?.let {
-            it.seekTo(it.getCurrentWindowIndex(), it.getCurrentPosition() + DEFAULT_FAST_FORWARD_TIME)
+            if (it.getCurrentPosition() + DEFAULT_FAST_FORWARD_TIME < it.getDuration())
+                it.seekTo(it.getCurrentWindowIndex(), it.getCurrentPosition() + DEFAULT_FAST_FORWARD_TIME)
+            else
+                it.seekTo(it.getCurrentWindowIndex(), it.getDuration())
         }
         hideBrightnessProgress()
         hideVolumeProgress()
@@ -604,7 +607,10 @@ class PlayerActivity : AppCompatActivity(),
      */
     override fun onRewind() {
         videoPlayer?.let {
-            it.seekTo(it.getCurrentWindowIndex(), it.getCurrentPosition() - DEFAULT_REWIND_TIME)
+            if ((it.getCurrentPosition() - DEFAULT_REWIND_TIME) > 0)
+                it.seekTo(it.getCurrentWindowIndex(), it.getCurrentPosition() - DEFAULT_REWIND_TIME)
+            else
+                it.seekTo(it.getCurrentWindowIndex(), 0)
         }
         hideBrightnessProgress()
         hideVolumeProgress()
