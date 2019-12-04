@@ -22,7 +22,7 @@ class FoldersViewHolder(private val context: Context, itemView: View, private va
     private var clItemRow: ConstraintLayout = itemView.findViewById(R.id.cl_item_row)
     private var tvTitle: TextView = itemView.findViewById(R.id.tv_directory_name)
     private var tvItemCount: TextView = itemView.findViewById(R.id.tv_directory_item_count)
-    private var tvDuration: TextView = itemView.findViewById(R.id.tv_duration)
+    //private var tvDuration: TextView = itemView.findViewById(R.id.tv_duration)
     private var ivThumbnail: ImageView = itemView.findViewById(R.id.iv_directory)
     private var ivOverFlow: ImageView = itemView.findViewById(R.id.iv_overflow_menu)
 
@@ -44,13 +44,14 @@ class FoldersViewHolder(private val context: Context, itemView: View, private va
         Glide
             .with(context)
             .asBitmap()
+            .centerCrop()
             .load(R.drawable.ic_folder)
             .thumbnail(0.1f)
             .into(ivThumbnail)
 
         ivOverFlow.visibility = View.GONE
         tvItemCount.visibility = View.VISIBLE
-        tvDuration.visibility = View.GONE
+        //tvDuration.visibility = View.GONE
         tvItemCount.text = "${adapter.getInternalItem(position).videoInfoList.size} Videos"
 //        tvItemCount.text = "${folder.fileCount} Videos"
 

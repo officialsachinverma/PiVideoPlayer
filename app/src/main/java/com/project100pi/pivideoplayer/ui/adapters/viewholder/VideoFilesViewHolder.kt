@@ -27,6 +27,7 @@ class VideoFilesViewHolder(private val context: Context, itemView: View, private
     private var tvDuration: TextView = itemView.findViewById(R.id.tv_video_duration)
     private var ivThumbnail: ImageView = itemView.findViewById(R.id.iv_video_thumnail)
     private var ivOverFlow: ImageView = itemView.findViewById(R.id.iv_video_overflow_menu)
+    private var tvDateAdded: TextView = itemView.findViewById(R.id.tv_date_added)
 
     /**
      * Sets data on views
@@ -46,6 +47,7 @@ class VideoFilesViewHolder(private val context: Context, itemView: View, private
         Glide
             .with(context)
             .asBitmap()
+            .centerCrop()
             .load(Uri.fromFile(File(videoTrack.videoPath)))
             .thumbnail(0.1f)
             .into(ivThumbnail)
@@ -54,6 +56,7 @@ class VideoFilesViewHolder(private val context: Context, itemView: View, private
         tvDuration.visibility = View.VISIBLE
         tvDuration.text = UtilFunctions.convertSecondsToHMmSs(videoTrack.durationInMs)
         tvTitle.text = videoTrack.videoName
+        tvDateAdded.text = videoTrack.dateAdded
 
         // Setting Listeners
 

@@ -49,5 +49,6 @@
     <string name="sample_duration">1:50:08</string>
     <string name="sample_video_count">7 Videos</string>
     <string name="sample_folder_name">Folder Name</string>
+    <string name="sample_date_modified">24 Dec</string>
 
 </resources>

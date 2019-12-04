@@ -48,15 +48,31 @@
         android:text="@string/sample_folder_name"
         android:gravity="start|center_vertical"
         android:textColor="@android:color/black"
-        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintBottom_toBottomOf="@+id/tv_date_added"
         app:layout_constraintEnd_toStartOf="@id/iv_video_overflow_menu"
         app:layout_constraintStart_toEndOf="@+id/iv_video_thumnail"
         app:layout_constraintTop_toTopOf="parent" />
 
+    <TextView
+        android:id="@+id/tv_date_added"
+        style="@style/FolderNameTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_margin="10dp"
+        android:background="@drawable/rounded_corners_blue"
+        android:maxLines="1"
+        android:textSize="12sp"
+        android:text="@string/sample_date_modified"
+        android:gravity="start|center_vertical"
+        android:textColor="@android:color/black"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toEndOf="@+id/iv_video_thumnail"
+        app:layout_constraintTop_toBottomOf="@+id/tv_video_name" />
+
     <ImageView
         android:id="@+id/iv_video_overflow_menu"
         android:layout_width="wrap_content"
-        android:layout_height="match_parent"
+        android:layout_height="wrap_content"
         android:layout_marginEnd="20dp"
         android:src="@drawable/ic_overflow"
         app:layout_constraintEnd_toEndOf="parent"

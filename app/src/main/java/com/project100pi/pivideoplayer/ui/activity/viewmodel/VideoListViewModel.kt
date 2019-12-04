@@ -22,6 +22,7 @@ import com.project100pi.pivideoplayer.utils.ContextMenuUtil
 import kotlinx.coroutines.*
 import java.io.File
 import java.io.IOException
+import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.collections.ArrayList
 import kotlin.system.measureTimeMillis
@@ -273,6 +274,17 @@ class VideoListViewModel (private val context: Context,
                             // To get song duration
                             val videoDuration = cursor.getLong(cursor.getColumnIndex(MediaStore.Video.Media.DURATION))
 
+                            val dateAdded = cursor.getString(cursor.getColumnIndex(MediaStore.Video.Media.DATE_ADDED))
+
+                            val calendar = Calendar.getInstance()
+                            // Multiply by 1000 as the date added is in seconds
+                            val date = Date(dateAdded.toLong()*1000)
+                            calendar.time = date
+
+                            val months = arrayOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sept", "Oct", "Nov", "Dec")
+
+                            val dateString = "${calendar.get(Calendar.DAY_OF_MONTH)} ${months[calendar.get(Calendar.MONTH)]}"
+
                             if (videoPath != null) {
 
                                 // Splitting song path to list by using .split("/") to get elements from song path separated
@@ -301,7 +313,8 @@ class VideoListViewModel (private val context: Context,
                                             videoId,
                                             videoName,
                                             videoPath,
-                                            videoDuration))
+                                            videoDuration,
+                                            dateString))
                                 }
 
                             } else

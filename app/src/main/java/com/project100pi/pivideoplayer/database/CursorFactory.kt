@@ -84,8 +84,10 @@ object CursorFactory {
      */
 
     fun getVideoMetaDataByPath(context: Context, path: String): Cursor? {
-        val sortOrder = MediaStore.Video.Media.DATA + " ASC"
-        val projection = arrayOf(MediaStore.Video.Media.DATA, MediaStore.Video.Media._ID, MediaStore.Video.Media.TITLE, MediaStore.Video.Media.DURATION)
+        val sortOrder = MediaStore.Video.Media.DATE_ADDED + " ASC"
+        val projection = arrayOf(MediaStore.Video.Media.DATA, MediaStore.Video.Media._ID,
+            MediaStore.Video.Media.TITLE, MediaStore.Video.Media.DURATION,
+            MediaStore.Video.Media.DATE_ADDED)
         val selection = "${MediaStore.Video.Media.DATA} LIKE \"%${path}%\""
         return context.contentResolver.query(
             MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
