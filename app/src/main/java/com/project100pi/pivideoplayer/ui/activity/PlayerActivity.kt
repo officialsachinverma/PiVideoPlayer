@@ -17,7 +17,9 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import butterknife.BindView
 import butterknife.ButterKnife
+import com.google.android.exoplayer2.ExoPlaybackException
 import com.project100pi.library.factory.PiPlayerFactory
+import com.project100pi.library.listeners.PiPlayerEventListener
 import com.project100pi.library.listeners.PlaybackControllerVisibilityListener
 import com.project100pi.library.listeners.PlaybackGestureControlListener
 import com.project100pi.library.listeners.PlayerViewActionsListener
@@ -193,8 +195,6 @@ class PlayerActivity : AppCompatActivity(), PlayerViewActionsListener, PlaybackG
             // user can invoke the controllers any time by single tap on
             // screen any where
             hideController()
-        } else {
-            play()
         }
 
         playerView.onResume()
@@ -212,7 +212,7 @@ class PlayerActivity : AppCompatActivity(), PlayerViewActionsListener, PlaybackG
 
     override fun onPause() {
         super.onPause()
-        videoPlayer?.pause()
+        CurrentMediaState.Playback.playing = videoPlayer!!.playWhenReady
         playerView.onPause()
     }
 
