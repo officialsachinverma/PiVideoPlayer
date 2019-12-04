@@ -1,12 +1,17 @@
 package com.project100pi.library.ui
 
+import android.R.attr
 import android.app.Activity
 import android.content.Context
 import android.graphics.Point
 import android.os.SystemClock
 import android.util.AttributeSet
-import android.view.*
+import android.view.GestureDetector
+import android.view.LayoutInflater
+import android.view.MotionEvent
+import android.view.View
 import android.widget.*
+import android.widget.LinearLayout
 import androidx.appcompat.app.AppCompatActivity
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.lifecycle.Observer
@@ -26,8 +31,10 @@ import com.project100pi.library.listeners.PlayerViewActionsListener
 import com.project100pi.library.misc.CountDown
 import com.project100pi.library.misc.CurrentMediaState
 import com.project100pi.library.misc.Logger
+import com.project100pi.library.misc.Util
 import com.project100pi.library.model.VideoMetaData
 import com.project100pi.library.player.PiVideoPlayer
+
 
 class PiVideoPlayerView: FrameLayout, SRTFilePickerClickListener, OnItemClickListener {
 
@@ -46,6 +53,7 @@ class PiVideoPlayerView: FrameLayout, SRTFilePickerClickListener, OnItemClickLis
     private val nextButton: View
     private val prevButton: View
     private var gestureCapture: View
+    private var additionalNavigationHeight: ImageView
     private val messageView: TextView
     private val popupMenu: PopupMenu
     private lateinit var videoPlayer: PiVideoPlayer
@@ -107,6 +115,9 @@ class PiVideoPlayerView: FrameLayout, SRTFilePickerClickListener, OnItemClickLis
 
         // Screen Rotation
         screenRotation = findViewById(R.id.pi_screen_rotation)
+
+        // Navigation bar height
+        additionalNavigationHeight = findViewById(R.id.navigation_bar_height)
 
         // Video Resize Text
         messageView = findViewById(R.id.pi_video_resize)
@@ -217,6 +228,19 @@ class PiVideoPlayerView: FrameLayout, SRTFilePickerClickListener, OnItemClickLis
 
         // Screen rotation image
         screenRotation.setOnClickListener {
+            if (Util.orientation === "landscape") {
+                getScreenSize()
+                Util.orientation = "portrait"
+                val lp = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.MATCH_PARENT)
+                lp.setMargins(0, 0, 0, 150)
+                additionalNavigationHeight.layoutParams = lp
+            } else {
+                getScreenSize()
+                Util.orientation = "landscape"
+                val lp = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+                lp.setMargins(0, 0, 0, 0)
+                additionalNavigationHeight.layoutParams = lp
+            }
             playerViewActionsListener?.onScreenRotatePressed()
         }
 

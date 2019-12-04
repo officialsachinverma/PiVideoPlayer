@@ -5,4 +5,6 @@ object Util {
     /** User Agent.  */
     val userAgent = "com.project100pi.pivideoplayer"
 
+    var orientation = "landscape"
+
 }

@@ -93,6 +93,7 @@ class PlayerActivity : AppCompatActivity(), PlayerViewActionsListener, PlaybackG
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        window.setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN)
         setContentView(R.layout.activity_player)
         ButterKnife.bind(this)
 
@@ -457,14 +458,6 @@ class PlayerActivity : AppCompatActivity(), PlayerViewActionsListener, PlaybackG
                 requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
                 CurrentMediaState.Video.orientation = Constants.Orientation.PORTRAIT
 
-                // navigation bar height
-//                var navigationBarHeight = 0
-//                val resourceId =
-//                    resources.getIdentifier("navigation_bar_height", "dimen", "android")
-//                if (resourceId > 0) {
-//                    navigationBarHeight = resources.getDimensionPixelSize(resourceId)
-//                }
-//                layoutParams?.verticalMargin = navigationBarHeight.toFloat()
             }
 
         } catch (ex: RuntimeException) {
