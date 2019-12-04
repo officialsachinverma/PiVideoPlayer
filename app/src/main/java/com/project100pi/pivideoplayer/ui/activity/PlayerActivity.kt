@@ -37,7 +37,11 @@ import java.util.*
 import kotlin.collections.ArrayList
 
 
-class PlayerActivity : AppCompatActivity(), PlayerViewActionsListener, PlaybackGestureControlListener, PlaybackControllerVisibilityListener {
+class PlayerActivity : AppCompatActivity(),
+    PlayerViewActionsListener,
+    PlaybackGestureControlListener,
+    PlaybackControllerVisibilityListener,
+    PiPlayerEventListener {
 
     private var videoList = arrayListOf<VideoMetaData>()
     private var externalVideoUri: Uri? = null
@@ -236,8 +240,16 @@ class PlayerActivity : AppCompatActivity(), PlayerViewActionsListener, PlaybackG
 
         if (null == videoPlayer) {
             videoPlayer = PiPlayerFactory.newPiPlayer(this)
+            addPlayerEventListener()
             setPlayerToPlayerView()
         }
+    }
+
+    /**
+     * Registers player event listeners
+     */
+    private fun addPlayerEventListener() {
+        videoPlayer?.addPlayerEventListener(this)
     }
 
     /**
@@ -664,5 +676,17 @@ class PlayerActivity : AppCompatActivity(), PlayerViewActionsListener, PlaybackG
                     or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
                     or View.SYSTEM_UI_FLAG_FULLSCREEN)
         }
+    }
+
+    override fun onPlayerTrackCompleted() {
+
+    }
+
+    override fun onTracksChanged() {
+
+    }
+
+    override fun onPlayerError(error: ExoPlaybackException?) {
+        Toast.makeText(this, R.string.error_failed_to_play, Toast.LENGTH_SHORT).show()
     }
 }
