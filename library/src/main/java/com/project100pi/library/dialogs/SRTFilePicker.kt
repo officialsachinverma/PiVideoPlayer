@@ -68,11 +68,9 @@ class SRTFilePicker(private val mContext: Context,
 
             toolbar.setOnClickListener {
 
-                if (srtUpText.text.toString() != defaultInternalDirectory) {
-                    srtUpText.text =
-                        mDirectory!!.path.substring(0, mDirectory!!.path.lastIndexOf("/"))
-                    mDirectory =
-                        File(mDirectory!!.path.substring(0, mDirectory!!.path.lastIndexOf("/")))
+                if (srtUpText.text.toString() != defaultInternalDirectory && srtUpText.text.toString().isNotEmpty()) {
+                    srtUpText.text = mDirectory!!.path.substring(0, mDirectory!!.path.lastIndexOf("/"))
+                    mDirectory = File(mDirectory!!.path.substring(0, mDirectory!!.path.lastIndexOf("/")))
                     refreshFilesList()
                 }
             }
