@@ -204,6 +204,13 @@ class VideoListViewModel (private val context: Context,
         return Constants.Delete.SUCCESS
     }
 
+    /**
+     *
+     * Deletes a file which is in SDCard
+     *
+     * @param file File
+     * @return Boolean
+     */
     private fun deleteForSdCard(file: File): Boolean {
         val sdCardUri = TinyDB.getString(Constants.ExternalSDCard.SD_CARD_URI)
 
@@ -307,7 +314,9 @@ class VideoListViewModel (private val context: Context,
 //                                 which is a sub folder of emulated
 //                                 so cursor will give both files but we want the one which is in folder video
 //                                 but not in the subfolder of folder video
-                                if (pathsList[pathsList.size - 3] == folderPath[folderPath.size - 3]) {
+                                if (pathsList[pathsList.size - 2] == folderPath[folderPath.size - 2]
+                                    && pathsList[pathsList.size - 2] == folderName
+                                    && folderPath[folderPath.size - 2] == folderName) {
                                     videoList.add(
                                         VideoTrackInfo(
                                             videoId,
