@@ -84,7 +84,12 @@ class SplashActivity : AppCompatActivity() {
      */
 
     private fun launchDirectoryListActivity() {
-        Handler().postDelayed({DirectoryListActivity.start(this)}, 1500)
+        Handler().postDelayed(
+            {
+                DirectoryListActivity.start(this)
+                finish()
+            },
+            1500)
     }
 
     /**
