@@ -4,6 +4,7 @@ import android.content.*
 import android.media.AudioManager
 import android.net.Uri
 import android.support.v4.media.session.MediaControllerCompat
+import android.widget.Toast
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.google.android.exoplayer2.*
@@ -30,6 +31,7 @@ import com.project100pi.library.listeners.PiPlayerEventListener
 import com.project100pi.library.misc.CurrentMediaState.Playback.DEFAULT_FAST_FORWARD_TIME
 import com.project100pi.library.misc.CurrentMediaState.Playback.DEFAULT_REWIND_TIME
 import com.project100pi.library.model.VideoMetaData
+import java.lang.IllegalArgumentException
 import java.lang.NullPointerException
 
 
@@ -241,8 +243,15 @@ class PiVideoPlayer(private val context: Context): MediaSessionListener {
 
         player = null
 
-        if (noisyIntentRegistered)
-            context.unregisterReceiver(becomingNoisyReceiver)
+        try{
+            if (noisyIntentRegistered) {
+                context.unregisterReceiver(becomingNoisyReceiver)
+                noisyIntentRegistered = false
+            }
+        } catch (e: IllegalArgumentException) {
+            e.printStackTrace()
+            Logger.e(e.message.toString())
+        }
 
         CurrentMediaState.Playback.playing = false
     }
@@ -568,8 +577,10 @@ class PiVideoPlayer(private val context: Context): MediaSessionListener {
 
         override fun onPlayerError(error: ExoPlaybackException?) {
             Logger.i("onPlayerError")
-            if (noisyIntentRegistered)
+            if (noisyIntentRegistered) {
                 context.unregisterReceiver(becomingNoisyReceiver)
+                noisyIntentRegistered = false
+            }
             playerListener?.onPlayerError(error)
         }
 
