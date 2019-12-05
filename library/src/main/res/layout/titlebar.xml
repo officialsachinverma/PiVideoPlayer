@@ -30,6 +30,7 @@
         tools:text="Video Title"
         android:textSize="18sp"
         android:padding="3dp"
+        android:maxLines="1"
         android:gravity="start|center_vertical"
         android:textColor="@android:color/white"/>
 
