@@ -161,7 +161,7 @@ class PiVideoPlayer(private val context: Context): MediaSessionListener {
 
         noisyIntentRegistered = true
 
-        CurrentMediaState.Playback.playing = true
+        CurrentMediaState.Playback.isPlaying = true
     }
 
     /**
@@ -198,7 +198,7 @@ class PiVideoPlayer(private val context: Context): MediaSessionListener {
 
         noisyIntentRegistered = true
 
-        CurrentMediaState.Playback.playing = true
+        CurrentMediaState.Playback.isPlaying = true
     }
 
     /**
@@ -230,7 +230,7 @@ class PiVideoPlayer(private val context: Context): MediaSessionListener {
 
         noisyIntentRegistered = true
 
-        CurrentMediaState.Playback.playing = true
+        CurrentMediaState.Playback.isPlaying = true
     }
 
     /**
@@ -253,7 +253,7 @@ class PiVideoPlayer(private val context: Context): MediaSessionListener {
             Logger.e(e.message.toString())
         }
 
-        CurrentMediaState.Playback.playing = false
+        CurrentMediaState.Playback.isPlaying = false
     }
 
     /**
@@ -263,7 +263,8 @@ class PiVideoPlayer(private val context: Context): MediaSessionListener {
 
     fun play(){
         player?.playWhenReady = true
-        CurrentMediaState.Playback.playing = true
+        playWhenReady = true
+        CurrentMediaState.Playback.isPlaying = true
     }
 
     /**
@@ -273,7 +274,8 @@ class PiVideoPlayer(private val context: Context): MediaSessionListener {
 
     fun pause(){
         player?.playWhenReady = false
-        CurrentMediaState.Playback.playing = false
+        playWhenReady = false
+        CurrentMediaState.Playback.isPlaying = false
     }
 
     /**
@@ -549,16 +551,19 @@ class PiVideoPlayer(private val context: Context): MediaSessionListener {
             when(playbackState) {
                 Player.STATE_IDLE -> {
                     Logger.i("STATE_IDLE")
+                    this@PiVideoPlayer.playWhenReady = playWhenReady
                 }
                 Player.STATE_BUFFERING -> {
                     Logger.i("STATE_BUFFERING")
                 }
                 Player.STATE_READY -> {
                     Logger.i("STATE_READY")
+                    this@PiVideoPlayer.playWhenReady = playWhenReady
                 }
                 Player.STATE_ENDED -> {
                     Logger.i("STATE_ENDED")
                     playerListener?.onPlayerTrackCompleted()
+                    this@PiVideoPlayer.playWhenReady = playWhenReady
                 }
             }
         }
@@ -619,6 +624,7 @@ class PiVideoPlayer(private val context: Context): MediaSessionListener {
             if (intent.action == AudioManager.ACTION_AUDIO_BECOMING_NOISY) {
                 // Pause the playback
                 player!!.playWhenReady = false
+                this@PiVideoPlayer.playWhenReady = false
             }
         }
     }

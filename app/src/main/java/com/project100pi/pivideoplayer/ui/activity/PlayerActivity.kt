@@ -199,6 +199,11 @@ class PlayerActivity : AppCompatActivity(),
             // user can invoke the controllers any time by single tap on
             // screen any where
             hideController()
+
+            setScreenSize()
+        } else {
+            if (CurrentMediaState.Playback.wasPlaying)
+                play()
         }
 
         playerView.onResume()
@@ -216,7 +221,8 @@ class PlayerActivity : AppCompatActivity(),
 
     override fun onPause() {
         super.onPause()
-        CurrentMediaState.Playback.playing = videoPlayer!!.playWhenReady
+        CurrentMediaState.Playback.wasPlaying = videoPlayer!!.playWhenReady
+        pause()
         playerView.onPause()
     }
 
@@ -320,6 +326,13 @@ class PlayerActivity : AppCompatActivity(),
      */
     private fun play() {
         videoPlayer?.play()
+    }
+
+    /**
+     * Stop the playback
+     */
+    private fun pause() {
+        videoPlayer?.pause()
     }
 
     /**
