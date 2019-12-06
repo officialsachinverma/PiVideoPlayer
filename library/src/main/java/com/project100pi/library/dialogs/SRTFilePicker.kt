@@ -17,9 +17,11 @@ import java.io.FilenameFilter
 import java.lang.NullPointerException
 import java.util.*
 
-class SRTFilePicker(private val mContext: Context,
-                    private val SRTFilePickerClickListener: SRTFilePickerClickListener)
-    : Dialog(mContext), AdapterView.OnItemClickListener {
+class SRTFilePicker(
+    private val mContext: Context,
+    private val SRTFilePickerClickListener: SRTFilePickerClickListener,
+    private val currentDirectoryLocation: String
+) : Dialog(mContext), AdapterView.OnItemClickListener {
 
     private val defaultInternalDirectory = Environment.getExternalStorageDirectory().absolutePath
     private var mDirectory: File? = null
@@ -49,14 +51,18 @@ class SRTFilePicker(private val mContext: Context,
         setContentView(R.layout.dialog_file_picker)
 
         toolbar = findViewById(R.id.subtitle_toolbar)
-        listView = findViewById(R.id.file_picker_listView)
+        listView = findViewById<ListView>(R.id.file_picker_listView)
         empty = findViewById(R.id.file_picker_empty)
         srtUpText = findViewById(R.id.srt_up_text)
         srtUpIconImage = findViewById(R.id.srt_up_image)
         closeIconImage = findViewById(R.id.srt_close_image)
 
         try {
-            mDirectory = File(defaultInternalDirectory)
+            if (currentDirectoryLocation.isNotEmpty()) {
+                mDirectory = File(currentDirectoryLocation)
+                srtUpText.text = currentDirectoryLocation
+            } else
+                mDirectory = File(defaultInternalDirectory)
             mAdapter = FilePickerListAdapter(mContext, mFiles)
             listView.adapter = mAdapter
             listView.onItemClickListener = this
@@ -68,9 +74,16 @@ class SRTFilePicker(private val mContext: Context,
 
             toolbar.setOnClickListener {
 
-                if (srtUpText.text.toString().isNotEmpty()) {
-                    srtUpText.text = mDirectory!!.path.substring(0, mDirectory!!.path.lastIndexOf("/"))
-                    mDirectory = File(mDirectory!!.path.substring(0, mDirectory!!.path.lastIndexOf("/")))
+                if (srtUpText.text.toString().isNotEmpty() && !srtUpText.text.toString().equals("/storage")) {
+
+                    val path = mDirectory!!.path.substring(0, mDirectory!!.path.lastIndexOf("/"))
+                    mDirectory = if (path.equals("/storage/emulated")) {
+                        File("/storage")
+
+                    } else {
+                        File(path)
+                    }
+                    srtUpText.text = mDirectory!!.path
                     refreshFilesList()
                 }
             }
@@ -90,16 +103,17 @@ class SRTFilePicker(private val mContext: Context,
         val filter = ExtensionFilenameFilter(acceptedFileExtensions)
 
         val files = mDirectory!!.listFiles(filter)
-        if (files != null && files.isNotEmpty()) {
+        if (files != null) {
             for (f in files) {
                 if (f.isHidden && !mShowHiddenFiles) {
                     // Don't add the file
                     continue
                 }
 
-                if (!f.toString().equals("/storage/emulated", ignoreCase = true)) {
-                    mFiles.add(f)
-                }
+//                if (!f.toString().equals("/storage/emulated", ignoreCase = true)) {
+                mFiles.add(f)
+//                }
+
             }
 
             Collections.sort(mFiles, FileComparator())
@@ -119,11 +133,21 @@ class SRTFilePicker(private val mContext: Context,
                             SRTFilePickerClickListener.filePickerSuccessClickListener(it.absolutePath)
                             dismiss()
                         }
-                        else -> Toast.makeText(mContext, "Please select subtitle file", Toast.LENGTH_SHORT).show()
+                        else -> Toast.makeText(
+                            mContext,
+                            "Please select subtitle file",
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
                 } else {
-                    srtUpText.text = it.path
-                    mDirectory = it
+
+//                    mDirectory = it
+                    val path = it.path
+                    if (path.equals("/storage/emulated"))
+                        mDirectory = File("$path/0")
+                    else
+                        mDirectory = File(path)
+                    srtUpText.text = mDirectory!!.path
                     refreshFilesList()
                 }
             }
