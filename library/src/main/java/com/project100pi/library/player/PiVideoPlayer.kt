@@ -263,7 +263,8 @@ class PiVideoPlayer(private val context: Context): MediaSessionListener {
 
     fun play(){
         player?.playWhenReady = true
-        playWhenReady = true
+        // Update the playback state for PiVideoPlayer as well
+        this@PiVideoPlayer.playWhenReady = true
         CurrentMediaState.Playback.isPlaying = true
     }
 
@@ -274,7 +275,8 @@ class PiVideoPlayer(private val context: Context): MediaSessionListener {
 
     fun pause(){
         player?.playWhenReady = false
-        playWhenReady = false
+        // Update the playback state for PiVideoPlayer as well
+        this@PiVideoPlayer.playWhenReady = false
         CurrentMediaState.Playback.isPlaying = false
     }
 
@@ -548,6 +550,7 @@ class PiVideoPlayer(private val context: Context): MediaSessionListener {
 
         override fun onPlayerStateChanged(playWhenReady: Boolean, playbackState: Int) {
             Logger.i("onPlayerStateChanged")
+            // Updating the state of playback when ever it's changing for exo player
             when(playbackState) {
                 Player.STATE_IDLE -> {
                     Logger.i("STATE_IDLE")
@@ -624,6 +627,7 @@ class PiVideoPlayer(private val context: Context): MediaSessionListener {
             if (intent.action == AudioManager.ACTION_AUDIO_BECOMING_NOISY) {
                 // Pause the playback
                 player!!.playWhenReady = false
+                // Update the playback state for PiVideoPlayer as well
                 this@PiVideoPlayer.playWhenReady = false
             }
         }

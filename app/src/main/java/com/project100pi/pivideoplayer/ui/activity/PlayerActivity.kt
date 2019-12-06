@@ -201,7 +201,15 @@ class PlayerActivity : AppCompatActivity(),
             hideController()
 
             setScreenSize()
+
+            setPlayerViewListeners()
         } else {
+            // Get the last playback state and act accordingly
+            // If video was paused before minimizing it then we wont play it when
+            // user again opens the app from background
+            // If video was playing and user minimized the app then we will
+            // pause the video till the time app is in background
+            // then when user will again open the app, we will keep it in pause state only
             if (CurrentMediaState.Playback.wasPlaying)
                 play()
         }
@@ -221,7 +229,10 @@ class PlayerActivity : AppCompatActivity(),
 
     override fun onPause() {
         super.onPause()
+        // Before stopping the playback we need to store the last playback state
         CurrentMediaState.Playback.wasPlaying = videoPlayer!!.playWhenReady
+        // Stop the playback while app is in background otherwise video
+        // will keep on playing in background
         pause()
         playerView.onPause()
     }
