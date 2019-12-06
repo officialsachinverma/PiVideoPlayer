@@ -460,7 +460,7 @@ class PlayerActivity : AppCompatActivity(),
                 //If the width is bigger then the height then it means that the video was taken in landscape mode and we should set the orientation to landscape
                 if (videoWidth > videoHeight) {
                     //Set orientation to landscape
-                    this.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+                    this.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
                 }
                 //If the width is smaller then the height then it means that the video was taken in portrait mode and we should set the orientation to portrait
                 if (videoWidth < videoHeight) {
@@ -486,7 +486,7 @@ class PlayerActivity : AppCompatActivity(),
 
             if (CurrentMediaState.Video.orientation === Constants.Orientation.PORTRAIT) {
                 //Set orientation to landscape
-                requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+                requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
                 CurrentMediaState.Video.orientation = Constants.Orientation.LANDSCAPE
 
             } else if (CurrentMediaState.Video.orientation === Constants.Orientation.LANDSCAPE) {
