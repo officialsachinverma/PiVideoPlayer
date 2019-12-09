@@ -31,6 +31,7 @@ class SearchResultViewHolder(private val context: Context, itemView: View, priva
     private var tvDuration: TextView = itemView.findViewById(R.id.tv_video_duration)
     private var ivThumbnail: ImageView = itemView.findViewById(R.id.iv_video_thumnail)
     private var ivOverFlow: ImageView = itemView.findViewById(R.id.iv_video_overflow_menu)
+    private var tvDateAdded: TextView = itemView.findViewById(R.id.tv_date_added)
 
     /**
      * Sets data on views
@@ -50,6 +51,7 @@ class SearchResultViewHolder(private val context: Context, itemView: View, priva
         Glide
             .with(context)
             .asBitmap()
+            .centerCrop()
             .load(Uri.fromFile(File(videoTrack.videoPath)))
             .thumbnail(0.1f)
             .into(ivThumbnail)
@@ -58,6 +60,7 @@ class SearchResultViewHolder(private val context: Context, itemView: View, priva
         tvDuration.visibility = View.VISIBLE
         tvDuration.text = UtilFunctions.convertSecondsToHMmSs(videoTrack.durationInMs)
         tvTitle.text = videoTrack.videoName
+        tvDateAdded.text = videoTrack.dateAdded
 
         // Setting Listeners
 

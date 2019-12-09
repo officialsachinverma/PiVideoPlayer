@@ -41,7 +41,8 @@ object CursorFactory {
     fun getVideoSearchData(context: Context, searchData: String): Cursor? {
         val sortOrder = MediaStore.Video.Media.DATA + " ASC"
         val projection = arrayOf(MediaStore.Video.Media.DATA, MediaStore.Video.Media._ID,
-            MediaStore.Video.Media.TITLE, MediaStore.Video.Media.DURATION)
+            MediaStore.Video.Media.TITLE, MediaStore.Video.Media.DURATION,
+            MediaStore.Video.Media.DATE_ADDED)
         // searching in MediaStore.Video.Media.DATA of videos file because few videos has same MediaStore.Video.Media.TITLE
         // For some videos Title meta data is same and is not related to actual video file name
         // user will search for video based on file name (title) but it is same
@@ -67,7 +68,8 @@ object CursorFactory {
     fun getVideoMetaDataById(context: Context, _id: Int): Cursor? {
         val sortOrder = MediaStore.Video.Media.DATA + " ASC"
         val projection = arrayOf(MediaStore.Video.Media.DATA, MediaStore.Video.Media._ID,
-            MediaStore.Video.Media.TITLE, MediaStore.Video.Media.DURATION)
+            MediaStore.Video.Media.TITLE, MediaStore.Video.Media.DURATION,
+            MediaStore.Video.Media.DATE_ADDED)
         val selection = "${MediaStore.Video.Media._ID} = $_id"
         return context.contentResolver.query(
             MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
