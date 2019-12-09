@@ -3,6 +3,7 @@ package com.project100pi.pivideoplayer.ui.activity
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ActivityInfo
+import android.content.res.Resources
 import android.graphics.Bitmap
 import android.media.AudioManager
 import android.media.MediaMetadataRetriever
@@ -10,6 +11,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
+import android.util.DisplayMetrics
 import android.view.View
 import android.view.WindowManager
 import android.widget.ProgressBar
@@ -33,8 +35,6 @@ import com.project100pi.library.ui.PiVideoPlayerView
 import com.project100pi.pivideoplayer.R
 import com.project100pi.pivideoplayer.database.CursorFactory
 import com.project100pi.pivideoplayer.utils.Constants
-import java.util.*
-import kotlin.collections.ArrayList
 
 
 class PlayerActivity : AppCompatActivity(),
@@ -68,8 +68,9 @@ class PlayerActivity : AppCompatActivity(),
     private var currentVolume = 0
 
     private var currentBrightness = 0f
-    private var currentVolumeProgress = 0
     private var currentBrightnessProgress = 0
+
+    private var isLandscape = true
 
     companion object {
 
@@ -140,11 +141,13 @@ class PlayerActivity : AppCompatActivity(),
      */
     private fun setBrightnessParamForGestureControl() {
         // getting current activity brightness
+        window.attributes.screenBrightness = 0.4f
         currentBrightness = window.attributes.screenBrightness
+
         // activity max brightness is 1.0 min is 0.1
         // getting the current brightness and calculating corresponding progress on bar
         // Eg.: if current brightness is 0.7 so the progress will be 0.7*100=70
-        currentBrightnessProgress = currentBrightness.toInt() * 100
+        currentBrightnessProgress = (currentBrightness * 100).toInt()
         // settings max progress as 100
         progressBrightness.max = 100
     }
@@ -160,7 +163,7 @@ class PlayerActivity : AppCompatActivity(),
         audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
         // getting the maximum system volume
         maxSystemVolume = audioManager!!.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
-        // getting the minimum system volume - default is 0
+        /* getting the minimum system volume - default is 0 */
         minSystemVolume = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             audioManager!!.getStreamMinVolume(AudioManager.STREAM_MUSIC)
         } else {
@@ -169,14 +172,10 @@ class PlayerActivity : AppCompatActivity(),
 
         // getting the current system volume
         currentVolume = audioManager!!.getStreamVolume(AudioManager.STREAM_MUSIC)
-        // calculating progress based on current system volume
-        currentVolumeProgress = if (currentVolume == 0) {
-            0
-        } else {
-            currentVolume
-        }
+
         // Settings max system volume as max progress volume
         progressVolume.max = maxSystemVolume
+
     }
 
     public override fun onResume() {
@@ -200,9 +199,8 @@ class PlayerActivity : AppCompatActivity(),
             // screen any where
             hideController()
 
-            setScreenSize()
-
             setPlayerViewListeners()
+
         } else {
             // Get the last playback state and act accordingly
             // If video was paused before minimizing it then we wont play it when
@@ -215,7 +213,10 @@ class PlayerActivity : AppCompatActivity(),
         }
 
         playerView.onResume()
-        setPlayerViewListeners()
+        if (isLandscape)
+            playerView.setSoftNavBarMargin(0, isLandscape)
+        else
+            playerView.setSoftNavBarMargin(150, isLandscape)
     }
 
     /**
@@ -259,7 +260,15 @@ class PlayerActivity : AppCompatActivity(),
             videoPlayer = PiPlayerFactory.newPiPlayer(this)
             addPlayerEventListener()
             setPlayerToPlayerView()
+            setHasSoftNavBar()
         }
+    }
+
+    /**
+     * sets whether the device support soft navigation bar
+     */
+    private fun setHasSoftNavBar() {
+        playerView.hasSoftNavBar(hasSoftNavBar(resources))
     }
 
     /**
@@ -461,11 +470,17 @@ class PlayerActivity : AppCompatActivity(),
                 if (videoWidth > videoHeight) {
                     //Set orientation to landscape
                     this.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+                    setScreenSize()
+                    isLandscape = true
+                    CurrentMediaState.Video.orientation = Constants.Orientation.LANDSCAPE
                 }
                 //If the width is smaller then the height then it means that the video was taken in portrait mode and we should set the orientation to portrait
                 if (videoWidth < videoHeight) {
                     //Set orientation to portrait
                     this.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+                    setScreenSize()
+                    isLandscape = false
+                    CurrentMediaState.Video.orientation = Constants.Orientation.PORTRAIT
                 }
             }
 
@@ -488,12 +503,13 @@ class PlayerActivity : AppCompatActivity(),
                 //Set orientation to landscape
                 requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
                 CurrentMediaState.Video.orientation = Constants.Orientation.LANDSCAPE
+                isLandscape = true
 
             } else if (CurrentMediaState.Video.orientation === Constants.Orientation.LANDSCAPE) {
                 //Set orientation to portrait
                 requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
                 CurrentMediaState.Video.orientation = Constants.Orientation.PORTRAIT
-
+                isLandscape = false
             }
 
         } catch (ex: RuntimeException) {
@@ -502,6 +518,30 @@ class PlayerActivity : AppCompatActivity(),
             Logger.e("MediaMetadataRetriever - Failed to rotate the video")
             Toast.makeText(this, R.string.failed_to_rotate_screen, Toast.LENGTH_SHORT).show()
         }
+    }
+
+    /**
+     * This method detects whether device has soft have or not
+     *
+     * @param resources Resources
+     * @return Boolean
+     */
+    private fun hasSoftNavBar(resources: Resources): Boolean {
+        val id: Int = resources.getIdentifier("config_showNavigationBar", "bool", "android")
+        return id > 0 && resources.getBoolean(id)
+    }
+
+    /**
+     * Gets system screen size
+     */
+    private fun setScreenSize() {
+        val metrics = DisplayMetrics()
+        windowManager.defaultDisplay.getMetrics(metrics)
+//        if (isLandscape)
+//            playerView.setScreenSize(metrics.heightPixels, metrics.widthPixels)
+//        else
+//            playerView.setScreenSize(metrics.widthPixels, metrics.heightPixels)
+
     }
 
     /**
@@ -538,18 +578,16 @@ class PlayerActivity : AppCompatActivity(),
     override fun onVolumeUp() {
         if (currentVolume < maxSystemVolume) {
             ++currentVolume
-
-                audioManager?.setStreamVolume(
-                    AudioManager.STREAM_MUSIC,
-                    currentVolume,
-                    0
-                )
-                if (currentVolumeProgress < 100)
-                    currentVolumeProgress += currentVolume
-                else
-                    currentVolumeProgress = 100
-                setVolumeProgress(currentVolume)
+        } else {
+            currentVolume = maxSystemVolume
         }
+        audioManager?.setStreamVolume(
+            AudioManager.STREAM_MUSIC,
+            currentVolume,
+            0
+        )
+
+        setVolumeProgress(currentVolume)
     }
 
     /**
@@ -559,17 +597,16 @@ class PlayerActivity : AppCompatActivity(),
     override fun onVolumeDown() {
         if (currentVolume > minSystemVolume) {
             --currentVolume
-                audioManager?.setStreamVolume(
-                    AudioManager.STREAM_MUSIC,
-                    currentVolume,
-                    0
-                )
-                if (currentVolumeProgress > 0)
-                    currentVolumeProgress -= currentVolume
-                else
-                    currentVolumeProgress = 0
-                setVolumeProgress(currentVolume)
+        } else {
+            currentVolume = minSystemVolume
+
         }
+        audioManager?.setStreamVolume(
+            AudioManager.STREAM_MUSIC,
+            currentVolume,
+            0
+        )
+        setVolumeProgress(currentVolume)
     }
 
     /**
@@ -578,17 +615,17 @@ class PlayerActivity : AppCompatActivity(),
      */
     override fun onBrightnessUp() {
         if (window.attributes.screenBrightness < 1.0f) {
-            var b = window.attributes.screenBrightness + 0.05f
+            var b = window.attributes.screenBrightness + 0.04f
             if (b > 1.0f)
                 b = 1.0f
             layoutParams?.screenBrightness = b
             window.attributes = layoutParams
-            if (currentBrightnessProgress < 100)
-                currentBrightnessProgress += 5
-            else
-                currentBrightnessProgress = 100
-            setBrightnessProgress(currentBrightnessProgress)
         }
+        if (currentBrightnessProgress < 100)
+            currentBrightnessProgress += 4
+        else
+            currentBrightnessProgress = 100
+        setBrightnessProgress(currentBrightnessProgress)
     }
 
     /**
@@ -597,17 +634,17 @@ class PlayerActivity : AppCompatActivity(),
      */
     override fun onBrightnessDown() {
         if (window.attributes.screenBrightness > 0.1f) {
-            var b = window.attributes.screenBrightness - 0.05f
+            var b = window.attributes.screenBrightness - 0.04f
             if (b < 0.1f)
                 b = 0.1f
             layoutParams?.screenBrightness = b
             window.attributes = layoutParams
-            if (currentBrightnessProgress > 5)
-                currentBrightnessProgress -= 5
-            else
-                currentBrightnessProgress = 0
-            setBrightnessProgress(currentBrightnessProgress)
         }
+        if (currentBrightnessProgress > 4)
+            currentBrightnessProgress -= 4
+        else
+            currentBrightnessProgress = 0
+        setBrightnessProgress(currentBrightnessProgress)
     }
 
     /**
@@ -681,6 +718,7 @@ class PlayerActivity : AppCompatActivity(),
     private fun setVolumeProgress(progress: Int){
         progressVolume.visibility = View.VISIBLE
         progressVolume.progress = progress
+
     }
 
     override fun showSystemUI() {
