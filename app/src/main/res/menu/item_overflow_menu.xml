@@ -4,6 +4,7 @@
     <item
         android:id="@+id/itemPlay"
         android:title="@string/overflow_menu_play"
+        android:tint="?android:attr/textColorPrimary"
         app:showAsAction="never"></item>
     <item
         android:id="@+id/itemShare"
