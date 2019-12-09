@@ -15,4 +15,6 @@
     <string name="stretch_upper_case">STRETCH</string>
     <string name="crop_upper_case">CROP</string>
 
+    <string name="subtitle_file_not_supported">Subtitle file not supported. Please choose .srt or .vtt file only.</string>
+
 </resources>
