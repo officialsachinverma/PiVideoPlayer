@@ -45,6 +45,15 @@ class MediaSessionManager(private val appContext: Context, private val mediaSess
     }
 
     /**
+     * Sets Media Session active
+     *
+     * @param isActive Boolean
+     */
+    fun setIsActive(isActive: Boolean) {
+        mediaSessionCompat.isActive = isActive
+    }
+
+    /**
      * Gets a TransportControls instance for this session.
      *
      * @return A controls instance

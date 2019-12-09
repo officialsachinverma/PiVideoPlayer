@@ -14,7 +14,7 @@ object MediaCommandHandlerUtil {
      * @param appContext Context
      */
     fun handleNext(appContext: Context) {
-        if (CurrentMediaState.Playback.playing) {
+        if (CurrentMediaState.Playback.isPlaying) {
             val token = ApplicationHelper.mediaSessionToken
             try {
                 val mediaControllerCompat = MediaControllerCompat(appContext, token)
@@ -32,7 +32,7 @@ object MediaCommandHandlerUtil {
      * @param appContext Context
      */
     fun handlePrevious(appContext: Context) {
-        if (CurrentMediaState.Playback.playing) {
+        if (CurrentMediaState.Playback.isPlaying) {
             val token = ApplicationHelper.mediaSessionToken
             try {
                 val mediaControllerCompat = MediaControllerCompat(appContext, token)
@@ -50,7 +50,7 @@ object MediaCommandHandlerUtil {
      * @param appContext Context
      */
     fun handlePlay(appContext: Context) {
-        if (!CurrentMediaState.Playback.playing) {
+        if (!CurrentMediaState.Playback.isPlaying) {
             val token = ApplicationHelper.mediaSessionToken
             try {
                 val mediaControllerCompat = MediaControllerCompat(appContext, token)
@@ -69,7 +69,7 @@ object MediaCommandHandlerUtil {
      * @param appContext Context
      */
     fun handlePause(appContext: Context) {
-        if (CurrentMediaState.Playback.playing) {
+        if (CurrentMediaState.Playback.isPlaying) {
             val token = ApplicationHelper.mediaSessionToken
             try {
                 val mediaControllerCompat = MediaControllerCompat(appContext, token)

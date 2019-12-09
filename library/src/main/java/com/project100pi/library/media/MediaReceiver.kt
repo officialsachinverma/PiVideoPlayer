@@ -82,7 +82,7 @@ object MediaReceiver: BroadcastReceiver() {
                     val myHandler = object : Handler() {
                         override fun handleMessage(m: Message) {
                             if (!CurrentMediaState.MediaButtonController.mHasDoubleClicked && !CurrentMediaState.MediaButtonController.mHasTripleClicked) {
-                                if (CurrentMediaState.Playback.playing) {
+                                if (CurrentMediaState.Playback.isPlaying) {
                                     MediaCommandHandlerUtil.handlePause(appContext)
                                 } else {
                                     MediaCommandHandlerUtil.handlePlay(appContext)
@@ -102,7 +102,7 @@ object MediaReceiver: BroadcastReceiver() {
                 Logger.i(" Keycode : KEYCODE_MEDIA PAUSE")
                 Logger.i(" Keycode: KEYCODE_MEDIA_PLAY_PAUSE")
 
-                if (CurrentMediaState.Playback.playing) {
+                if (CurrentMediaState.Playback.isPlaying) {
                     MediaCommandHandlerUtil.handlePause(appContext)
                 } else {
                     MediaCommandHandlerUtil.handlePlay(appContext)

@@ -448,6 +448,15 @@ class PiVideoPlayer(private val context: Context): MediaSessionListener {
      */
     fun getDuration() = player?.duration ?: 0
 
+    /**
+     * Sets media session manager active
+     *
+     * @param isActive Boolean
+     */
+    fun setMediaSessionIsActive(isActive: Boolean) {
+        mediaSessionManager.setIsActive(isActive)
+    }
+
     // Public APIs ends
 
     // Module APIs starts
@@ -561,6 +570,7 @@ class PiVideoPlayer(private val context: Context): MediaSessionListener {
                 }
                 Player.STATE_READY -> {
                     Logger.i("STATE_READY")
+                    setMediaSessionIsActive(true)
                     this@PiVideoPlayer.playWhenReady = playWhenReady
                 }
                 Player.STATE_ENDED -> {
