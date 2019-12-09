@@ -1,11 +1,11 @@
 package com.project100pi.library.ui
 
-import android.R.attr
 import android.app.Activity
 import android.content.Context
 import android.graphics.Point
 import android.os.SystemClock
 import android.util.AttributeSet
+import android.util.DisplayMetrics
 import android.view.GestureDetector
 import android.view.LayoutInflater
 import android.view.MotionEvent
@@ -28,6 +28,7 @@ import com.project100pi.library.dialogs.listeners.SRTFilePickerClickListener
 import com.project100pi.library.listeners.PlaybackControllerVisibilityListener
 import com.project100pi.library.listeners.PlaybackGestureControlListener
 import com.project100pi.library.listeners.PlayerViewActionsListener
+import com.project100pi.library.misc.Constants.Gesture.MIN_DISTANCE_TO_TRIGGER_GESTURE
 import com.project100pi.library.misc.CountDown
 import com.project100pi.library.misc.CurrentMediaState
 import com.project100pi.library.misc.Logger
@@ -35,8 +36,7 @@ import com.project100pi.library.misc.Util
 import com.project100pi.library.model.VideoMetaData
 import com.project100pi.library.player.PiVideoPlayer
 
-
-class PiVideoPlayerView: FrameLayout, SRTFilePickerClickListener, OnItemClickListener {
+class PiVideoPlayerView : FrameLayout, SRTFilePickerClickListener, OnItemClickListener {
 
     private val playerView: PlayerView
     private var controlView: PlayerControlView
@@ -63,6 +63,7 @@ class PiVideoPlayerView: FrameLayout, SRTFilePickerClickListener, OnItemClickLis
     private var hideAction: Runnable
 
     private var hideSystemUI = false
+    private var hasSoftNavBar = false
 
     private var hideAtMs: Long = 0
     private var showTimeoutMillis: Int = 5000
@@ -74,24 +75,30 @@ class PiVideoPlayerView: FrameLayout, SRTFilePickerClickListener, OnItemClickLis
     private val gestureDetector: GestureDetector
     private var systemWidth: Int = 0
     private var systemHeight: Int = 0
-    private var systemSize: Point = Point()
     private var gestureListener = PiGesture()
     private var activeGesture = ""
     private var isScrolling = false
+    private var softNavBarHeight = 0
 
     private var superContext: Context
-
+    private var volumeFactor = 0
+    private var brightnessFactor = 0
+    private var seekFactor = 0
+    private var oldy = 0
+    private var newy = 0
     private var playerViewActionsListener: PlayerViewActionsListener? = null
     private var playerGestureListener: PlaybackGestureControlListener? = null
     private var playbackControllerVisibilityListener: PlaybackControllerVisibilityListener? = null
 
-    private val layoutParams = ConstraintLayout.LayoutParams(ConstraintLayout.LayoutParams.MATCH_PARENT, ConstraintLayout.LayoutParams.MATCH_PARENT)
+    constructor(context: Context) : this(context, null)
 
-    constructor(context: Context): this(context, null)
+    constructor(context: Context, attrs: AttributeSet?) : this(context, attrs, 0)
 
-    constructor(context: Context, attrs: AttributeSet?): this(context, attrs, 0)
-
-    constructor(context: Context, attrs: AttributeSet?, defStyleAttr: Int): super(context, attrs, defStyleAttr) {
+    constructor(context: Context, attrs: AttributeSet?, defStyleAttr: Int) : super(
+        context,
+        attrs,
+        defStyleAttr
+    ) {
 
         this.superContext = context
 
@@ -133,7 +140,7 @@ class PiVideoPlayerView: FrameLayout, SRTFilePickerClickListener, OnItemClickLis
         gestureCapture = findViewById(R.id.gesture_capture)
         gestureDetector = GestureDetector(context, gestureListener)
 
-        getScreenSize()
+        setScreenSize()
 
         hideController()
         hideAction = Runnable { this.hide() }
@@ -142,7 +149,7 @@ class PiVideoPlayerView: FrameLayout, SRTFilePickerClickListener, OnItemClickLis
         popupMenu = PopupMenu(context, toolbarMenu)
         popupMenu.inflate(R.menu.player_menu)
         popupMenu.setOnMenuItemClickListener { item ->
-            when(item.itemId) {
+            when (item.itemId) {
                 R.id.shuffle -> {
                     videoPlayer.shuffle(!item.isChecked)
                     item.isChecked = !item.isChecked
@@ -196,7 +203,7 @@ class PiVideoPlayerView: FrameLayout, SRTFilePickerClickListener, OnItemClickLis
     /**
      * Registers on click listeners
      */
-    private fun setOnClickListener(){
+    private fun setOnClickListener() {
 
         // Back Button
         backButton.setOnClickListener {
@@ -205,12 +212,18 @@ class PiVideoPlayerView: FrameLayout, SRTFilePickerClickListener, OnItemClickLis
 
         // Toolbar subtitle icon
         toolbarSubtitle.setOnClickListener {
-            SRTFilePicker(context, this@PiVideoPlayerView).show()
+            currentPlaying.path.substring(0, currentPlaying.path.lastIndexOf("/"))
+            SRTFilePicker(
+                context,
+                this@PiVideoPlayerView,
+                currentPlaying.path.substring(0, currentPlaying.path.lastIndexOf("/"))
+            ).show()
         }
 
         // Toolbar queue icon
         toolbarQueue.setOnClickListener {
-            val queueDialog = CurrentPlayingQueueDialog(context, currentPlayingList, currentPlaying, this)
+            val queueDialog =
+                CurrentPlayingQueueDialog(context, currentPlayingList, currentPlaying, this)
             queueDialog.setCanceledOnTouchOutside(false)
             queueDialog.show()
             playerViewActionsListener?.onPlayerCurrentQueuePressed()
@@ -228,19 +241,28 @@ class PiVideoPlayerView: FrameLayout, SRTFilePickerClickListener, OnItemClickLis
 
         // Screen rotation image
         screenRotation.setOnClickListener {
-            if (Util.orientation === "landscape") {
-                getScreenSize()
-                Util.orientation = "portrait"
-                val lp = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.MATCH_PARENT)
-                lp.setMargins(0, 0, 0, 150)
+            if (hasSoftNavBar) {
+                // Margin for soft navigation keys
+                val lp = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.MATCH_PARENT
+                )
+                if (Util.orientation === "landscape") {
+                    Util.orientation = "portrait"
+                    lp.setMargins(0, 0, 0, 150)
+                } else {
+                    Util.orientation = "landscape"
+                    lp.setMargins(0, 0, 0, 0)
+                }
                 additionalNavigationHeight.layoutParams = lp
             } else {
-                getScreenSize()
-                Util.orientation = "landscape"
-                val lp = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT)
-                lp.setMargins(0, 0, 0, 0)
-                additionalNavigationHeight.layoutParams = lp
+                if (Util.orientation === "landscape") {
+                    Util.orientation = "portrait"
+                } else {
+                    Util.orientation = "landscape"
+                }
             }
+
             playerViewActionsListener?.onScreenRotatePressed()
         }
 
@@ -259,19 +281,36 @@ class PiVideoPlayerView: FrameLayout, SRTFilePickerClickListener, OnItemClickLis
 
         // Controller previous button
         prevButton.setOnClickListener {
-            if ((videoPlayer.getCurrentPosition()/1000) > 10) {
+            if ((videoPlayer.getCurrentPosition() / 1000) > 10) {
                 videoPlayer.seekTo(videoPlayer.getCurrentWindowIndex(), 0)
             } else {
                 if (videoPlayer.hasPrevious())
                     videoPlayer.seekTo(videoPlayer.getPreviousWindowIndex(), 0)
                 else {
-                    if(currentPlayingList.size > 1)
-                        videoPlayer.seekTo(currentPlayingList.size-1, 0)
+                    if (currentPlayingList.size > 1)
+                        videoPlayer.seekTo(currentPlayingList.size - 1, 0)
                     else
                         videoPlayer.seekTo(videoPlayer.getCurrentWindowIndex(), 0)
                 }
             }
         }
+    }
+
+    fun setSoftNavBarMargin(margin: Int, isLandscape: Boolean) {
+        if (hasSoftNavBar) {
+            softNavBarHeight = margin
+            val lp = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.MATCH_PARENT
+            )
+            if (isLandscape)
+                Util.orientation = "landscape"
+            else
+                Util.orientation = "portrait"
+            lp.setMargins(0, 0, 0, margin)
+            additionalNavigationHeight.layoutParams = lp
+        } else
+            softNavBarHeight = 0
     }
 
     /**
@@ -290,10 +329,9 @@ class PiVideoPlayerView: FrameLayout, SRTFilePickerClickListener, OnItemClickLis
     /**
      * Registers on long listeners
      */
-    private fun setOnTouchListener(){
+    private fun setOnTouchListener() {
         // Gesture Detection
-        gestureCapture.setOnTouchListener {
-                _: View, event: MotionEvent ->
+        gestureCapture.setOnTouchListener { _: View, event: MotionEvent ->
             Logger.i("Gesture: gestureCapture.setOnTouchListener")
 
             if (!isScreenLocked) {
@@ -301,10 +339,12 @@ class PiVideoPlayerView: FrameLayout, SRTFilePickerClickListener, OnItemClickLis
                 Logger.i("Gesture: gestureCapture.onTouchEvent")
             }
 
-            if(event.action == MotionEvent.ACTION_UP) {
-                if(isScrolling ) {
-                    Logger.d("OnTouchListener --> onTouch ACTION_UP")
-                    isScrolling  = false
+            if (event.action == MotionEvent.ACTION_UP) {
+                if (isScrolling) {
+                    Logger.d("Gesture: onScroll ended")
+                    oldy = 0
+                    activeGesture = ""
+                    isScrolling = false
 //                    handleScrollFinished()
                     playerGestureListener?.onActionUp()
                 }
@@ -312,6 +352,17 @@ class PiVideoPlayerView: FrameLayout, SRTFilePickerClickListener, OnItemClickLis
 
             true
         }
+    }
+
+    /**
+     * This method sets hasSoftNavBar
+     * which tells whether the device support soft
+     * navigation bar or not
+     *
+     * @param hasSoftNavBar Boolean
+     */
+    fun hasSoftNavBar(hasSoftNavBar: Boolean) {
+        this.hasSoftNavBar = hasSoftNavBar
     }
 
     /**
@@ -408,16 +459,28 @@ class PiVideoPlayerView: FrameLayout, SRTFilePickerClickListener, OnItemClickLis
      * When ever controllers comes up it decreases the area of gesture
      * and gesture view always comes over the controller view, results in preventing
      * from passing the touch events. So to avoid the overlap we set the margin
-     * of similar to the height of controller view. so basically it shriks the area for
+     * of similar to the height of controller view. so basically it shrinks the area for
      * gestures
      *
      * @param show Boolean whether to show or not
      */
-    private fun setMargin(show: Boolean){
-        if (show)
-            layoutParams.bottomMargin = 200
-        else
-            layoutParams.bottomMargin = 0
+    private fun setMargin(show: Boolean) {
+        Logger.i("Util.orientation : ${Util.orientation}")
+        val layoutParams = ConstraintLayout.LayoutParams(
+            ConstraintLayout.LayoutParams.MATCH_PARENT,
+            ConstraintLayout.LayoutParams.MATCH_PARENT
+        )
+        if (Util.orientation === "landscape") {
+            if (show)
+                layoutParams.bottomMargin = 200 + softNavBarHeight
+            else
+                layoutParams.bottomMargin = 0
+        } else { // Portrait
+            if (show)
+                layoutParams.bottomMargin = 50 + softNavBarHeight
+            else
+                layoutParams.bottomMargin = 0
+        }
 
         gestureCapture.layoutParams = layoutParams
     }
@@ -439,7 +502,7 @@ class PiVideoPlayerView: FrameLayout, SRTFilePickerClickListener, OnItemClickLis
     /**
      * Hides system UI and controller
      */
-    private fun hide(){
+    private fun hide() {
         if (!hideSystemUI) {
             hideController()
             removeCallbacks(hideAction)
@@ -572,11 +635,14 @@ class PiVideoPlayerView: FrameLayout, SRTFilePickerClickListener, OnItemClickLis
     /**
      * Gets system screen size
      */
-    private fun getScreenSize() {
+    fun setScreenSize() {
+        val metrics = DisplayMetrics()
+        val systemSize = Point()
         val display = (context as Activity).windowManager.defaultDisplay
         display.getSize(systemSize)
-        systemWidth = systemSize.x
-        systemHeight = systemSize.y
+        this.systemWidth = systemSize.x
+        this.systemHeight = systemSize.y
+
     }
 
     /***
@@ -599,82 +665,105 @@ class PiVideoPlayerView: FrameLayout, SRTFilePickerClickListener, OnItemClickLis
     /**
      * Gesture Implementation
      */
-    private inner class PiGesture: GestureDetector.SimpleOnGestureListener(), SingleTapListener {
+    private inner class PiGesture : GestureDetector.SimpleOnGestureListener(), SingleTapListener {
 
         override fun onSingleTapUp(e: MotionEvent): Boolean {
             Logger.d("Gesture: onSingleTapUp")
             return toggleControllerVisibility()
         }
 
-        override fun onScroll(e1: MotionEvent?, e2: MotionEvent?, distanceX: Float, distanceY: Float): Boolean {
+        override fun onScroll(
+            e1: MotionEvent?,
+            e2: MotionEvent?,
+            distanceX: Float,
+            distanceY: Float
+        ): Boolean {
             Logger.d("Gesture: onScroll")
             isScrolling = true
+
+            if (oldy == 0) {
+                oldy = e1!!.y.toInt()
+            }
+
+            newy = e2!!.y.toInt()
 
             // Calculating screen left, right and bottom
             // Left half of the screen for Brightness
             // Right half of the screen for Volume
             // Bottom half of the screen for seek
-            activeGesture = when {
-                (e1!!.x < (systemWidth / 2) && e2!!.x < (systemWidth / 2)
-                        && activeGesture.isEmpty()) -> "Brightness"
-                (e1.x > (systemWidth / 2) && e2!!.x > (systemWidth / 2)
-                        && activeGesture.isEmpty() )-> "Volume"
-                (e1.y > (systemHeight / 2) && e2!!.y > (systemHeight / 2)
-                        && activeGesture.isEmpty()) -> "Seek"
-                else -> ""
+            if (activeGesture.equals("")) {
+                activeGesture = when {
+                    (e1!!.x < (systemWidth / 2) && e2!!.x < (systemWidth / 2) && ((e1.y - e2.y > MIN_DISTANCE_TO_TRIGGER_GESTURE) || (e2.y - e1.y > MIN_DISTANCE_TO_TRIGGER_GESTURE))) -> "Brightness"
+                    (e1.x > (systemWidth / 2) && e2!!.x > (systemWidth / 2) && ((e1.y - e2.y > MIN_DISTANCE_TO_TRIGGER_GESTURE) || (e2.y - e1.y > MIN_DISTANCE_TO_TRIGGER_GESTURE))) -> "Volume"
+                    ((e1.x - e2.x > MIN_DISTANCE_TO_TRIGGER_GESTURE) || (e2.x - e1.x > MIN_DISTANCE_TO_TRIGGER_GESTURE)) -> "Seek"
+
+                    else -> ""
+                }
             }
+
+//            if(seekFactor == 0){
+//                seekFactor = ((e1!!.y - e2!!.y).toInt()) / 30
+//            }
 
             // for seek
             // if start and end point is below bottom half of the screen
-            if (e1.y > (systemHeight / 2) && e2!!.y > (systemHeight / 2) && activeGesture == "Seek") {
+//            e1!!.y < (systemHeight / 2) && e2!!.y < (systemHeight / 2) &&
+                    if (activeGesture .equals( "Seek")) {
+//                if (seekFactor!=((e1!!.y - e2!!.y).toInt() / 30)) {
+//                    seekFactor = (e1!!.y - e2!!.y).toInt() / 30
                 // if scroll was from left to right
-                if (e1.x < e2.x){
+                if (e1!!.x < e2.x) {
                     //Logger.d("Gesture: Left to Right swipe: "+ e1.x + " - " + e2.x)
                     playerGestureListener?.onFastForward()
-                }
-                // if scroll was from right to left
-                if (e1.x > e2.x) {
+                } else { // if scroll was from right to left
                     //Logger.d("Gesture: Right to Left swipe: "+ e1.x + " - " + e2.x)
                     playerGestureListener?.onRewind()
                 }
-
                 activeGesture = ""
                 return true
+//                }
+            }
+
+            if (brightnessFactor == 0) {
+                brightnessFactor = ((e1!!.y - e2!!.y).toInt()) / 30
             }
 
             // for brightness
-            // if start and end point on the left side of the screen
-            if (e1.x < (systemWidth / 2) && e2!!.x < (systemWidth / 2) && activeGesture == "Brightness") {
-                // if scroll is from top to bottom
-                if (e1.y < e2.y){
-                    playerGestureListener?.onBrightnessDown()
+            if (e1!!.x < (systemWidth / 2) && e2!!.x < (systemWidth / 2) && activeGesture == "Brightness") {
+                // if start and end point on the left side of the screen
+                if (brightnessFactor != ((e1!!.y - e2!!.y).toInt() / 30)) {
+                    brightnessFactor = (e1!!.y - e2!!.y).toInt() / 30
+                    // if scroll is from top to bottom
+                    if (oldy < newy) {
+                        playerGestureListener?.onBrightnessDown()
+                    } else { // if scroll is from bottom to top
+                        playerGestureListener?.onBrightnessUp()
+                    }
+                    activeGesture = ""
+                    return true
                 }
-                // if scroll is from bottom to top
-                if(e1.y > e2.y){
-                    playerGestureListener?.onBrightnessUp()
-                }
+            }
 
-                activeGesture = ""
-                return true
+            if (volumeFactor == 0) {
+                volumeFactor = ((e2.y - e1.y).toInt()) / 30
             }
 
             // for volume
-            // if start and end point on the right side of the screen
             if (e1.x > (systemWidth / 2) && e2!!.x > (systemWidth / 2) && activeGesture == "Volume") {
-                // if scroll is from top to bottom
-                if (e1.y < e2.y){
-                    playerGestureListener?.onVolumeDown()
+                // if start and end point on the right side of the screen
+                if (volumeFactor != (e2.y.toInt() - e1.y.toInt()) / 30) {
+                    volumeFactor = (e2.y.toInt() - e1.y.toInt()) / 30
+                    // if scroll is from top to bottom
+                    if (oldy < newy) {
+                        playerGestureListener?.onVolumeDown()
+                    } else { // if scroll is from bottom to top
+                        playerGestureListener?.onVolumeUp()
+                    }
+                    activeGesture = ""
+                    return true
                 }
-                // if scroll is from bottom to top
-                if(e1.y > e2.y){
-                    playerGestureListener?.onVolumeUp()
-                }
-
-                activeGesture = ""
-                return true
             }
-
-            activeGesture = ""
+            oldy = e2.y.toInt()
 
             return false
         }

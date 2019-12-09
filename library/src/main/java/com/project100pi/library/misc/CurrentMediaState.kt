@@ -13,7 +13,8 @@ object CurrentMediaState {
     }
 
     object Playback {
-        var playing = false
+        var wasPlaying = false
+        var isPlaying = false
         const val DEFAULT_REWIND_TIME = 3000 // 3 secs
         const val DEFAULT_FAST_FORWARD_TIME = 3000 // 3 secs
     }

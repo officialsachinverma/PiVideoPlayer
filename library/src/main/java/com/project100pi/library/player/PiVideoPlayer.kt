@@ -19,7 +19,6 @@ import com.project100pi.library.misc.Util.userAgent
 import com.google.android.exoplayer2.Format.NO_VALUE
 import com.google.android.exoplayer2.util.MimeTypes
 import com.project100pi.library.misc.Logger
-import com.google.android.exoplayer2.Player
 import com.google.android.exoplayer2.source.dash.DashMediaSource
 import com.google.android.exoplayer2.source.hls.HlsMediaSource
 import com.google.android.exoplayer2.source.smoothstreaming.SsMediaSource
@@ -107,7 +106,7 @@ class PiVideoPlayer(private val context: Context): MediaSessionListener {
                 // Settings play when ready so that player starts playing
                 // as soon as it gets prepared with media source (default is true)
                 // if it is true only then it will start playing after prepare otherwise not
-                it.playWhenReady = this.playWhenReady
+                it.playWhenReady = this@PiVideoPlayer.playWhenReady
             }
         }
     }
@@ -558,6 +557,7 @@ class PiVideoPlayer(private val context: Context): MediaSessionListener {
                 }
                 Player.STATE_BUFFERING -> {
                     Logger.i("STATE_BUFFERING")
+
                 }
                 Player.STATE_READY -> {
                     Logger.i("STATE_READY")
