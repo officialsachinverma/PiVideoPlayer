@@ -47,7 +47,7 @@ object CursorFactory {
         // For some videos Title meta data is same and is not related to actual video file name
         // user will search for video based on file name (title) but it is same
         // So we are searching in path which contains video file name (title)
-        val selection = "${MediaStore.Video.Media.DATA} LIKE '%${searchData}%'"
+        val selection = "${MediaStore.Video.Media.TITLE} LIKE '%${searchData}%'"
         return context.contentResolver.query(
             MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
             projection,
