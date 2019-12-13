@@ -40,7 +40,7 @@ import java.io.File
 class VideoListActivity : AppCompatActivity(), OnClickListener, ItemDeleteListener {
 
     @BindView(R.id.rv_video_file_list)
-    lateinit var  rvVideoList: RecyclerView
+    lateinit var rvVideoList: RecyclerView
 
     @BindView(R.id.video_list_toolbar)
     lateinit var mToolbar: Toolbar
@@ -53,7 +53,7 @@ class VideoListActivity : AppCompatActivity(), OnClickListener, ItemDeleteListen
 
     private lateinit var videoListViewModel: VideoListViewModel
 
-    private var videoListData = arrayListOf<VideoTrackInfo>()
+    //private var videoListData = mutableListOf<VideoTrackInfo>()
     private var directoryName = ""
     private var directoryPath = ""
 
@@ -74,10 +74,16 @@ class VideoListActivity : AppCompatActivity(), OnClickListener, ItemDeleteListen
         // https://www.programming-books.io/essential/android/starter-pattern-d2db17d348ca46ce8979c8af6504f018
 
         // Using starter pattern to start this activity
-        fun start(context: Context, directoryName: String, directoryPath: String) {
+        fun start(
+            context: Context,
+            directoryName: String,
+            directoryPath: String,
+            videoListData: MutableList<VideoTrackInfo>
+        ) {
             val intent = Intent(context, VideoListActivity::class.java)
             intent.putExtra(Constants.Storage.DIRECTORY_NAME, directoryName)
             intent.putExtra(Constants.Storage.DIRECTORY_PATH, directoryPath)
+            //intent.putExtra(Constants.Storage.VIDEO_LIST, videoListData)
             context.startActivity(intent)
         }
     }
@@ -90,8 +96,10 @@ class VideoListActivity : AppCompatActivity(), OnClickListener, ItemDeleteListen
         this.intent?.let {
             directoryName = it.getStringExtra(Constants.Storage.DIRECTORY_NAME) ?: ""
             directoryPath = it.getStringExtra(Constants.Storage.DIRECTORY_PATH) ?: ""
-            init()
+            //videoListData = it.getParcelableArrayListExtra<VideoTrackInfo>(Constants.Storage.VIDEO_LIST)
         }
+
+        init()
     }
 
     /**
@@ -101,12 +109,15 @@ class VideoListActivity : AppCompatActivity(), OnClickListener, ItemDeleteListen
     private fun init() {
 
         val viewModelFactory = VideoListViewModelFactory(this, directoryPath, directoryName, this)
-        videoListViewModel = ViewModelProviders.of(this, viewModelFactory).get(VideoListViewModel::class.java)
+        videoListViewModel =
+            ViewModelProviders.of(this, viewModelFactory).get(VideoListViewModel::class.java)
 
         setTitleOnToolbar()
         setHomeUpAsButton()
 
         initAdapter()
+
+        //setDataToAdapter()
 
         observeForObservable()
     }
@@ -126,10 +137,9 @@ class VideoListActivity : AppCompatActivity(), OnClickListener, ItemDeleteListen
      * that data on the adapter
      */
 
-    private fun observeForVideoList(){
+    private fun observeForVideoList() {
         videoListViewModel.filesList.observe(this, Observer {
-            videoListData = it
-            setDataToAdapter()
+            setDataToAdapter(it)
         })
     }
 
@@ -139,12 +149,15 @@ class VideoListActivity : AppCompatActivity(), OnClickListener, ItemDeleteListen
      * based on data availability
      */
 
-    private fun setDataToAdapter(){
-        if (videoListData.size > 0) {
+    private fun setDataToAdapter(it: MutableList<VideoTrackInfo>) {
+        if (it.size > 0) {
             hideEmptyListMsg()
             showVideoList()
             hideWaitingSign()
-            adapter.submitList(videoListData)
+
+            adapter.submitList(it)
+//            adapter.notifyDataSetChanged()
+            Toast.makeText(this,"Size is "+it.size,Toast.LENGTH_SHORT).show()
         } else {
             showEmptyListMsg()
             hideVideoList()
@@ -214,7 +227,8 @@ class VideoListActivity : AppCompatActivity(), OnClickListener, ItemDeleteListen
                     // saving the sd card uri in tiny db (shared preferences)
                     TinyDB.putString(Constants.ExternalSDCard.SD_CARD_URI, sdCardUri.toString())
                     // Persist access permissions
-                    val takeFlags = data.flags and (Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+                    val takeFlags =
+                        data.flags and (Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
                     contentResolver.takePersistableUriPermission(sdCardUri!!, takeFlags)
 
                     Toast.makeText(this, R.string.do_operation_again, Toast.LENGTH_SHORT).show()
@@ -272,20 +286,21 @@ class VideoListActivity : AppCompatActivity(), OnClickListener, ItemDeleteListen
 //                playerIntent.putExtra(Constants.FILE_PATH, currentVideo.path)
                 //playerIntent.putExtra(Constants.FILE_PATH, metadata)
 
-                for (folder in videoListData) {
+                for (folder in videoListViewModel.filesList.value!!) {
                     metaDataList.add(VideoMetaData(folder._Id, folder.videoName, folder.videoPath))
                 }
                 PlayerActivity.start(this, metaDataList, position)
             } else {
-                for(selectedItemPosition in adapter.getSelectedItems()) {
+                for (selectedItemPosition in adapter.getSelectedItems()) {
 //                    metaDataList.add(directoryListViewModel
 //                    .getVideoMetaData(videoListData[directoryListViewModel
 //                    .currentSongFolderIndex].songsList[selectedItemPosition].folderId)!!)
                     metaDataList.add(
                         VideoMetaData(
-                            videoListData[selectedItemPosition]._Id,
-                            videoListData[selectedItemPosition].videoName,
-                            videoListData[selectedItemPosition].videoPath)
+                            videoListViewModel.filesList.value!![selectedItemPosition]._Id,
+                            videoListViewModel.filesList.value!![selectedItemPosition].videoName,
+                            videoListViewModel.filesList.value!![selectedItemPosition].videoPath
+                        )
                     )
                 }
                 PlayerActivity.start(this, metaDataList)
@@ -333,15 +348,22 @@ class VideoListActivity : AppCompatActivity(), OnClickListener, ItemDeleteListen
      */
 
     private fun shareVideos(position: Int) {
-        val currentVideo = videoListData[position]
+        val currentVideo = videoListViewModel.filesList.value!![position]
 
-        startActivity(Intent.createChooser(Intent().setAction(Intent.ACTION_SEND)
-            .setType("video/*")
-            .setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            .putExtra(Intent.EXTRA_STREAM,  ContextMenuUtil.getVideoContentUri(this, File(currentVideo.videoPath))), resources.getString(R.string.share_video)))
+        startActivity(
+            Intent.createChooser(
+                Intent().setAction(Intent.ACTION_SEND)
+                    .setType("video/*")
+                    .setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    .putExtra(
+                        Intent.EXTRA_STREAM,
+                        ContextMenuUtil.getVideoContentUri(this, File(currentVideo.videoPath))
+                    ), resources.getString(R.string.share_video)
+            )
+        )
     }
 
-    inner class ActionModeCallback: ActionMode.Callback {
+    inner class ActionModeCallback : ActionMode.Callback {
 
         override fun onCreateActionMode(mode: ActionMode?, menu: Menu?): Boolean {
             mIsMultiSelectMode = true
@@ -493,16 +515,16 @@ class VideoListActivity : AppCompatActivity(), OnClickListener, ItemDeleteListen
 
     override fun onDeleteSuccess(listOfIndexes: List<Int>) {
         hideWaitingSign()
-        for(position in listOfIndexes) {
-            videoListViewModel.removeElementAt(position)
-            adapter.notifyItemRemoved(position)
+        var k = 0
+        for (position in listOfIndexes) {
+            if (videoListViewModel.removeElementAt(position - k)) {
+               adapter.notifyItemRemoved(position - k)
+                k++
+            }
         }
+        //adapter.submitList(videoListViewModel.filesList.value!!)
         VideoChangeObservable.setChangedOverride()
-        Toast.makeText(
-            this,
-            "${listOfIndexes.size} " + getString(R.string.songs_deleted_toast),
-            Toast.LENGTH_SHORT
-        ).show()
+        Toast.makeText(this, "${listOfIndexes.size} " + getString(R.string.songs_deleted_toast), Toast.LENGTH_SHORT).show()
     }
 
     /**

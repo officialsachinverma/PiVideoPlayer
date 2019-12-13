@@ -36,7 +36,7 @@ class VideoFilesAdapter(
         }
 
         override fun areContentsTheSame(oldItem: VideoTrackInfo, newItem: VideoTrackInfo): Boolean {
-            return oldItem == newItem
+            return oldItem.equals(newItem)
         }
 
     }

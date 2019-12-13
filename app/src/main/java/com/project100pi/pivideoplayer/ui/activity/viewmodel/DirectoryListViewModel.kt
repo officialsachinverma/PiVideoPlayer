@@ -24,13 +24,14 @@ import java.io.File
 import java.io.IOException
 import java.util.*
 import kotlin.collections.ArrayList
+import kotlin.system.measureTimeMillis
 
 
 class DirectoryListViewModel(private val context: Context,
                              private val itemDeleteListener: ItemDeleteListener): ViewModel(), Observer {
 
-    private var _foldersList = MutableLiveData<ArrayList<FolderInfo>>()
-    val foldersList: LiveData<ArrayList<FolderInfo>>
+    private var _foldersList = MutableLiveData<MutableList<FolderInfo>>()
+    val foldersList: LiveData<MutableList<FolderInfo>>
         get() = _foldersList
 
     private var foldersWithPathMap = HashMap<String, FolderInfo>()
@@ -38,12 +39,12 @@ class DirectoryListViewModel(private val context: Context,
     /**
      * Allows to cancel all assigned jobs for this ViewModel
      */
-    private val coroutineJob = Job()
+    private var coroutineJob = Job()
     /**
      * we are pass [viewModelJob], any coroutine started in this coroutineScope can be cancelled
      * by calling viewModelJob.cancel()
      */
-    private val coroutineScope = CoroutineScope(Dispatchers.IO + coroutineJob)
+    private var coroutineScope = CoroutineScope(Dispatchers.IO + coroutineJob)
 
     /**
      * init block sets observer for video change which
@@ -250,9 +251,15 @@ class DirectoryListViewModel(private val context: Context,
      */
 
     private fun loadAllFolderData() {
+
         foldersWithPathMap.clear()
 
+
+
         coroutineScope.launch {
+//            withContext(Dispatchers.Main){
+//                _foldersList.value=null
+//            }
             val cursor = CursorFactory.getAllVideoCursor(context)
 
             if (cursor != null && cursor.moveToFirst()) {
@@ -286,6 +293,18 @@ class DirectoryListViewModel(private val context: Context,
                             val key = videoPath.substring(0, videoPath.length - pathsList[pathsList.size - 1].length)
 
                             val videoName = pathsList[pathsList.size - 1]
+
+                            val dateAdded = cursor.getString(cursor.getColumnIndex(MediaStore.Video.Media.DATE_ADDED))
+
+                            val calendar = Calendar.getInstance()
+                            // Multiply by 1000 as the date added is in seconds
+                            val date = Date(dateAdded.toLong()*1000)
+                            calendar.time = date
+
+                             val months = arrayOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sept", "Oct", "Nov", "Dec")
+
+                             val dateString = "${calendar.get(Calendar.DAY_OF_MONTH)} ${months[calendar.get(Calendar.MONTH)]}"
+
                             //If folder is not already present in the hashmap
                             if (!foldersWithPathMap.containsKey(key)) {
                                 foldersWithPathMap[key] = FolderInfo(
@@ -297,7 +316,7 @@ class DirectoryListViewModel(private val context: Context,
                                 )
                             }
 
-                            foldersWithPathMap[key]?.addVideoInfoToList(videoId, videoName, videoPath, durationInMs)
+                            foldersWithPathMap[key]?.addVideoInfoToList(videoId, videoName, videoPath, durationInMs, dateString)
 
                         } else
                             continue
@@ -305,17 +324,21 @@ class DirectoryListViewModel(private val context: Context,
                     } catch (e: SQLException) {
                         e.printStackTrace()
                         Logger.e(e.message.toString())
+                    } catch (e: ArrayIndexOutOfBoundsException) {
+                        e.printStackTrace()
+                        Logger.e(e.message.toString())
                     }
                 } while (cursor.moveToNext())
                 cursor.close()
             }
             withContext(Dispatchers.Main)
-                {
-                    //Converting hash map to array list which will be submitted to adapter
-                    val list = ArrayList(foldersWithPathMap.values.sortedWith(compareBy { it.folderName }))
-                    _foldersList.value = list
-                }
+            {
+                //Converting hash map to array list which will be submitted to adapter
+                val list = ArrayList(foldersWithPathMap.values.sortedWith(compareBy { it.folderName }))
+                _foldersList.value = list
+            }
         }
+
     }
 
     /**
@@ -419,6 +442,7 @@ class DirectoryListViewModel(private val context: Context,
      */
 
     override fun update(p0: Observable?, p1: Any?) {
+
         loadAllFolderData()
     }
 

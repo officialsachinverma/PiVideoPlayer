@@ -21,11 +21,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name="com.project100pi.pivideoplayer.ui.activity.DirectoryListActivity"/>
+        <activity android:name="com.project100pi.pivideoplayer.ui.activity.DirectoryListActivity"
+            android:launchMode="singleTask"/>
         <activity
             android:name="com.project100pi.pivideoplayer.ui.activity.PlayerActivity"
             android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|smallestScreenSize|uiMode"
-            android:screenOrientation="sensorLandscape">
+            android:launchMode="singleTask">
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
 
@@ -48,8 +49,10 @@
                 <data android:mimeType="application/sdp" />
             </intent-filter>
         </activity>
-        <activity android:name="com.project100pi.pivideoplayer.ui.activity.SearchActivity" />
-        <activity android:name="com.project100pi.pivideoplayer.ui.activity.VideoListActivity" />
+        <activity android:name="com.project100pi.pivideoplayer.ui.activity.SearchActivity"
+            android:launchMode="singleTask"/>
+        <activity android:name="com.project100pi.pivideoplayer.ui.activity.VideoListActivity"
+            android:launchMode="singleTask"/>
         <receiver
             android:name="com.project100pi.library.media.MediaReceiver"
             android:enabled="true">

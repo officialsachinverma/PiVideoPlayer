@@ -38,7 +38,7 @@ class VideoFilesViewHolder(private val context: Context, itemView: View, private
     fun bind(videoTrack: VideoTrackInfo, position: Int) {
 
         if(adapter.isSelected(position)){
-            clItemRow.setBackgroundColor(context.resources.getColor(android.R.color.holo_green_dark))
+            clItemRow.setBackgroundColor(context.resources.getColor(R.color.blue_grey))
         }
         else{
             clItemRow.setBackgroundColor(context.resources.getColor(android.R.color.white))

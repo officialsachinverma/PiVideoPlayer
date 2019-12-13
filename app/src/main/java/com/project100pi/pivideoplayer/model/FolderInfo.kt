@@ -16,7 +16,7 @@ data class FolderInfo(var folderName: String = "",
     /**
      * This list holds information about videos under this folder
      */
-    val videoInfoList: ArrayList<VideoTrackInfo> = ArrayList()
+    val videoInfoList  = mutableListOf<VideoTrackInfo>()
 
     /**
      * Adds a new information to the videoFilesInfoList
@@ -25,10 +25,10 @@ data class FolderInfo(var folderName: String = "",
      * @param videoName String Stores video name
      * @param videoPath String Stores video path
      * @param durationInMs Long Stores video duration in millis
+     * @param dateAdded String Stores the date in DD
      */
-    fun addVideoInfoToList(videoId: Int, videoName: String, videoPath: String, durationInMs: Long) {
-        videoInfoList.add(VideoTrackInfo(videoId, videoName, videoPath, durationInMs))
-
+    fun addVideoInfoToList(videoId: Int, videoName: String, videoPath: String, durationInMs: Long, dateAdded: String) {
+        videoInfoList.add(VideoTrackInfo(videoId, videoName, videoPath, durationInMs, dateAdded))
     }
 
 }

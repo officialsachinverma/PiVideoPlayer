@@ -448,40 +448,41 @@ class PlayerActivity : AppCompatActivity(),
      */
     private fun rotateScreenBasedOnVideoOrientation() {
         try {
-            if (videoList.size > 0) {
 
-                //Create a new instance of MediaMetadataRetriever
-                val retriever = MediaMetadataRetriever()
-                //Declare the Bitmap
-                val bmp: Bitmap
+            //Create a new instance of MediaMetadataRetriever
+            val retriever = MediaMetadataRetriever()
+            //Declare the Bitmap
+            val bmp: Bitmap
 
-                val mVideoUri: Uri? = Uri.parse(this.videoList[this.currentWindow].path)
+            val mVideoUri = if (videoList.size > 0)
+                                Uri.parse(this.videoList[this.currentWindow].path)
+                            else
+                                externalVideoUri
 
-                //Set the video Uri as data source for MediaMetadataRetriever
-                retriever.setDataSource(this, mVideoUri!!)
-                //Get one "frame"/bitmap - * NOTE - no time was set, so the first available frame will be used
-                bmp = retriever.frameAtTime
+            //Set the video Uri as data source for MediaMetadataRetriever
+            retriever.setDataSource(this, mVideoUri!!)
+            //Get one "frame"/bitmap - * NOTE - no time was set, so the first available frame will be used
+            bmp = retriever.frameAtTime
 
-                //Get the bitmap width and height
-                val videoWidth = bmp.width
-                val videoHeight = bmp.height
+            //Get the bitmap width and height
+            val videoWidth = bmp.width
+            val videoHeight = bmp.height
 
-                //If the width is bigger then the height then it means that the video was taken in landscape mode and we should set the orientation to landscape
-                if (videoWidth > videoHeight) {
-                    //Set orientation to landscape
-                    this.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-                    setScreenSize()
-                    isLandscape = true
-                    CurrentMediaState.Video.orientation = Constants.Orientation.LANDSCAPE
-                }
-                //If the width is smaller then the height then it means that the video was taken in portrait mode and we should set the orientation to portrait
-                if (videoWidth < videoHeight) {
-                    //Set orientation to portrait
-                    this.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-                    setScreenSize()
-                    isLandscape = false
-                    CurrentMediaState.Video.orientation = Constants.Orientation.PORTRAIT
-                }
+            //If the width is bigger then the height then it means that the video was taken in landscape mode and we should set the orientation to landscape
+            if (videoWidth > videoHeight) {
+                //Set orientation to landscape
+                this.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+                setScreenSize()
+                isLandscape = true
+                CurrentMediaState.Video.orientation = Constants.Orientation.LANDSCAPE
+            }
+            //If the width is smaller then the height then it means that the video was taken in portrait mode and we should set the orientation to portrait
+            if (videoWidth < videoHeight) {
+                //Set orientation to portrait
+                this.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+                setScreenSize()
+                isLandscape = false
+                CurrentMediaState.Video.orientation = Constants.Orientation.PORTRAIT
             }
 
         } catch (ex: RuntimeException) {

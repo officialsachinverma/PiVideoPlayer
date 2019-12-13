@@ -53,7 +53,6 @@ class FoldersViewHolder(private val context: Context, itemView: View, private va
         tvItemCount.visibility = View.VISIBLE
         //tvDuration.visibility = View.GONE
         tvItemCount.text = "${adapter.getInternalItem(position).videoInfoList.size} Videos"
-//        tvItemCount.text = "${folder.fileCount} Videos"
 
         tvTitle.text = folder.folderName
 

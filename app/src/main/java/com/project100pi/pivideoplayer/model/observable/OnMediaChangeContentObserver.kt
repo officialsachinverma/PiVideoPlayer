@@ -2,6 +2,7 @@ package com.project100pi.pivideoplayer.model.observable
 
 import android.database.ContentObserver
 import android.os.Handler
+import com.project100pi.library.misc.Logger
 import com.project100pi.pivideoplayer.utils.DataRefresherUtils
 
 /**
@@ -16,8 +17,9 @@ class OnMediaChangeContentObserver(handler: Handler) : ContentObserver(handler) 
      * @param selfChange Boolean
      */
     override fun onChange(selfChange: Boolean) {
-        super.onChange(selfChange) // Doing this knowing that Android does not do anything
         // when ever content changes, need to load all data
+        Logger.i("DataRefresherUtils.tryRefreshingAllData --> onChange")
+
         DataRefresherUtils.tryRefreshingAllData()
     }
 

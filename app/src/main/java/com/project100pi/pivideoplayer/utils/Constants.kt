@@ -26,6 +26,7 @@ object Constants {
     object Storage {
         const val DIRECTORY_NAME = "directoryName"
         const val DIRECTORY_PATH = "directoryPath"
+        const val VIDEO_LIST = "videoList"
     }
 
     object SearchSource {

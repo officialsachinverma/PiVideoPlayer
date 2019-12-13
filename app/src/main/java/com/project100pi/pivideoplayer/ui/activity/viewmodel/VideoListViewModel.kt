@@ -2,6 +2,7 @@ package com.project100pi.pivideoplayer.ui.activity.viewmodel
 
 import android.content.Context
 import android.content.Intent
+import android.database.SQLException
 import android.net.Uri
 import android.provider.MediaStore
 import android.widget.Toast
@@ -15,6 +16,7 @@ import com.project100pi.pivideoplayer.database.CursorFactory
 import com.project100pi.pivideoplayer.database.TinyDB
 import com.project100pi.pivideoplayer.listeners.ItemDeleteListener
 import com.project100pi.pivideoplayer.model.VideoTrackInfo
+import com.project100pi.pivideoplayer.model.observable.OnMediaChangeContentObserver
 import com.project100pi.pivideoplayer.model.observable.VideoChangeObservable
 import com.project100pi.pivideoplayer.ui.activity.PlayerActivity
 import com.project100pi.pivideoplayer.utils.Constants
@@ -33,11 +35,9 @@ class VideoListViewModel (private val context: Context,
                           private val folderName: String,
                           private val itemDeleteListener: ItemDeleteListener): ViewModel(), Observer {
 
-    private var _filesList = MutableLiveData<ArrayList<VideoTrackInfo>>()
-    val filesList: LiveData<ArrayList<VideoTrackInfo>>
+    private var _filesList = MutableLiveData<MutableList<VideoTrackInfo>>()
+    val filesList: LiveData<MutableList<VideoTrackInfo>>
         get() = _filesList
-
-    private val videoList = arrayListOf<VideoTrackInfo>()
 
     /**
      * Allows to cancel all assigned jobs for this ViewModel
@@ -84,7 +84,6 @@ class VideoListViewModel (private val context: Context,
     fun deleteVideo(listOfIndexes: List<Int>) {
 
         coroutineScope.launch {
-
             when (delete(listOfIndexes)) {
                 Constants.Delete.SUCCESS -> {
                     onDeleteSuccess(listOfIndexes)
@@ -112,6 +111,7 @@ class VideoListViewModel (private val context: Context,
      * @param listOfIndexes List<Int>
      */
     private suspend fun onDeleteSuccess(listOfIndexes: List<Int>) {
+        Logger.i("Delete --> onDeleteSuccess")
         withContext(Dispatchers.Main) {
             itemDeleteListener.onDeleteSuccess(listOfIndexes)
         }
@@ -122,6 +122,7 @@ class VideoListViewModel (private val context: Context,
      * while executing the delete operation
      */
     private suspend fun onDeleteError() {
+        Logger.i("Delete --> onDeleteError")
         withContext(Dispatchers.Main) {
             itemDeleteListener.onDeleteError()
         }
@@ -135,12 +136,7 @@ class VideoListViewModel (private val context: Context,
      * @param fileUri Uri
      */
     private fun sendDeleteBroadcast(fileUri: Uri) {
-        context.applicationContext.sendBroadcast(
-            Intent(
-                Intent.ACTION_MEDIA_SCANNER_SCAN_FILE,
-                fileUri
-            )
-        )
+        context.applicationContext.sendBroadcast(Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, fileUri))
     }
 
     /**
@@ -151,11 +147,13 @@ class VideoListViewModel (private val context: Context,
      * @return Int The status of delete operation (Success/Failure/Need SD Card Permission)
      */
     private fun delete(listOfIndexes: List<Int>): Int {
+        Logger.i("Delete --> initiated")
         for (position in listOfIndexes) {
 
             try {
 
                 val folder = _filesList.value!![position].videoPath
+//                val folder = videoList[position].videoPath
 
                 val file = File(folder)
 
@@ -258,89 +256,92 @@ class VideoListViewModel (private val context: Context,
      */
 
     private fun loadAllVideoData() {
+        val videoList = arrayListOf<VideoTrackInfo>()
+        //videoList.clear()
+
         coroutineScope.launch {
-            videoList.clear()
-            val timeTaken = measureTimeMillis {
-                val cursor = CursorFactory.getVideoMetaDataByPath(context, folderName)
-                if (cursor != null && cursor.moveToFirst()) {
-                    // We populate something, only if the cursor is available
-                    do {
-                        try {
-                            // To get path of song
-                            val videoPath = cursor.getString(cursor.getColumnIndex(MediaStore.Video.Media.DATA))
-                            //To get song id
-                            val videoId = cursor.getInt(cursor.getColumnIndex(MediaStore.Video.Media._ID))
-                            // To get song title
-                            // Not using title as of now because it's been observed
-                            // that for some videos title is not corresponding to the file name
-                            // Eg.: there was a video provided by udemy
-                            // title of that video was "Udemy Tutorial video"
-                            // file name was something "1. Introduction to APIs"
-                            // so as of now we are using last path segment as video title (for UI only)
+            val cursor = CursorFactory.getVideoMetaDataByPath(context, folderName)
+            if (cursor != null && cursor.moveToFirst()) {
+                // We populate something, only if the cursor is available
+                do {
+                    try {
+                        // To get path of song
+                        val videoPath = cursor.getString(cursor.getColumnIndex(MediaStore.Video.Media.DATA))
+                        //To get song id
+                        val videoId = cursor.getInt(cursor.getColumnIndex(MediaStore.Video.Media._ID))
+                        // To get song title
+                        // Not using title as of now because it's been observed
+                        // that for some videos title is not corresponding to the file name
+                        // Eg.: there was a video provided by udemy
+                        // title of that video was "Udemy Tutorial video"
+                        // file name was something "1. Introduction to APIs"
+                        // so as of now we are using last path segment as video title (for UI only)
 //                            val videoTitle = cursor.getString(cursor.getColumnIndex(MediaStore.Video.Media.TITLE))
-                            // To get song duration
-                            val videoDuration = cursor.getLong(cursor.getColumnIndex(MediaStore.Video.Media.DURATION))
+                        // To get song duration
+                        val videoDuration = cursor.getLong(cursor.getColumnIndex(MediaStore.Video.Media.DURATION))
 
-                            val dateAdded = cursor.getString(cursor.getColumnIndex(MediaStore.Video.Media.DATE_ADDED))
+                        val dateAdded = cursor.getString(cursor.getColumnIndex(MediaStore.Video.Media.DATE_ADDED))
 
-                            val calendar = Calendar.getInstance()
-                            // Multiply by 1000 as the date added is in seconds
-                            val date = Date(dateAdded.toLong()*1000)
-                            calendar.time = date
+                        val calendar = Calendar.getInstance()
+                        // Multiply by 1000 as the date added is in seconds
+                        val date = Date(dateAdded.toLong()*1000)
+                        calendar.time = date
 
-                            val months = arrayOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sept", "Oct", "Nov", "Dec")
+                        val months = arrayOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sept", "Oct", "Nov", "Dec")
 
-                            val dateString = "${calendar.get(Calendar.DAY_OF_MONTH)} ${months[calendar.get(Calendar.MONTH)]}"
+                        val dateString = "${calendar.get(Calendar.DAY_OF_MONTH)} ${months[calendar.get(Calendar.MONTH)]}"
 
-                            if (videoPath != null) {
+                        if (videoPath != null) {
 
-                                // Splitting song path to list by using .split("/") to get elements from song path separated
-                                // /storage/emulated/video/abc.wav
-                                // -> music will be folder name
-                                // -> emulated will be subfolder name
-                                // -> abc will be song name
+                            // Splitting song path to list by using .split("/") to get elements from song path separated
+                            // /storage/emulated/video/abc.wav
+                            // -> music will be folder name
+                            // -> emulated will be subfolder name
+                            // -> abc will be song name
 
-                                val pathsList = videoPath.split("/")
+                            val pathsList = videoPath.split("/")
 
-                                val folderPath = folderPath.split("/")
+                            val folderPath = folderPath.split("/")
 
-                                val videoName = pathsList[pathsList.size - 1]
+                            val videoName = pathsList[pathsList.size - 1]
 
-                                // checking if sub-folder of the folder on which user has clicked
-                                // and sub-folder of the current cursor position item is same
+                            // checking if sub-folder of the folder on which user has clicked
+                            // and sub-folder of the current cursor position item is same
 //                                 Eg.: /storage/emulated/video/downloaded/abc.wav and
 //                                 /storage/emulated/video/xyz.wav now the folder in which abc.wav is,
 //                                 is a sub folder of video and xyz.wav is in folder video
 //                                 which is a sub folder of emulated
 //                                 so cursor will give both files but we want the one which is in folder video
 //                                 but not in the subfolder of folder video
-                                if (pathsList[pathsList.size - 2] == folderPath[folderPath.size - 2]
-                                    && pathsList[pathsList.size - 2] == folderName
-                                    && folderPath[folderPath.size - 2] == folderName) {
-                                    videoList.add(
-                                        VideoTrackInfo(
-                                            videoId,
-                                            videoName,
-                                            videoPath,
-                                            videoDuration,
-                                            dateString))
-                                }
+                            if (pathsList[pathsList.size - 2] == folderPath[folderPath.size - 2]
+                                && pathsList[pathsList.size - 2] == folderName
+                                && folderPath[folderPath.size - 2] == folderName) {
+                                videoList.add(
+                                    VideoTrackInfo(
+                                        videoId,
+                                        videoName,
+                                        videoPath,
+                                        videoDuration,
+                                        dateString))
+                            }
 
-                            } else
-                                continue
+                        } else
+                            continue
 
-                        } catch (e: Exception) { // catch specific exception
-                            e.printStackTrace()
-                            Logger.e(e.message.toString())
-                        }
-                    } while (cursor.moveToNext())
-                    cursor.close()
-                }
-                withContext(Dispatchers.Main) {
-                    _filesList.value = videoList
-                }
+                    } catch (e: SQLException) {
+                        e.printStackTrace()
+                        Logger.e(e.message.toString())
+                    } catch (e: ArrayIndexOutOfBoundsException) {
+                        e.printStackTrace()
+                        Logger.e(e.message.toString())
+                    }
+
+                } while (cursor.moveToNext())
+                cursor.close()
             }
-            Logger.i("Time taken for listing videos: $timeTaken millis")
+            withContext(Dispatchers.Main) {
+                _filesList.value = videoList
+            }
         }
     }
 
@@ -356,7 +357,7 @@ class VideoListViewModel (private val context: Context,
 
             val listOfVideoUris = ArrayList<Uri?>()
             for (position in selectedItemPosition) {
-                listOfVideoUris.add(ContextMenuUtil.getVideoContentUri(context, File(videoList[position].videoPath)))
+                listOfVideoUris.add(ContextMenuUtil.getVideoContentUri(context, File(filesList.value!![position].videoPath)))
             }
 
             withContext(Dispatchers.Main) {
@@ -369,43 +370,18 @@ class VideoListViewModel (private val context: Context,
     }
 
     /**
-     * This method plays the selected videos
-     *
-     * @param selectedItemPosition List<Int>
-     */
-
-    fun playMultipleVideos(selectedItemPosition: List<Int>) {
-        try {
-
-            coroutineScope.launch {
-                val playerIntent = Intent(context, PlayerActivity::class.java)
-                val metaDataList = ArrayList<VideoMetaData>()
-                for(position in selectedItemPosition) {
-//                  metaDataList.add(directoryListViewModel
-//                  .getVideoMetaData(videoListData[directoryListViewModel
-//                  .currentSongFolderIndex].songsList[selectedItemPosition].folderId)!!)
-                    metaDataList.add(VideoMetaData(videoList[position]._Id, videoList[position].videoName, videoList[position].videoPath))
-                }
-                playerIntent.putExtra(Constants.Playback.PLAYBACK_QUEUE, metaDataList)
-                withContext(Dispatchers.Main) {
-                    context.startActivity(playerIntent)
-                }
-            }
-
-        } catch (e: java.lang.Exception) {
-            Logger.i(e.toString())
-            Toast.makeText(context, "Failed to play with video.", Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    /**
      * removes items from internal list
      *
      * @param position Int
      */
 
-    fun removeElementAt(position: Int) {
-        videoList.removeAt(position)
+    fun removeElementAt(position: Int):Boolean {
+        if (position < filesList.value!!.size)
+        {
+            filesList.value!!.removeAt(position)
+            return true
+        }
+        return false
     }
 
     /**
@@ -428,7 +404,9 @@ class VideoListViewModel (private val context: Context,
      * @param p1 Any
      */
 
-    override fun update(p0: Observable?, p1: Any?) {
+    override fun update(observable: Observable?, p1: Any?) {
+        Logger.i("update --> actually going to refresh list")
+        if(observable is VideoChangeObservable)
         loadAllVideoData()
     }
 

@@ -477,7 +477,7 @@ class PiVideoPlayerView : FrameLayout, SRTFilePickerClickListener, OnItemClickLi
                 layoutParams.bottomMargin = 0
         } else { // Portrait
             if (show)
-                layoutParams.bottomMargin = 50 + softNavBarHeight
+                layoutParams.bottomMargin = 350 + softNavBarHeight
             else
                 layoutParams.bottomMargin = 0
         }
@@ -636,7 +636,6 @@ class PiVideoPlayerView : FrameLayout, SRTFilePickerClickListener, OnItemClickLi
      * Gets system screen size
      */
     fun setScreenSize() {
-        val metrics = DisplayMetrics()
         val systemSize = Point()
         val display = (context as Activity).windowManager.defaultDisplay
         display.getSize(systemSize)

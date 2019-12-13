@@ -53,7 +53,7 @@ class DirectoryListActivity : AppCompatActivity(), OnClickListener, ItemDeleteLi
     private lateinit var adapter: FoldersAdapter
     private var actionModeCallback = ActionModeCallback()
     private var actionMode: ActionMode? = null
-    private var videoListData: ArrayList<FolderInfo> = ArrayList()
+    private var videoListData  = mutableListOf<FolderInfo>()
 
     private var doubleBackToExitPressedOnce = false
 
@@ -137,7 +137,9 @@ class DirectoryListActivity : AppCompatActivity(), OnClickListener, ItemDeleteLi
      * who are observing to a particular thing
      */
     private fun observeForObservers() {
-        observeForFolderList()
+            observeForFolderList()
+
+
     }
 
     /**
@@ -145,8 +147,8 @@ class DirectoryListActivity : AppCompatActivity(), OnClickListener, ItemDeleteLi
      */
     private fun observeForFolderList() {
         directoryListViewModel.foldersList.observe(this, Observer {
-            if (it != null) {
-                if (it.size > 0) {
+            if (it != null&&it.size > 0) {
+
                     videoListData = it
                     hideEmptyListMsg()
                     hideWaitingSign()
@@ -157,7 +159,7 @@ class DirectoryListActivity : AppCompatActivity(), OnClickListener, ItemDeleteLi
                     hideWaitingSign()
                     hideVideoList()
                 }
-            }
+
         })
     }
 
@@ -274,7 +276,7 @@ class DirectoryListActivity : AppCompatActivity(), OnClickListener, ItemDeleteLi
 
     private fun startVideoListActivity(position: Int) {
         try {
-            VideoListActivity.start(this, videoListData[position].folderName, videoListData[position].folderPath)
+            VideoListActivity.start(this, videoListData[position].folderName, videoListData[position].folderPath, videoListData[position].videoInfoList)
         } catch (e: ArrayIndexOutOfBoundsException) {
             e.printStackTrace()
             Logger.e(e.message.toString())
