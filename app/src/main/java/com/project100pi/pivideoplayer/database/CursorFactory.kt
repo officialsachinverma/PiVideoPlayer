@@ -20,7 +20,8 @@ object CursorFactory {
 
      fun getAllVideoCursor(context: Context): Cursor? {
          val projection = arrayOf(MediaStore.Video.Media.DATA, MediaStore.Video.Media._ID,
-             MediaStore.Video.Media.TITLE, MediaStore.Video.Media.DURATION)
+             MediaStore.Video.Media.TITLE, MediaStore.Video.Media.DURATION,
+             MediaStore.Video.Media.DATE_ADDED)
          return context.contentResolver.query(
             MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
              projection,
